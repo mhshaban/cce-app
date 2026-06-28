@@ -3,14 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CCE Equestrian Center</title>
+<title>CCE — Equestrian Center</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* ── Reset ── */
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744;min-height:100vh}
-
-/* ── Dashboard CSS ── */
+/* ── Base ── */
 
 :root{--navy:#1A2744;--amber:#C8923A;--sand:#F5EDD8;--cream:#FDFAF4;--green:#1E7D4E;--red:#C0392B;--muted:#7A8399;--border:#E3D9C6;--white:#fff}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -91,112 +87,171 @@ tr:hover td{background:#fafaf8}
 @media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr}.horse-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
 
 
-/* ── SPA Router ── */
-.app-page{display:none!important}
-.app-page.active{display:block!important}
+/* ── Booking ── */
 
-/* ── Header ── */
-.header{background:#1A2744;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,39,68,.25)}
-.header-logo{font-size:26px}
-.header-title{font-size:17px;font-weight:700}
-.header-sub{font-size:12px;color:#C8923A}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.sync-btn{background:#C8923A;color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer}
-.sync-status{font-size:11px;color:#C8923A}
-.overdue-badge{background:#C0392B;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer}
-.back-btn{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#C8923A}
+.horse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:6px}
+.horse-card{border:2px solid #E3D9C6;border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.horse-card:hover{border-color:#C8923A;background:#FEF3E2}
+.horse-card.selected{border-color:#C8923A;background:#FEF3E2}
+.horse-card .h-icon{font-size:28px;margin-bottom:6px}
+.horse-card .h-name{font-size:13px;font-weight:700;color:#1A2744}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.6}
 
-/* ── Home page ── */
-.home-bg{background:#1A2744;min-height:calc(100vh - 62px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px}
-.home-logo{font-size:60px;margin-bottom:10px}
-.home-title{color:#fff;font-size:28px;font-weight:700;margin-bottom:4px}
-.home-sub{color:#C8923A;font-size:15px;margin-bottom:36px}
-.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:860px;width:100%}
-.home-card{background:#fff;border-radius:18px;padding:28px 20px;text-align:center;cursor:pointer;transition:transform .2s,box-shadow .2s;border:2px solid transparent}
-.home-card:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.25);border-color:#C8923A}
-.hc-icon{font-size:40px;margin-bottom:12px}
-.hc-title{font-size:17px;font-weight:700;color:#1A2744;margin-bottom:6px}
-.hc-desc{font-size:12px;color:#7A8399;line-height:1.5;margin-bottom:14px}
-.hc-btn{display:inline-block;background:#C8923A;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer}
-.home-card.admin-card{border-color:#2C3E6B;background:#F0F2F8}
-.home-card.admin-card .hc-btn{background:#1A2744}
 
-/* ── Login boxes ── */
+/* ── Training ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.packages{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:400px){.packages{grid-template-columns:1fr}}
+.pkg-card{border:2px solid #E3D9C6;border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
+.pkg-card:hover{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.selected{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.popular::before{content:'⭐ Popular';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#C8923A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.pkg-icon{font-size:32px;margin-bottom:8px}
+.pkg-name{font-size:14px;font-weight:700;color:#1A2744;margin-bottom:4px}
+.pkg-sessions{font-size:12px;color:#7A8399;margin-bottom:8px}
+.pkg-price{font-size:22px;font-weight:700;color:#C8923A}
+.pkg-price span{font-size:12px;color:#7A8399;font-weight:400}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
+.form-group input:focus{border-color:#C8923A}
+.selected-pkg-box{background:#FEF3E2;border:1px solid #C8923A;border-radius:10px;padding:14px;margin-bottom:16px;display:none;text-align:center}
+.selected-pkg-box .pkg-label{font-size:13px;color:#7A8399}
+.selected-pkg-box .pkg-value{font-size:16px;font-weight:700;color:#C8923A;margin-top:2px}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.8}
+
+
+/* ── Owner ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
+
+/* Login */
+.login-wrap{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.1);text-align:center}
+.login-icon{font-size:48px;margin-bottom:12px}
+.login-title{font-size:20px;font-weight:700;color:#1A2744;margin-bottom:6px}
+.login-sub{font-size:13px;color:#7A8399;margin-bottom:24px}
+.inp{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:12px 16px;font-size:15px;background:#FDFAF4;outline:none;margin-bottom:12px;font-family:inherit;text-align:center}
+.inp:focus{border-color:#C8923A}
+.login-btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.login-btn:hover{background:#C8923A}
+.err{color:#C0392B;font-size:13px;margin-top:8px;display:none}
+
+/* Portal */
+.portal{display:none;padding:20px;max-width:700px;margin:0 auto}
+.welcome{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:20px}
+.welcome-name{font-size:20px;font-weight:700;margin-bottom:4px}
+.welcome-sub{font-size:13px;color:#C8923A}
+
+/* Horse cards */
+.horse-section{margin-bottom:20px}
+.section-title{font-size:15px;font-weight:700;color:#1A2744;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.horse-card{background:#fff;border:1px solid #E3D9C6;border-radius:14px;padding:18px;margin-bottom:12px}
+.horse-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.horse-avatar{font-size:36px}
+.horse-name{font-size:17px;font-weight:700;color:#1A2744}
+.horse-meta{font-size:12px;color:#7A8399;margin-top:2px}
+.badge{border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700}
+.badge-green{background:#E8F5EE;color:#1E7D4E}
+.badge-red{background:#FDECEA;color:#C0392B}
+.badge-amber{background:#FEF3E2;color:#C8923A}
+
+/* Edit form */
+.edit-toggle{background:#E8EAF0;color:#1A2744;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.edit-toggle:hover{background:#C8923A;color:#fff}
+.edit-form{display:none;margin-top:16px;border-top:1px solid #E3D9C6;padding-top:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr}}
+.form-group label{font-size:11px;color:#7A8399;display:block;margin-bottom:4px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid #E3D9C6;border-radius:8px;padding:9px 11px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#C8923A}
+.form-group input[readonly]{background:#f5f5f5;color:#999;cursor:not-allowed}
+.save-btn{background:#1E7D4E;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.save-btn:hover{opacity:.88}
+.save-btn:disabled{opacity:.5;cursor:not-allowed}
+.cancel-btn{background:#f0f0f0;color:#1A2744;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:8px}
+
+/* Horse info display */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.info-grid{grid-template-columns:1fr}}
+.info-item{background:#FDFAF4;border-radius:8px;padding:10px 12px}
+.info-label{font-size:10px;color:#7A8399;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.info-value{font-size:13px;font-weight:600;color:#1A2744}
+
+
+/* ── App Router ── */
+.app-page{display:none}
+.app-page.active{display:block}
+
+/* ── Public Home ── */
+.home-wrap{background:#1A2744;min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:900px;width:100%}
+.home-card{background:#fff;border-radius:20px;padding:30px 24px;text-align:center;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.home-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.home-card .hc-icon{font-size:44px;margin-bottom:14px}
+.home-card .hc-title{font-size:18px;font-weight:700;color:#1A2744;margin-bottom:6px}
+.home-card .hc-desc{font-size:13px;color:#7A8399;line-height:1.5;margin-bottom:16px}
+.home-card .hc-btn{display:inline-block;background:#C8923A;color:#fff;border:none;border-radius:10px;padding:9px 24px;font-size:13px;font-weight:700;cursor:pointer}
+.back-btn{background:none;border:none;color:#C8923A;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;margin:0}
+.back-btn:hover{text-decoration:underline}
+
+/* ── Login Box (admin + owner) ── */
 .login-wrap{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px;background:#1A2744}
 .login-box{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.4);text-align:center}
 .login-icon{font-size:48px;margin-bottom:12px}
 .login-title{font-size:20px;font-weight:700;color:#1A2744;margin-bottom:6px}
 .login-sub{font-size:13px;color:#7A8399;margin-bottom:24px}
-.login-inp{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:12px 16px;font-size:15px;background:#FDFAF4;outline:none;margin-bottom:12px;font-family:inherit;text-align:center;letter-spacing:1px}
-.login-inp:focus{border-color:#C8923A}
-.login-btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
-.login-btn:hover{background:#C8923A}
-.login-err{color:#C0392B;font-size:13px;margin-top:8px;display:none}
-
-/* ── Public pages ── */
-.pub-hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:36px 20px;text-align:center}
-.pub-hero-icon{font-size:44px;margin-bottom:10px}
-.pub-hero-title{font-size:22px;font-weight:700;margin-bottom:4px}
-.pub-hero-sub{font-size:13px;color:#C8923A}
-.pub-container{max-width:600px;margin:0 auto;padding:20px 16px}
-.pub-card{background:#fff;border:1px solid #E3D9C6;border-radius:14px;padding:20px;margin-bottom:14px}
-.pub-card-title{font-size:15px;font-weight:700;color:#1A2744;margin-bottom:16px}
-.pub-form-group{margin-bottom:14px}
-.pub-form-group label{font-size:11px;color:#7A8399;display:block;margin-bottom:4px;font-weight:600}
-.pub-form-group input,.pub-form-group select{width:100%;border:1px solid #E3D9C6;border-radius:8px;padding:10px 12px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
-.pub-form-group input:focus{border-color:#C8923A}
-.pub-btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-.pub-btn:hover{background:#C8923A}
-.pub-btn:disabled{opacity:.5;cursor:not-allowed}
-.pub-note{background:#FEF3E2;border:1px solid #C8923A;border-radius:12px;padding:16px;margin-bottom:16px}
-.pub-note-title{font-size:12px;font-weight:700;color:#C8923A;margin-bottom:6px}
-.pub-note-text{font-size:13px;color:#1A2744;line-height:1.6}
-.iban{font-family:monospace;font-size:14px;font-weight:700;background:#fff;padding:4px 10px;border-radius:6px;display:inline-block;margin-top:4px}
-.pub-success{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
-.pub-success-icon{font-size:44px;margin-bottom:10px}
-.pub-success-title{font-size:17px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
-.pub-success-text{font-size:13px;color:#1A2744;line-height:1.7}
-
-/* ── Training packages ── */
-.pkg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-@media(max-width:400px){.pkg-grid{grid-template-columns:1fr}}
-.pkg-card{border:2px solid #E3D9C6;border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
-.pkg-card:hover{border-color:#C8923A;background:#FEF3E2}
-.pkg-card.selected{border-color:#C8923A;background:#FEF3E2}
-.pkg-card.popular::before{content:'⭐ Popular';position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#C8923A;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap}
-.pkg-icon{font-size:28px;margin-bottom:6px}
-.pkg-name{font-size:13px;font-weight:700;color:#1A2744;margin-bottom:2px}
-.pkg-sessions{font-size:11px;color:#7A8399;margin-bottom:6px}
-.pkg-price{font-size:20px;font-weight:700;color:#C8923A}
-.pkg-price span{font-size:11px;color:#7A8399;font-weight:400}
-.pkg-selected-box{background:#FEF3E2;border:1px solid #C8923A;border-radius:8px;padding:10px;margin-bottom:14px;display:none;text-align:center}
-.pkg-selected-label{font-size:11px;color:#7A8399}
-.pkg-selected-value{font-size:15px;font-weight:700;color:#C8923A}
-
-/* ── Horse booking grid ── */
-.horse-select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px}
-.horse-select-card{border:2px solid #E3D9C6;border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s}
-.horse-select-card:hover,.horse-select-card.selected{border-color:#C8923A;background:#FEF3E2}
-.horse-select-icon{font-size:24px;margin-bottom:4px}
-.horse-select-name{font-size:12px;font-weight:700;color:#1A2744}
-
-/* ── Owner portal ── */
-.owner-welcome{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:16px}
-.owner-welcome-name{font-size:18px;font-weight:700;margin-bottom:3px}
-.owner-welcome-sub{font-size:12px;color:#C8923A}
-.owner-horse-card{background:#fff;border:1px solid #E3D9C6;border-radius:14px;padding:16px;margin-bottom:12px}
-.owner-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-@media(max-width:480px){.owner-info-grid{grid-template-columns:1fr}}
-.owner-info-item{background:#FDFAF4;border-radius:8px;padding:8px 10px}
-.owner-info-label{font-size:10px;color:#7A8399;font-weight:600;text-transform:uppercase;margin-bottom:1px}
-.owner-info-value{font-size:13px;font-weight:600;color:#1A2744}
-.owner-edit-form{display:none;margin-top:14px;border-top:1px solid #E3D9C6;padding-top:14px}
-.edit-toggle{background:#E8EAF0;color:#1A2744;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-.edit-toggle:hover{background:#C8923A;color:#fff}
-.save-btn-sm{background:#1E7D4E;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.cancel-btn-sm{background:#f0f0f0;color:#1A2744;border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:inherit;margin-left:8px}
-
-.hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -204,750 +259,419 @@ tr:hover td{background:#fafaf8}
 <!-- Loading Overlay -->
 <div class="loading-overlay hidden" id="loadingOverlay">
   <div class="spinner" id="spinner"></div>
-  <div style="color:#fff;font-size:16px;font-weight:600">🏇 CCE Equestrian Center</div>
+  <div class="loading-text">&#127943; CCE Equestrian Center</div>
   <div class="loading-sub" id="loadingMsg">Loading...</div>
-  <div id="debugInfo" style="color:#aaa;font-size:11px;margin-top:6px;text-align:center"></div>
-  <button onclick="forceLoad()" id="retryBtn" style="display:none;margin-top:14px;background:#C8923A;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">🔄 Retry</button>
+  <div id="debugInfo" style="color:#aaa;font-size:11px;margin-top:8px;text-align:center;max-width:300px"></div>
+  <button onclick="forceLoad()" id="retryBtn" style="display:none;margin-top:16px;background:var(--amber);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer">&#128260; Retry</button>
 </div>
 
 <!-- Header -->
 <div class="header">
-  <div class="header-logo">🏇</div>
+  <div class="header-logo">&#127943;</div>
   <div>
     <div class="header-title">CCE Equestrian Center</div>
     <div class="header-sub" id="headerSub">مركز تعليم ركوب الخيل</div>
   </div>
   <div class="header-right">
-    <button class="back-btn hidden" id="backBtn" onclick="goHome()">← Back</button>
+    <button class="back-btn hidden" id="backBtn" onclick="goHome()">&#8592; Back</button>
     <span class="sync-status hidden" id="syncStatus"></span>
-    <button class="sync-btn hidden" id="refreshBtn" onclick="loadAll()">🔄 Refresh</button>
-    <button class="sync-btn hidden" id="backupBtn" style="background:#1E7D4E" onclick="downloadBackup()">🖫 Backup</button>
-    <button class="sync-btn hidden" id="logoutAdminBtn" style="background:#C0392B" onclick="logoutAdmin()">🔐 Logout</button>
-    <button class="sync-btn hidden" id="logoutOwnerBtn" style="background:#C0392B" onclick="logoutOwner()">🔐 Logout</button>
-    <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)">⚠️ <span id="overdueCount">0</span></span>
+    <button class="sync-btn hidden" id="refreshBtn" onclick="loadAll()">&#128260; Refresh</button>
+    <button class="sync-btn hidden" id="backupBtn" style="background:#1E7D4E" onclick="downloadBackup()">&#128190; Backup</button>
+    <button class="sync-btn hidden" id="logoutAdminBtn" style="background:#C0392B" onclick="logoutAdmin()">&#128275; Logout</button>
+    <button class="sync-btn hidden" id="logoutOwnerBtn" style="background:#C0392B" onclick="logoutOwner()">&#128275; Logout</button>
+    <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)">&#9888;&#65039; <span id="overdueCount">0</span></span>
   </div>
 </div>
 
-<!-- ═══════════════ HOME ═══════════════ -->
+<!-- ════════════════════════════════ HOME PAGE ════════════════════════════ -->
 <div class="app-page active" id="page-home">
-  <div class="home-bg">
-    <div class="home-logo">🏇</div>
-    <div class="home-title">CCE Equestrian Center</div>
-    <div class="home-sub">مركز تعليم ركوب الخيل</div>
+  <div class="home-wrap">
     <div class="home-grid">
       <div class="home-card" onclick="navigate('booking')">
-        <div class="hc-icon">🐴</div>
+        <div class="hc-icon">&#128052;</div>
         <div class="hc-title">Book a Horse Ride</div>
         <div class="hc-desc">حجز جولة على الخيل — اختر الخيل والوقت</div>
         <div class="hc-btn">Book Now</div>
       </div>
       <div class="home-card" onclick="navigate('training')">
-        <div class="hc-icon">🎯</div>
+        <div class="hc-icon">&#127919;</div>
         <div class="hc-title">Training Packages</div>
         <div class="hc-desc">باقات تدريب ركوب الخيل للمبتدئين والمحترفين</div>
         <div class="hc-btn">View Packages</div>
       </div>
       <div class="home-card" onclick="navigate('owner')">
-        <div class="hc-icon">🔑</div>
+        <div class="hc-icon">&#128272;</div>
         <div class="hc-title">Horse Owner Portal</div>
         <div class="hc-desc">بوابة ملاك الخيول — اطلع على بيانات حصانك وحدّثها</div>
         <div class="hc-btn">Owner Login</div>
       </div>
-      <div class="home-card admin-card" onclick="navigate('admin')">
-        <div class="hc-icon">📊</div>
+      <div class="home-card" onclick="navigate('admin')" style="border:2px solid #1A2744">
+        <div class="hc-icon">&#128202;</div>
         <div class="hc-title">Staff Dashboard</div>
         <div class="hc-desc">لوحة الإدارة — للموظفين فقط</div>
-        <div class="hc-btn">Admin Login</div>
+        <div class="hc-btn" style="background:#1A2744">Admin Login</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ BOOKING ═══════════════ -->
+<!-- ════════════════════════════ BOOKING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-booking">
-  <div class="pub-hero">
-    <div class="pub-hero-icon">🐴</div>
-    <div class="pub-hero-title">Book a Horse Ride</div>
-    <div class="pub-hero-sub">حجز جولة على الخيل</div>
+  <div class="hero" style="padding:30px 20px">
+    <div class="hero-icon">&#128052;</div>
+    <div class="hero-title">Book a Horse Ride</div>
+    <div class="hero-sub">حجز جولة على الخيل</div>
   </div>
-  <div class="pub-container">
-    <div id="bookForm">
-      <div class="pub-card">
-        <div class="pub-card-title">📋 Your Details</div>
-        <div class="pub-form-group"><label>Full Name *</label><input type="text" id="bk-name" placeholder="Enter your full name"></div>
-        <div class="pub-form-group"><label>Phone Number *</label><input type="tel" id="bk-phone" placeholder="e.g. 39001234"></div>
-        <div class="pub-form-group"><label>Date *</label><input type="date" id="bk-date"></div>
-        <div class="pub-form-group"><label>Preferred Time *</label><input type="time" id="bk-time"></div>
+  <div class="container" style="max-width:600px;margin:0 auto;padding:20px 16px">
+    <div id="bookingForm">
+      <div class="card">
+        <div class="card-title">&#128203; Your Details</div>
+        <div class="form-group"><label>Full Name *</label><input type="text" id="b-name" placeholder="Enter your full name"></div>
+        <div class="form-group"><label>Phone Number *</label><input type="tel" id="b-phone" placeholder="e.g. 39001234"></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="b-date"></div>
+        <div class="form-group"><label>Preferred Time *</label><input type="time" id="b-time"></div>
       </div>
-      <div class="pub-card">
-        <div class="pub-card-title">🐴 Select a Horse</div>
-        <div class="horse-select-grid" id="bkHorseGrid"><div style="color:#7A8399;font-size:13px">Loading available horses...</div></div>
-        <input type="hidden" id="bk-horse">
+      <div class="card">
+        <div class="card-title">&#128052; Select a Horse</div>
+        <div class="horse-grid" id="horseGrid"><div style="color:#7A8399;font-size:13px">Loading...</div></div>
+        <input type="hidden" id="b-horse">
       </div>
-      <div class="pub-note">
-        <div class="pub-note-title">💳 Payment Note</div>
-        <div class="pub-note-text">Booking confirmed after payment. Transfer to:<br><span class="iban">BH23BIBB00100002375646</span><br><br>Send proof via WhatsApp — confirmed within 24 hours.</div>
+      <div class="note-box">
+        <div class="note-title">&#128179; Payment Note</div>
+        <div class="note-text">
+          Booking confirmed after payment. Please transfer to:<br>
+          <span class="iban">BH23BIBB00100002375646</span><br><br>
+          Send proof via WhatsApp — confirmed within 24 hours.
+        </div>
       </div>
-      <button class="pub-btn" id="bkSubmitBtn" onclick="submitBooking()">🐴 Submit Booking Request</button>
+      <button class="btn" id="bookBtn" onclick="submitBooking()">&#128052; Submit Booking Request</button>
     </div>
-    <div class="pub-success" id="bookSuccess">
-      <div class="pub-success-icon">✅</div>
-      <div class="pub-success-title">Booking Request Submitted!</div>
-      <div class="pub-success-text">Transfer payment to IBAN:<br><strong>BH23BIBB00100002375646</strong><br><br>Your booking will be confirmed after payment.</div>
-      <button class="pub-btn" style="margin-top:16px" onclick="resetBooking()">📋 New Booking</button>
+    <div class="success-box" id="bookSuccess">
+      <div class="success-icon">&#9989;</div>
+      <div class="success-title">Booking Request Submitted!</div>
+      <div class="success-text">Transfer payment to IBAN:<br><strong>BH23BIBB00100002375646</strong><br><br>Booking confirmed after payment.</div>
+      <button class="btn" style="margin-top:16px" onclick="resetBooking()">&#128203; New Booking</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ TRAINING ═══════════════ -->
+<!-- ════════════════════════════ TRAINING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-training">
-  <div class="pub-hero">
-    <div class="pub-hero-icon">🎯</div>
-    <div class="pub-hero-title">Training Packages</div>
-    <div class="pub-hero-sub">باقات تدريب ركوب الخيل</div>
+  <div class="hero" style="padding:30px 20px">
+    <div class="hero-icon">&#127919;</div>
+    <div class="hero-title">Training Packages</div>
+    <div class="hero-sub">باقات تدريب ركوب الخيل</div>
   </div>
-  <div class="pub-container">
-    <div id="trainForm">
-      <div style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:700;color:#1A2744;margin-bottom:12px">🎯 Choose Your Package</div>
-        <div class="pkg-grid">
+  <div class="container" style="max-width:600px;margin:0 auto;padding:20px 16px">
+    <div id="trainingForm">
+      <div style="margin-bottom:20px">
+        <div style="font-size:15px;font-weight:700;color:#1A2744;margin-bottom:14px">&#127919; Choose Your Package</div>
+        <div class="packages">
           <div class="pkg-card" onclick="selectPkg(this,'Single Session','1 session',10)">
-            <div class="pkg-icon">🎯</div><div class="pkg-name">Single Session</div>
-            <div class="pkg-sessions">1 session</div><div class="pkg-price">10 <span>BD</span></div>
+            <div class="pkg-icon">&#127919;</div>
+            <div class="pkg-name">Single Session</div>
+            <div class="pkg-sessions">1 session</div>
+            <div class="pkg-price">10 <span>BD</span></div>
           </div>
-          <div class="pkg-card popular" onclick="selectPkg(this,'4 Sessions Package','4 sessions/month',35)">
-            <div class="pkg-icon">📅</div><div class="pkg-name">Starter Pack</div>
-            <div class="pkg-sessions">4 sessions / month</div><div class="pkg-price">35 <span>BD</span></div>
+          <div class="pkg-card popular" onclick="selectPkg(this,'4 Sessions Package','4 sessions / month',35)">
+            <div class="pkg-icon">&#128197;</div>
+            <div class="pkg-name">Starter Pack</div>
+            <div class="pkg-sessions">4 sessions / month</div>
+            <div class="pkg-price">35 <span>BD</span></div>
           </div>
-          <div class="pkg-card" onclick="selectPkg(this,'8 Sessions Package','8 sessions/month',70)">
-            <div class="pkg-icon">⭐</div><div class="pkg-name">Advanced Pack</div>
-            <div class="pkg-sessions">8 sessions / month</div><div class="pkg-price">70 <span>BD</span></div>
+          <div class="pkg-card" onclick="selectPkg(this,'8 Sessions Package','8 sessions / month',70)">
+            <div class="pkg-icon">&#11088;</div>
+            <div class="pkg-name">Advanced Pack</div>
+            <div class="pkg-sessions">8 sessions / month</div>
+            <div class="pkg-price">70 <span>BD</span></div>
           </div>
-          <div class="pkg-card" onclick="selectPkg(this,'12 Sessions Package','12 sessions/month',100)">
-            <div class="pkg-icon">🏆</div><div class="pkg-name">Pro Pack</div>
-            <div class="pkg-sessions">12 sessions / month</div><div class="pkg-price">100 <span>BD</span></div>
+          <div class="pkg-card" onclick="selectPkg(this,'12 Sessions Package','12 sessions / month',100)">
+            <div class="pkg-icon">&#127942;</div>
+            <div class="pkg-name">Pro Pack</div>
+            <div class="pkg-sessions">12 sessions / month</div>
+            <div class="pkg-price">100 <span>BD</span></div>
           </div>
         </div>
-        <div class="pkg-selected-box" id="pkgSelectedBox">
-          <div class="pkg-selected-label">Selected Package</div>
-          <div class="pkg-selected-value" id="pkgSelectedLabel">—</div>
-        </div>
       </div>
-      <div class="pub-card">
-        <div class="pub-card-title">📋 Your Details</div>
-        <div class="pub-form-group"><label>Full Name *</label><input type="text" id="tr-name" placeholder="Enter your full name"></div>
-        <div class="pub-form-group"><label>Phone Number *</label><input type="tel" id="tr-phone" placeholder="e.g. 39001234"></div>
-        <div class="pub-form-group"><label>Preferred Start Date *</label><input type="date" id="tr-date"></div>
-        <div class="pub-form-group"><label>Preferred Time *</label><input type="time" id="tr-time"></div>
+      <div class="selected-pkg-box" id="selectedPkgBox">
+        <div class="pkg-label">Selected Package</div>
+        <div class="pkg-value" id="selectedPkgLabel">—</div>
       </div>
-      <div class="pub-note">
-        <div class="pub-note-title">💳 Payment Note</div>
-        <div class="pub-note-text">Transfer package fee to:<br><span class="iban">BH23BIBB00100002375646</span><br><br>Confirmed within 24 hours after payment.</div>
+      <div class="card">
+        <div class="card-title">&#128203; Your Details</div>
+        <div class="form-group"><label>Full Name *</label><input type="text" id="t-name" placeholder="Enter your full name"></div>
+        <div class="form-group"><label>Phone Number *</label><input type="tel" id="t-phone" placeholder="e.g. 39001234"></div>
+        <div class="form-group"><label>Preferred Start Date *</label><input type="date" id="t-date"></div>
+        <div class="form-group"><label>Preferred Time *</label><input type="time" id="t-time"></div>
       </div>
-      <button class="pub-btn" id="trSubmitBtn" onclick="submitTraining()">🎯 Submit Enrollment</button>
+      <div class="note-box">
+        <div class="note-title">&#128179; Payment Note</div>
+        <div class="note-text">Transfer package fee to:<br><span class="iban">BH23BIBB00100002375646</span><br><br>Confirmed within 24 hours after payment.</div>
+      </div>
+      <button class="btn" id="trainBtn" onclick="submitTraining()">&#127919; Submit Enrollment</button>
     </div>
-    <div class="pub-success" id="trainSuccess">
-      <div class="pub-success-icon">✅</div>
-      <div class="pub-success-title">Enrollment Submitted!</div>
-      <div class="pub-success-text" id="trainSuccessText"></div>
-      <button class="pub-btn" style="margin-top:16px" onclick="resetTraining()">📋 New Request</button>
+    <div class="success-box" id="trainSuccess">
+      <div class="success-icon">&#9989;</div>
+      <div class="success-title">Enrollment Request Submitted!</div>
+      <div class="success-text" id="trainSuccessText"></div>
+      <button class="btn" style="margin-top:16px" onclick="resetTraining()">&#128203; New Request</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ OWNER ═══════════════ -->
+<!-- ════════════════════════════ OWNER PAGE ════════════════════════════ -->
 <div class="app-page" id="page-owner">
-  <div id="ownerLoginWrap">
-    <div class="login-wrap">
-      <div class="login-box">
-        <div class="login-icon">🐴</div>
-        <div class="login-title">Owner Portal</div>
-        <div class="login-sub">Login with your registered phone number</div>
-        <input class="login-inp" type="tel" id="ownerPhone" placeholder="Enter phone number" onkeydown="if(event.key==='Enter')doOwnerLogin()">
-        <button class="login-btn" onclick="doOwnerLogin()">🔑 Login</button>
-        <div class="login-err" id="ownerErr">❌ Phone not found. Contact CCE staff.</div>
-      </div>
+  <div class="login-wrap" id="ownerLoginWrap">
+    <div class="login-box">
+      <div class="login-icon">&#128052;</div>
+      <div class="login-title">Owner Portal</div>
+      <div class="login-sub">Login with your registered phone number</div>
+      <input class="inp" type="tel" id="ownerPhone" placeholder="Enter phone number" onkeydown="if(event.key==='Enter')doOwnerLogin()">
+      <button class="login-btn" onclick="doOwnerLogin()">&#128272; Login</button>
+      <div class="err" id="ownerErr" style="display:none">&#10060; Phone not found. Contact CCE staff.</div>
     </div>
   </div>
   <div id="ownerPortal" style="display:none;padding:20px;max-width:700px;margin:0 auto">
-    <div class="owner-welcome">
-      <div class="owner-welcome-name">Welcome, <span id="ownerNameDisplay"></span>! 👋</div>
-      <div class="owner-welcome-sub">Manage your horse(s) information</div>
+    <div class="welcome">
+      <div class="welcome-name">Welcome, <span id="ownerNameDisplay"></span>! &#128075;</div>
+      <div class="welcome-sub">Manage your horse(s) information</div>
     </div>
     <div id="ownerHorseList"></div>
   </div>
 </div>
 
-<!-- ═══════════════ ADMIN LOGIN ═══════════════ -->
+<!-- ════════════════════════════ ADMIN LOGIN ════════════════════════════ -->
 <div class="app-page" id="page-admin">
   <div class="login-wrap">
     <div class="login-box">
-      <div class="login-icon">🏇</div>
+      <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <input class="login-inp" type="password" id="adminPwd" placeholder="Enter Password" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      <button class="login-btn" onclick="doAdminLogin()">🔐 Login</button>
-      <div class="login-err" id="adminErr">❌ Incorrect password</div>
+      <input class="inp" type="password" id="adminPwd" placeholder="Enter Password" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <button class="login-btn" onclick="doAdminLogin()">&#128272; Login</button>
+      <div class="err" id="adminErr" style="display:none">&#10060; Incorrect password</div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<!-- ════════════════════════════ DASHBOARD ════════════════════════════ -->
 <div class="app-page" id="page-dashboard">
-<div class="nav">
-  <button class="nav-btn active" id="nav-dashboard" onclick="showDashPage('dashboard',this)">&#128202; Dashboard</button>
-  <button class="nav-btn" id="nav-income"   onclick="showDashPage('income',this)">&#128176; Income</button>
-  <button class="nav-btn" id="nav-expenses" onclick="showDashPage('expenses',this)">&#128184; Expenses</button>
-  <button class="nav-btn" id="nav-overdue"  onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
-  <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
-  <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
-</div>
-<div class="content">
-<div class="section active" id="page-dashboard-main">
-  <div class="overdue-banner hidden" id="overdueBanner">
-    <div style="font-size:32px">&#9888;&#65039;</div>
-    <div><div style="font-weight:700;font-size:16px">Overdue Payments</div><div style="font-size:13px;opacity:.9" id="overdueText"></div></div>
+  <div class="nav" id="dashNav">
+    <button class="nav-btn active" id="nav-dashboard" onclick="showDashPage('dashboard',this)">&#128202; Dashboard</button>
+    <button class="nav-btn" id="nav-income"   onclick="showDashPage('income',this)">&#128176; Income</button>
+    <button class="nav-btn" id="nav-expenses" onclick="showDashPage('expenses',this)">&#128184; Expenses</button>
+    <button class="nav-btn" id="nav-overdue"  onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
+    <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
+    <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
   </div>
-  <div class="stats-grid" id="statsGrid"></div>
-  <div class="card">
-    <div class="card-title">&#128197; Monthly Revenue vs Expenses</div>
-    <div class="bar-chart" id="barChart"></div>
-    <div class="chart-legend">
-      <span><span class="legend-dot" style="background:var(--green)"></span>Revenue</span>
-      <span><span class="legend-dot" style="background:var(--red)"></span>Expenses</span>
-    </div>
-  </div>
-  <div class="two-col">
-    <div class="card"><div class="card-title">&#127991;&#65039; Revenue by Activity</div><div id="actPie"></div></div>
-    <div class="card"><div class="card-title">&#128184; Expenses by Category</div><div id="expPie"></div></div>
-  </div>
-  <div class="card"><div class="card-title">&#128203; Recent Sessions (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
-</div>
-<div class="section" id="page-income">
-  <div class="card">
-    <div class="card-title" onclick="toggleForm('incForm')" style="cursor:pointer">&#10133; Add New Session <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
-    <div id="incForm" style="display:none">
-      <div class="form-grid">
-        <div class="form-group"><label>Date *</label><input type="date" id="inc-date"></div>
-        <div class="form-group"><label>Due Date</label><input type="date" id="inc-due"></div>
-        <div class="form-group"><label>Customer Name *</label><input type="text" id="inc-customer" list="cList" placeholder="Name..."><datalist id="cList"></datalist></div>
-        <div class="form-group"><label>Horse Name *</label><select id="inc-horse"><option value="">&#8212; Select &#8212;</option></select></div>
-        <div class="form-group"><label>Activity *</label><select id="inc-activity"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select></div>
-        <div class="form-group"><label>Qty</label><input type="number" id="inc-qty" value="1" min="1" oninput="calcTotal('inc')"></div>
-        <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="inc-amount" placeholder="0.000" oninput="calcTotal('inc')"></div>
-        <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="inc-total" readonly></div>
-        <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="inc-paid" value="0"></div>
-        <div class="form-group"><label>Start Time</label><input type="time" id="inc-start"></div>
-        <div class="form-group"><label>End Time</label><input type="time" id="inc-end"></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="inc-notes"></div>
+  <div class="content">
+    <div class="section active" id="page-main-dashboard">
+      <div class="overdue-banner hidden" id="overdueBanner">
+        <div style="font-size:32px">&#9888;&#65039;</div>
+        <div><div style="font-weight:700;font-size:16px">Overdue Payments</div><div style="font-size:13px;opacity:.9" id="overdueText"></div></div>
       </div>
-      <button class="btn btn-green" id="incSaveBtn" onclick="addIncome()">&#128176; Save to Database</button>
-    </div>
-  </div>
-  <div class="search-bar">
-    <input type="text" id="incSearch" placeholder="&#128269; Search..." oninput="renderIncome()">
-    <select id="incActFilter" onchange="renderIncome()"><option value="">All Activities</option><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select>
-    <select id="incStFilter" onchange="renderIncome()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
-  </div>
-  <div class="card">
-    <div class="card-title">&#128176; Income &#8212; <span id="incCount">0</span> records <span id="incTotalAmt" style="margin-left:auto;color:var(--green);font-size:14px"></span></div>
-    <div class="tbl-wrap" id="incTable"></div>
-    <div class="pagination" id="incPag"></div>
-  </div>
-</div>
-<div class="section" id="page-expenses">
-  <div class="card">
-    <div class="card-title" onclick="toggleForm('expForm')" style="cursor:pointer">&#10133; Add New Expense <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
-    <div id="expForm" style="display:none">
-      <div class="form-grid">
-        <div class="form-group"><label>Date *</label><input type="date" id="exp-date"></div>
-        <div class="form-group"><label>Due Date (if pending)</label><input type="date" id="exp-due"></div>
-        <div class="form-group"><label>Category *</label><select id="exp-cat"><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select></div>
-        <div class="form-group"><label>Supplier *</label><input type="text" id="exp-supplier" placeholder="Name..."></div>
-        <div class="form-group"><label>Qty</label><input type="number" id="exp-qty" value="1" min="1" oninput="calcTotal('exp')"></div>
-        <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="exp-amount" placeholder="0.000" oninput="calcTotal('exp')"></div>
-        <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="exp-total" readonly></div>
-        <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="exp-paid" value="0"></div>
-        <div class="form-group"><label>Horse (optional)</label><select id="exp-horse"><option value="">&#8212; None &#8212;</option></select></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="exp-notes"></div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="card"><div class="card-title">&#128197; Monthly Revenue vs Expenses</div><div class="bar-chart" id="barChart"></div><div class="chart-legend"><span><span class="legend-dot" style="background:var(--green)"></span>Revenue</span><span><span class="legend-dot" style="background:var(--red)"></span>Expenses</span></div></div>
+      <div class="two-col">
+        <div class="card"><div class="card-title">&#127991;&#65039; Revenue by Activity</div><div id="actPie"></div></div>
+        <div class="card"><div class="card-title">&#128184; Expenses by Category</div><div id="expPie"></div></div>
       </div>
-      <button class="btn btn-red" id="expSaveBtn" onclick="addExpense()">&#128184; Save to Database</button>
+      <div class="card"><div class="card-title">&#128203; Recent Sessions (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
     </div>
-  </div>
-  <div class="search-bar">
-    <input type="text" id="expSearch" placeholder="&#128269; Search..." oninput="renderExpenses()">
-    <select id="expCatFilter" onchange="renderExpenses()"><option value="">All Categories</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select>
-    <select id="expStFilter" onchange="renderExpenses()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
-  </div>
-  <div class="card">
-    <div class="card-title">&#128184; Expenses &#8212; <span id="expCount">0</span> records <span id="expTotalAmt" style="margin-left:auto;color:var(--red);font-size:14px"></span></div>
-    <div class="tbl-wrap" id="expTable"></div>
-    <div class="pagination" id="expPag"></div>
-  </div>
-</div>
-<div class="section" id="page-overdue">
-  <div class="card"><div class="card-title">&#9888;&#65039; Overdue Payments</div><div id="overdueList"></div></div>
-</div>
-<div class="section" id="page-horses">
-  <div class="card">
-    <div class="card-title" onclick="toggleForm('horseForm')" style="cursor:pointer">&#10133; Add New Horse <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
-    <div id="horseForm" style="display:none">
-      <div class="form-grid">
-        <div class="form-group"><label>Stable No</label><input type="text" id="h-stable"></div>
-        <div class="form-group"><label>Horse Name *</label><input type="text" id="h-name"></div>
-        <div class="form-group"><label>Owner *</label><input type="text" id="h-owner"></div>
-        <div class="form-group"><label>Contact</label><input type="text" id="h-contact"></div>
-        <div class="form-group"><label>Sex</label><select id="h-sex"><option value="">&#8212;</option><option>Stallion</option><option>Mare</option><option>Gelding</option></select></div>
-        <div class="form-group"><label>Color</label><input type="text" id="h-color"></div>
-        <div class="form-group"><label>Breed</label><input type="text" id="h-breed"></div>
-        <div class="form-group"><label>Livery BD/month</label><input type="number" step="0.001" id="h-livery" value="0"></div>
-        <div class="form-group"><label>Status</label><select id="h-status"><option>Available</option><option>Occupied</option><option>Away</option></select></div>
-        <div class="form-group"><label>Start Date</label><input type="date" id="h-start"></div>
+    <div class="section" id="page-income">
+      <div class="card"><div class="card-title" onclick="toggleForm('incForm')" style="cursor:pointer">&#10133; Add New Session <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
+        <div id="incForm" style="display:none">
+          <div class="form-grid">
+            <div class="form-group"><label>Date *</label><input type="date" id="inc-date"></div>
+            <div class="form-group"><label>Due Date</label><input type="date" id="inc-due"></div>
+            <div class="form-group"><label>Customer Name *</label><input type="text" id="inc-customer" list="cList" placeholder="Name..."><datalist id="cList"></datalist></div>
+            <div class="form-group"><label>Horse Name *</label><select id="inc-horse"><option value="">&#8212; Select &#8212;</option></select></div>
+            <div class="form-group"><label>Activity *</label><select id="inc-activity"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select></div>
+            <div class="form-group"><label>Qty</label><input type="number" id="inc-qty" value="1" min="1" oninput="calcTotal('inc')"></div>
+            <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="inc-amount" placeholder="0.000" oninput="calcTotal('inc')"></div>
+            <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="inc-total" readonly></div>
+            <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="inc-paid" value="0"></div>
+            <div class="form-group"><label>Start Time</label><input type="time" id="inc-start"></div>
+            <div class="form-group"><label>End Time</label><input type="time" id="inc-end"></div>
+            <div class="form-group"><label>Notes</label><input type="text" id="inc-notes"></div>
+          </div>
+          <button class="btn btn-green" id="incSaveBtn" onclick="addIncome()">&#128176; Save to Database</button>
+        </div>
       </div>
-      <button class="btn btn-amber" id="horseSaveBtn" onclick="addHorse()">&#128052; Save to Database</button>
-    </div>
-  </div>
-  <div class="search-bar">
-    <input type="text" id="horseSearch" placeholder="&#128269; Search..." oninput="renderHorses()">
-    <select id="horseStFilter" onchange="renderHorses()"><option value="">All Status</option><option>Available</option><option>Occupied</option><option>Away</option></select>
-  </div>
-  <div class="horse-grid" id="horsesGrid"></div>
-</div>
-<div class="section" id="page-breeding">
-  <div class="card">
-    <div class="card-title" onclick="toggleForm('breedForm')" style="cursor:pointer">&#10133; Add Breeding Record <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
-    <div id="breedForm" style="display:none">
-      <div class="form-grid">
-        <div class="form-group"><label>Mare Name *</label><input type="text" id="b-mare"></div>
-        <div class="form-group"><label>Owner *</label><input type="text" id="b-owner"></div>
-        <div class="form-group"><label>Mobile</label><input type="text" id="b-mobile"></div>
-        <div class="form-group"><label>Day 1</label><input type="date" id="b-d1"></div>
-        <div class="form-group"><label>Day 2</label><input type="date" id="b-d2"></div>
-        <div class="form-group"><label>Day 3</label><input type="date" id="b-d3"></div>
+      <div class="search-bar">
+        <input type="text" id="incSearch" placeholder="&#128269; Search..." oninput="renderIncome()">
+        <select id="incActFilter" onchange="renderIncome()"><option value="">All Activities</option><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select>
+        <select id="incStFilter" onchange="renderIncome()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
       </div>
-      <button class="btn btn-navy" id="breedSaveBtn" onclick="addBreeding()">&#128300; Save to Database</button>
+      <div class="card"><div class="card-title">&#128176; Income &#8212; <span id="incCount">0</span> records <span id="incTotalAmt" style="margin-left:auto;color:var(--green);font-size:14px"></span></div><div class="tbl-wrap" id="incTable"></div><div class="pagination" id="incPag"></div></div>
+    </div>
+    <div class="section" id="page-expenses">
+      <div class="card"><div class="card-title" onclick="toggleForm('expForm')" style="cursor:pointer">&#10133; Add New Expense <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
+        <div id="expForm" style="display:none">
+          <div class="form-grid">
+            <div class="form-group"><label>Date *</label><input type="date" id="exp-date"></div>
+            <div class="form-group"><label>Due Date (if pending)</label><input type="date" id="exp-due"></div>
+            <div class="form-group"><label>Category *</label><select id="exp-cat"><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select></div>
+            <div class="form-group"><label>Supplier *</label><input type="text" id="exp-supplier" placeholder="Name..."></div>
+            <div class="form-group"><label>Qty</label><input type="number" id="exp-qty" value="1" min="1" oninput="calcTotal('exp')"></div>
+            <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="exp-amount" placeholder="0.000" oninput="calcTotal('exp')"></div>
+            <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="exp-total" readonly></div>
+            <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="exp-paid" value="0"></div>
+            <div class="form-group"><label>Horse (optional)</label><select id="exp-horse"><option value="">&#8212; None &#8212;</option></select></div>
+            <div class="form-group"><label>Notes</label><input type="text" id="exp-notes"></div>
+          </div>
+          <button class="btn btn-red" id="expSaveBtn" onclick="addExpense()">&#128184; Save to Database</button>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="expSearch" placeholder="&#128269; Search..." oninput="renderExpenses()">
+        <select id="expCatFilter" onchange="renderExpenses()"><option value="">All Categories</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select>
+        <select id="expStFilter" onchange="renderExpenses()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
+      </div>
+      <div class="card"><div class="card-title">&#128184; Expenses &#8212; <span id="expCount">0</span> records <span id="expTotalAmt" style="margin-left:auto;color:var(--red);font-size:14px"></span></div><div class="tbl-wrap" id="expTable"></div><div class="pagination" id="expPag"></div></div>
+    </div>
+    <div class="section" id="page-overdue"><div class="card"><div class="card-title">&#9888;&#65039; Overdue Payments</div><div id="overdueList"></div></div></div>
+    <div class="section" id="page-horses">
+      <div class="card"><div class="card-title" onclick="toggleForm('horseForm')" style="cursor:pointer">&#10133; Add New Horse <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
+        <div id="horseForm" style="display:none">
+          <div class="form-grid">
+            <div class="form-group"><label>Stable No</label><input type="text" id="h-stable"></div>
+            <div class="form-group"><label>Horse Name *</label><input type="text" id="h-name"></div>
+            <div class="form-group"><label>Owner *</label><input type="text" id="h-owner"></div>
+            <div class="form-group"><label>Contact</label><input type="text" id="h-contact"></div>
+            <div class="form-group"><label>Sex</label><select id="h-sex"><option value="">&#8212;</option><option>Stallion</option><option>Mare</option><option>Gelding</option></select></div>
+            <div class="form-group"><label>Color</label><input type="text" id="h-color"></div>
+            <div class="form-group"><label>Breed</label><input type="text" id="h-breed"></div>
+            <div class="form-group"><label>Livery BD/month</label><input type="number" step="0.001" id="h-livery" value="0"></div>
+            <div class="form-group"><label>Status</label><select id="h-status"><option>Available</option><option>Occupied</option><option>Away</option></select></div>
+            <div class="form-group"><label>Start Date</label><input type="date" id="h-start"></div>
+          </div>
+          <button class="btn btn-amber" id="horseSaveBtn" onclick="addHorse()">&#128052; Save to Database</button>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="horseSearch" placeholder="&#128269; Search..." oninput="renderHorses()">
+        <select id="horseStFilter" onchange="renderHorses()"><option value="">All Status</option><option>Available</option><option>Occupied</option><option>Away</option></select>
+      </div>
+      <div class="horse-grid" id="horsesGrid"></div>
+    </div>
+    <div class="section" id="page-breeding">
+      <div class="card"><div class="card-title" onclick="toggleForm('breedForm')" style="cursor:pointer">&#10133; Add Breeding Record <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
+        <div id="breedForm" style="display:none">
+          <div class="form-grid">
+            <div class="form-group"><label>Mare Name *</label><input type="text" id="b-mare"></div>
+            <div class="form-group"><label>Owner *</label><input type="text" id="b-owner"></div>
+            <div class="form-group"><label>Mobile</label><input type="text" id="b-mobile"></div>
+            <div class="form-group"><label>Day 1</label><input type="date" id="b-d1"></div>
+            <div class="form-group"><label>Day 2</label><input type="date" id="b-d2"></div>
+            <div class="form-group"><label>Day 3</label><input type="date" id="b-d3"></div>
+          </div>
+          <button class="btn btn-navy" id="breedSaveBtn" onclick="addBreeding()">&#128300; Save to Database</button>
+        </div>
+      </div>
+      <div class="search-bar"><input type="text" id="breedSearch" placeholder="&#128269; Search..." oninput="renderBreeding()"></div>
+      <div id="breedList"></div>
     </div>
   </div>
-  <div class="search-bar"><input type="text" id="breedSearch" placeholder="&#128269; Search..." oninput="renderBreeding()"></div>
-  <div id="breedList"></div>
-</div>
-</div>
-<div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">&#10005;</button></div>
-    <div id="modalBody"></div>
-  </div>
-</div>
-
 </div>
 
 <!-- Edit Modal -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div>
-    <div id="modalBody"></div>
-  </div>
+  <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">&#10005;</button></div><div id="modalBody"></div></div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════
-// CONFIG
-// ════════════════════════════════════════════════════════════
-const SB_URL = 'https://ipiarzkljcictghtkcri.supabase.co';
-const SB_KEY = 'sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
-const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+// ══════════════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════════════════════
+const SB_URL='https://ipiarzkljcictghtkcri.supabase.co';
+const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
+const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
 
-// ════════════════════════════════════════════════════════════
-// SUPABASE API
-// ════════════════════════════════════════════════════════════
 async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbPost(t,d){const data={...d};delete data.id;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbPatch(t,id,d){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});if(!r.ok)throw new Error(await r.text());}
 
-// ════════════════════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════════════════════
-let income=[],expenses=[],horses=[],breeding=[];
-let incPage=1,expPage=1;
-const PER=30;
-const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
-const fmt=d=>{if(!d)return '—';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB');}catch(e){return d;}};
-const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589','#E67E22'];
-let currentPage='home';
-
-// ════════════════════════════════════════════════════════════
-// LOAD ALL DATA
-// ════════════════════════════════════════════════════════════
-async function loadAll(){
-  const ov=document.getElementById('loadingOverlay');
-  const msg=document.getElementById('loadingMsg');
-  const dbg=document.getElementById('debugInfo');
-  ov.style.display='flex';
-  try{
-    msg.textContent='Connecting...';
-    const test=await fetch(`${SB_URL}/rest/v1/income?select=id&limit=1`,{headers:HDR});
-    if(!test.ok)throw new Error('Auth error '+test.status);
-    msg.textContent='Loading income...';
-    income=await sbGet('income','select=*&limit=2000');
-    msg.textContent='Loading expenses...';
-    expenses=await sbGet('expenses','select=*&limit=1000');
-    msg.textContent='Loading horses...';
-    horses=await sbGet('horses','select=*&limit=200');
-    msg.textContent='Loading breeding...';
-    breeding=await sbGet('breeding','select=*&limit=200');
-    document.getElementById('syncStatus').textContent='✅ '+new Date().toLocaleTimeString('en-GB');
-    buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();populateLists();
-    ov.style.display='none';
-  }catch(e){
-    msg.textContent='❌ '+e.message;
-    if(dbg)dbg.textContent='Check connection and try again';
-    document.getElementById('spinner').style.display='none';
-    document.getElementById('retryBtn').style.display='block';
-    ov.style.display='none';
-  }
-}
-
-async function forceLoad(){
-  document.getElementById('retryBtn').style.display='none';
-  document.getElementById('spinner').style.display='block';
-  await loadAll();
-}
-
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // ROUTER
-// ════════════════════════════════════════════════════════════
-function navigate(page){
+// ══════════════════════════════════════════════════════════
+let currentPage = 'home';
+
+function navigate(page) {
   document.querySelectorAll('.app-page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  currentPage=page;
+  currentPage = page;
 
-  const els={
-    backBtn:      document.getElementById('backBtn'),
-    syncStatus:   document.getElementById('syncStatus'),
-    refreshBtn:   document.getElementById('refreshBtn'),
-    backupBtn:    document.getElementById('backupBtn'),
-    logoutAdmin:  document.getElementById('logoutAdminBtn'),
-    logoutOwner:  document.getElementById('logoutOwnerBtn'),
-    overdueBadge: document.getElementById('overdueBadge'),
-  };
-  Object.values(els).forEach(el=>el&&el.classList.add('hidden'));
+  // Header controls
+  const backBtn       = document.getElementById('backBtn');
+  const syncStatus    = document.getElementById('syncStatus');
+  const refreshBtn    = document.getElementById('refreshBtn');
+  const backupBtn     = document.getElementById('backupBtn');
+  const logoutAdmin   = document.getElementById('logoutAdminBtn');
+  const logoutOwner   = document.getElementById('logoutOwnerBtn');
+  const overdueBadge  = document.getElementById('overdueBadge');
 
-  const labels={home:'مركز تعليم ركوب الخيل',booking:'Book a Horse Ride',
-    training:'Training Packages',owner:'Owner Portal',admin:'Staff Login',dashboard:'Dashboard'};
-  document.getElementById('headerSub').textContent=labels[page]||page;
+  // Hide all first
+  [backBtn,syncStatus,refreshBtn,backupBtn,logoutAdmin,logoutOwner,overdueBadge].forEach(el=>el&&el.classList.add('hidden'));
 
-  if(page==='home')return;
-  if(page!=='dashboard')els.backBtn.classList.remove('hidden');
-  if(page==='dashboard'){
-    els.syncStatus.classList.remove('hidden');
-    els.refreshBtn.classList.remove('hidden');
-    els.backupBtn.classList.remove('hidden');
-    els.logoutAdmin.classList.remove('hidden');
-    els.overdueBadge.classList.remove('hidden');
+  const labels = {home:'مركز تعليم ركوب الخيل',booking:'Book a Horse Ride',training:'Training Packages',owner:'Owner Portal',admin:'Staff Login',dashboard:'Dashboard'};
+  document.getElementById('headerSub').textContent = labels[page]||page;
+
+  if(page==='home') return;
+  if(page!=='dashboard') backBtn.classList.remove('hidden');
+  if(page==='dashboard') {
+    syncStatus.classList.remove('hidden');
+    refreshBtn.classList.remove('hidden');
+    backupBtn.classList.remove('hidden');
+    logoutAdmin.classList.remove('hidden');
+    overdueBadge.classList.remove('hidden');
   }
-  if(page==='owner'&&sessionStorage.getItem('owner_phone'))
-    els.logoutOwner.classList.remove('hidden');
-
-  // Page-specific actions
-  if(page==='booking')loadCCHorses();
-  if(page==='owner')restoreOwnerSession();
+  if(page==='owner' && sessionStorage.getItem('owner_phone')) {
+    logoutOwner.classList.remove('hidden');
+  }
 }
 
-function goHome(){navigate('home');}
-
-// ════════════════════════════════════════════════════════════
-// DASHBOARD NAV
-// ════════════════════════════════════════════════════════════
-function showPage(id,btn){showDashPage(id,btn);}
-function showDashPage(id,btn){
-  document.querySelectorAll('#page-dashboard .section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  const elId=id==='dashboard'?'page-dashboard-main':('page-'+id);
-  const el=document.getElementById(elId);
-  if(el)el.classList.add('active');
-  const nb=btn||document.getElementById('nav-'+id);
-  if(nb)nb.classList.add('active');
+function goHome() {
+  navigate('home');
 }
 
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // ADMIN AUTH
-// ════════════════════════════════════════════════════════════
-function doAdminLogin(){
-  const pwd=document.getElementById('adminPwd').value;
-  if(pwd==='Manama21'){
+// ══════════════════════════════════════════════════════════
+function doAdminLogin() {
+  const pwd = document.getElementById('adminPwd').value;
+  if(pwd === 'Manama21') {
     sessionStorage.setItem('cce_auth','true');
     document.getElementById('adminErr').style.display='none';
     document.getElementById('adminPwd').value='';
     navigate('dashboard');
-    loadAll();
-  }else{
+    if(income.length===0) loadAll();
+  } else {
     document.getElementById('adminErr').style.display='block';
     document.getElementById('adminPwd').value='';
   }
 }
-function logoutAdmin(){
+
+function logoutAdmin() {
   sessionStorage.removeItem('cce_auth');
   navigate('home');
 }
 
-// ════════════════════════════════════════════════════════════
-// OWNER AUTH
-// ════════════════════════════════════════════════════════════
-function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').trim():'';}
-let ownerHorses=[],currentOwner='';
-
-async function doOwnerLogin(){
-  const phone=document.getElementById('ownerPhone').value.trim();
-  if(!phone){alert('Please enter your phone number');return;}
-  const btn=document.querySelector('#ownerLoginWrap .login-btn');
-  btn.textContent='⏳ Checking...';btn.disabled=true;
-  try{
-    const list=await sbGet('horses','select=*&limit=200');
-    const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(phone)&&h.horse_name);
-    if(!matched.length){document.getElementById('ownerErr').style.display='block';btn.textContent='🔑 Login';btn.disabled=false;return;}
-    ownerHorses=matched;currentOwner=matched[0].owner||'Owner';
-    sessionStorage.setItem('owner_phone',phone);
-    sessionStorage.setItem('owner_name',currentOwner);
-    showOwnerPortal();
-  }catch(e){alert('Error: '+e.message);}
-  finally{btn.textContent='🔑 Login';btn.disabled=false;}
+// ══════════════════════════════════════════════════════════
+// DASHBOARD INTERNAL NAV
+// ══════════════════════════════════════════════════════════
+function showDashPage(id, btn) {
+  document.querySelectorAll('#page-dashboard .section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const el = document.getElementById('page-'+( id==='dashboard'?'main-dashboard':id ));
+  if(el) el.classList.add('active');
+  const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
 }
 
-function restoreOwnerSession(){
-  const phone=sessionStorage.getItem('owner_phone');
-  if(!phone)return;
-  (async()=>{
-    try{
-      const list=await sbGet('horses','select=*&limit=200');
-      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(phone)&&h.horse_name);
-      if(matched.length){
-        ownerHorses=matched;
-        currentOwner=sessionStorage.getItem('owner_name')||matched[0].owner||'Owner';
-        showOwnerPortal();
-      }
-    }catch(e){console.log('Session restore failed:',e);}
-  })();
-}
-
-function showOwnerPortal(){
-  document.getElementById('ownerLoginWrap').style.display='none';
-  document.getElementById('ownerPortal').style.display='block';
-  document.getElementById('logoutOwnerBtn').classList.remove('hidden');
-  document.getElementById('ownerNameDisplay').textContent=currentOwner;
-  renderOwnerHorses();
-}
-
-function logoutOwner(){
-  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');
-  ownerHorses=[];currentOwner='';
-  document.getElementById('ownerLoginWrap').style.display='block';
-  document.getElementById('ownerPortal').style.display='none';
-  document.getElementById('ownerPhone').value='';
-  document.getElementById('logoutOwnerBtn').classList.add('hidden');
-}
-
-function renderOwnerHorses(){
-  document.getElementById('ownerHorseList').innerHTML=ownerHorses.map((h,i)=>`
-    <div class="owner-horse-card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-        <span style="font-size:32px">🐴</span>
-        <div style="flex:1">
-          <div style="font-size:16px;font-weight:700;color:#1A2744">${h.horse_name}</div>
-          <div style="font-size:12px;color:#7A8399">Stable #${h.stable_no||'—'} · <span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'—'}</span></div>
-        </div>
-        <button class="edit-toggle" onclick="toggleOwnerEdit(${i})">✏️ Edit</button>
-      </div>
-      <div id="ownerInfo_${i}" class="owner-info-grid">
-        <div class="owner-info-item"><div class="owner-info-label">Sex</div><div class="owner-info-value">${h.sex||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Color</div><div class="owner-info-value">${h.color||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Breed</div><div class="owner-info-value">${h.breed||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Birth Date</div><div class="owner-info-value">${fmt(h.birth_date)}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Microchip</div><div class="owner-info-value">${h.microchip||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Passport</div><div class="owner-info-value">${h.passport||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Farrier Date</div><div class="owner-info-value">${fmt(h.farrier_date)}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Vaccine Date</div><div class="owner-info-value">${fmt(h.vaccine_date)}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Worm Date</div><div class="owner-info-value">${fmt(h.worm_date)}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Medicant</div><div class="owner-info-value">${h.medicant||'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Contact</div><div class="owner-info-value">${h.contact?String(h.contact).replace('.0',''):'—'}</div></div>
-        <div class="owner-info-item"><div class="owner-info-label">Address</div><div class="owner-info-value">${h.address||'—'}</div></div>
-      </div>
-      <div class="owner-edit-form" id="ownerEdit_${i}">
-        <div class="form-grid">
-          <div class="form-group"><label>Horse Name</label><input type="text" id="oe_name_${i}" value="${h.horse_name||''}"></div>
-          <div class="form-group"><label>Contact</label><input type="text" id="oe_contact_${i}" value="${h.contact?String(h.contact).replace('.0',''):''}"></div>
-          <div class="form-group"><label>CPR</label><input type="text" id="oe_cpr_${i}" value="${h.cpr||''}"></div>
-          <div class="form-group"><label>Address</label><input type="text" id="oe_address_${i}" value="${h.address||''}"></div>
-          <div class="form-group"><label>Sex</label><select id="oe_sex_${i}">${['','Stallion','Mare','Gelding'].map(s=>'<option '+(h.sex===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
-          <div class="form-group"><label>Color</label><input type="text" id="oe_color_${i}" value="${h.color||''}"></div>
-          <div class="form-group"><label>Breed</label><input type="text" id="oe_breed_${i}" value="${h.breed||''}"></div>
-          <div class="form-group"><label>Birth Date</label><input type="date" id="oe_birth_${i}" value="${h.birth_date||''}"></div>
-          <div class="form-group"><label>Microchip</label><input type="text" id="oe_micro_${i}" value="${h.microchip||''}"></div>
-          <div class="form-group"><label>Passport</label><input type="text" id="oe_passport_${i}" value="${h.passport||''}"></div>
-          <div class="form-group"><label>Farrier Date</label><input type="date" id="oe_farrier_${i}" value="${h.farrier_date||''}"></div>
-          <div class="form-group"><label>Vaccine Date</label><input type="date" id="oe_vaccine_${i}" value="${h.vaccine_date||''}"></div>
-          <div class="form-group"><label>Worm Date</label><input type="date" id="oe_worm_${i}" value="${h.worm_date||''}"></div>
-          <div class="form-group"><label>Medicant</label><input type="text" id="oe_medicant_${i}" value="${h.medicant||''}"></div>
-          <div class="form-group"><label>Med Date</label><input type="date" id="oe_meddate_${i}" value="${h.med_date||''}"></div>
-        </div>
-        <button class="save-btn-sm" onclick="saveOwnerHorse(${i},${h.id})">💾 Save Changes</button>
-        <button class="cancel-btn-sm" onclick="toggleOwnerEdit(${i})">Cancel</button>
-      </div>
-    </div>`).join('');
-}
-
-function toggleOwnerEdit(i){
-  const form=document.getElementById('ownerEdit_'+i);
-  const info=document.getElementById('ownerInfo_'+i);
-  const open=form.style.display==='block';
-  form.style.display=open?'none':'block';
-  info.style.display=open?'grid':'none';
-}
-
-async function saveOwnerHorse(i,id){
-  const btn=document.querySelector('#ownerEdit_'+i+' .save-btn-sm');
-  btn.disabled=true;btn.textContent='⏳ Saving...';
-  try{
-    const data={
-      horse_name:document.getElementById('oe_name_'+i).value,
-      contact:document.getElementById('oe_contact_'+i).value||null,
-      cpr:document.getElementById('oe_cpr_'+i).value||null,
-      address:document.getElementById('oe_address_'+i).value||null,
-      sex:document.getElementById('oe_sex_'+i).value||null,
-      color:document.getElementById('oe_color_'+i).value||null,
-      breed:document.getElementById('oe_breed_'+i).value||null,
-      birth_date:document.getElementById('oe_birth_'+i).value||null,
-      microchip:document.getElementById('oe_micro_'+i).value||null,
-      passport:document.getElementById('oe_passport_'+i).value||null,
-      farrier_date:document.getElementById('oe_farrier_'+i).value||null,
-      vaccine_date:document.getElementById('oe_vaccine_'+i).value||null,
-      worm_date:document.getElementById('oe_worm_'+i).value||null,
-      medicant:document.getElementById('oe_medicant_'+i).value||null,
-      med_date:document.getElementById('oe_meddate_'+i).value||null,
-    };
-    await sbPatch('horses',id,data);
-    Object.assign(ownerHorses[i],data);
-    toggleOwnerEdit(i);renderOwnerHorses();
-    alert('✅ Updated successfully!');
-  }catch(e){alert('Error: '+e.message);}
-  finally{btn.disabled=false;btn.textContent='💾 Save Changes';}
-}
-
-// ════════════════════════════════════════════════════════════
-// BOOKING
-// ════════════════════════════════════════════════════════════
-let selectedHorse='';
-
-async function loadCCHorses(){
-  const grid=document.getElementById('bkHorseGrid');
-  try{
-    const list=await sbGet('horses','select=id,horse_name&owner=eq.CC&status=eq.Available');
-    if(!list.length){grid.innerHTML='<p style="color:#7A8399;font-size:13px">No horses available.</p>';return;}
-    grid.innerHTML=list.map(h=>`
-      <div class="horse-select-card" onclick="selectHorse('${h.horse_name}',this)">
-        <div class="horse-select-icon">🐴</div>
-        <div class="horse-select-name">${h.horse_name}</div>
-      </div>`).join('');
-  }catch(e){grid.innerHTML='<p style="color:#C0392B;font-size:13px">Error loading horses.</p>';}
-}
-
-function selectHorse(name,el){
-  document.querySelectorAll('.horse-select-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedHorse=name;
-}
-
-async function submitBooking(){
-  const name=document.getElementById('bk-name').value.trim();
-  const phone=document.getElementById('bk-phone').value.trim();
-  const date=document.getElementById('bk-date').value;
-  const time=document.getElementById('bk-time').value;
-  if(!name||!phone||!date||!time||!selectedHorse){alert('⚠️ Please fill all fields and select a horse.');return;}
-  const btn=document.getElementById('bkSubmitBtn');
-  btn.disabled=true;btn.textContent='⏳ Submitting...';
-  try{
-    await sbPost('income',{date,start_time:time,customer_name:name+' | '+phone,
-      horse_name:selectedHorse,activity:'Hack',qty:1,amount_bd:0,paid_bd:0,
-      notes:'BOOKING REQUEST — Phone: '+phone,status:'Pending'});
-    document.getElementById('bookForm').style.display='none';
-    document.getElementById('bookSuccess').style.display='block';
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🐴 Submit Booking Request';}
-}
-
-function resetBooking(){
-  document.getElementById('bookForm').style.display='block';
-  document.getElementById('bookSuccess').style.display='none';
-  ['bk-name','bk-phone','bk-date','bk-time'].forEach(id=>document.getElementById(id).value='');
-  selectedHorse='';
-  document.querySelectorAll('.horse-select-card').forEach(c=>c.classList.remove('selected'));
-  const btn=document.getElementById('bkSubmitBtn');
-  btn.disabled=false;btn.textContent='🐴 Submit Booking Request';
-}
-
-// ════════════════════════════════════════════════════════════
-// TRAINING
-// ════════════════════════════════════════════════════════════
-let selectedPkg=null,selectedPrice=0;
-
-function selectPkg(el,name,sessions,price){
-  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedPkg=name;selectedPrice=price;
-  document.getElementById('pkgSelectedBox').style.display='block';
-  document.getElementById('pkgSelectedLabel').textContent=name+' — '+price+' BD ('+sessions+')';
-}
-
-async function submitTraining(){
-  const name=document.getElementById('tr-name').value.trim();
-  const phone=document.getElementById('tr-phone').value.trim();
-  const date=document.getElementById('tr-date').value;
-  const time=document.getElementById('tr-time').value;
-  if(!selectedPkg){alert('⚠️ Please select a package.');return;}
-  if(!name||!phone||!date||!time){alert('⚠️ Please fill all fields.');return;}
-  const btn=document.getElementById('trSubmitBtn');
-  btn.disabled=true;btn.textContent='⏳ Submitting...';
-  try{
-    await sbPost('income',{date,start_time:time,customer_name:name+' | '+phone,
-      activity:'Lesson',qty:1,amount_bd:selectedPrice,paid_bd:0,
-      notes:'TRAINING REQUEST — Package: '+selectedPkg+' | Phone: '+phone,status:'Pending'});
-    document.getElementById('trainForm').style.display='none';
-    document.getElementById('trainSuccess').style.display='block';
-    document.getElementById('trainSuccessText').innerHTML=
-      'Thank you <strong>'+name+'</strong>!<br><br>Package: <strong>'+selectedPkg+'</strong><br>Amount: <strong>'+selectedPrice+' BD</strong><br><br>Transfer to IBAN:<br><strong>BH23BIBB00100002375646</strong>';
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🎯 Submit Enrollment';}
-}
-
-function resetTraining(){
-  document.getElementById('trainForm').style.display='block';
-  document.getElementById('trainSuccess').style.display='none';
-  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('pkgSelectedBox').style.display='none';
-  ['tr-name','tr-phone','tr-date','tr-time'].forEach(id=>document.getElementById(id).value='');
-  selectedPkg=null;selectedPrice=0;
-  const btn=document.getElementById('trSubmitBtn');
-  btn.disabled=false;btn.textContent='🎯 Submit Enrollment';
-}
-
-// ════════════════════════════════════════════════════════════
-// DASHBOARD FUNCTIONS (from dashboard.html)
-// ════════════════════════════════════════════════════════════
-
-// Auth handled by SPA
-const SB_URL='https://ipiarzkljcictghtkcri.supabase.co';
-const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
-const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
-async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPost(t,d){
-  // Remove id - let Supabase auto-generate it
-  const data = {...d};
-  delete data.id;
-  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});
-  if(!r.ok)throw new Error(await r.text());
-  return r.json();
-}
-async function sbPatch(t,id,d){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});if(!r.ok)throw new Error(await r.text());}
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
 let income=[],expenses=[],horses=[],breeding=[];
 let incPage=1,expPage=1;
 const PER=30;
@@ -955,6 +679,11 @@ const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
 const fmt=d=>{if(!d)return '&#8212;';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB');}catch(e){return d;}};
 const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589','#E67E22'];
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD SCRIPT (from dashboard.html)
+// ══════════════════════════════════════════════════════════
+
 async function downloadBackup(){
   const btn=document.getElementById('backupBtn');
   btn.textContent='&#9203; Preparing...';btn.disabled=true;
@@ -1043,7 +772,7 @@ async function downloadBackup(){
 
 function logout() {
   sessionStorage.removeItem('cce_auth');
-  window.location.href = 'admin.html';
+  navigate('home');
 }
 function skipLoad(){
   document.getElementById('loadingOverlay').style.display='none';
@@ -1108,7 +837,7 @@ async function loadAll(){
     document.getElementById('syncStatus').textContent='&#10007; Error';
   }
 }
-function showPage(id,btn){ showDashPage(id,btn); } function _showPage_orig(id,btn){
+function showPage(id,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -1447,86 +1176,254 @@ function renderPag(id,total,cur,fn){
   if(e<total)h+='<span style="padding:4px">&#8230;</span><button class="page-btn" onclick="('+fn.toString()+')('+total+')">'+total+'</button>';
   el.innerHTML=h;
 }
+loadAll();
+setInterval(loadAll,10*60*1000);
 
 
-// ════════════════════════════════════════════════════════════
-// OWNER PASSWORD EDITOR (in Horses admin page)
-// ════════════════════════════════════════════════════════════
-function editOwnerPassword(id,currentPwd){
-  openModal('🔑 Edit Owner Password',`
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Current Password:</div>
-      <div style="font-family:monospace;font-size:20px;font-weight:700;background:#f0f0f0;padding:10px 20px;border-radius:10px;display:inline-block">${currentPwd||'Not set'}</div>
-    </div>
-    <div class="form-group" style="margin-bottom:20px">
-      <label>New Password (Phone Number)</label>
-      <input type="text" id="newPwd" value="${currentPwd||''}" placeholder="e.g. 39001234" style="text-align:center;font-size:16px">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-navy" onclick="saveOwnerPassword(${id})">💾 Save Password</button>
-      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
-    </div>
-  `);
-  setTimeout(()=>{const el=document.getElementById('newPwd');if(el){el.focus();el.select();}},100);
-}
-
-async function saveOwnerPassword(id){
-  const newPwd=document.getElementById('newPwd').value.trim();
-  if(!newPwd){alert('Please enter a password');return;}
-  try{
-    await sbPatch('horses',id,{contact:newPwd});
-    const h=horses.find(x=>x.id===id);
-    if(h)h.contact=newPwd;
-    closeModal();renderHorses();
-    alert('✅ Password updated!');
-  }catch(e){alert('Error: '+e.message);}
-}
-
-// ════════════════════════════════════════════════════════════
-// DOWNLOAD BACKUP
-// ════════════════════════════════════════════════════════════
-async function downloadBackup(){
-  const btn=document.getElementById('backupBtn');
-  btn.textContent='⏳ Preparing...';btn.disabled=true;
-  try{
-    const [inc,exp,hor,bre]=await Promise.all([
-      sbGet('income','select=*&limit=5000'),
-      sbGet('expenses','select=*&limit=5000'),
-      sbGet('horses','select=*&limit=500'),
-      sbGet('breeding','select=*&limit=500'),
-    ]);
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(inc),'Income');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(exp),'Expenses');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hor),'Horses');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(bre),'Breeding');
-    const totalRev=inc.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-    const totalExpPaid=exp.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-    const totalPend=exp.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([
-      {Metric:'Total Revenue BD',Value:totalRev.toFixed(3)},
-      {Metric:'Total Expenses BD',Value:(totalExpPaid-totalPend).toFixed(3)},
-      {Metric:'Net Profit BD',Value:(totalRev-totalExpPaid+totalPend).toFixed(3)},
-      {Metric:'Backup Date',Value:new Date().toLocaleDateString('en-GB')},
-    ]),'Summary');
-    XLSX.writeFile(wb,'CCE_Backup_'+new Date().toISOString().slice(0,10)+'.xlsx');
-    btn.textContent='✅ Downloaded!';
-    setTimeout(()=>{btn.textContent='🖫 Backup';btn.disabled=false;},2000);
-  }catch(e){alert('Backup error: '+e.message);btn.textContent='🖫 Backup';btn.disabled=false;}
-}
-
-// ════════════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// BOOKING SCRIPT
+// ══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
-  const today=new Date().toISOString().split('T')[0];
-  const bkDate=document.getElementById('bk-date');
-  const trDate=document.getElementById('tr-date');
-  if(bkDate)bkDate.min=today;
-  if(trDate)trDate.min=today;
+  document.getElementById('b-date').min = new Date().toISOString().split('T')[0];
+  document.getElementById('t-date').min = new Date().toISOString().split('T')[0];
 });
 
-setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);
-</script>
+async function loadCCHorses() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/horses?owner=eq.CC&status=eq.Available&select=id,horse_name`,{headers:HDR});
+    const list = await r.json();
+    const grid = document.getElementById('horseGrid');
+    if(!list.length){grid.innerHTML='<p style="color:#7A8399;font-size:13px">No horses available.</p>';return;}
+    grid.innerHTML = list.map(h=>`<div class="horse-card" onclick="selectHorse('${h.horse_name}',this)"><div class="h-icon">&#128052;</div><div class="h-name">${h.horse_name}</div></div>`).join('');
+  }catch(e){document.getElementById('horseGrid').innerHTML='<p style="color:#C0392B">Error loading horses.</p>';}
+}
+
+function selectHorse(name,el){
+  document.querySelectorAll('.horse-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('b-horse').value=name;
+}
+
+async function submitBooking(){
+  const name=document.getElementById('b-name').value.trim();
+  const phone=document.getElementById('b-phone').value.trim();
+  const date=document.getElementById('b-date').value;
+  const time=document.getElementById('b-time').value;
+  const horse=document.getElementById('b-horse').value;
+  if(!name||!phone||!date||!time||!horse){alert('&#9888;&#65039; Please fill all fields and select a horse.');return;}
+  const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='&#9203; Submitting...';
+  try{
+    await sbPost('income',{date,start_time:time,customer_name:name+' | '+phone,horse_name:horse,activity:'Hack',qty:1,amount_bd:0,paid_bd:0,notes:'BOOKING REQUEST — Phone: '+phone,status:'Pending'});
+    document.getElementById('bookingForm').style.display='none';
+    document.getElementById('bookSuccess').style.display='block';
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='&#128052; Submit Booking Request';}
+}
+
+function resetBooking(){
+  document.getElementById('bookingForm').style.display='block';
+  document.getElementById('bookSuccess').style.display='none';
+  ['b-name','b-phone','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('b-horse').value='';
+  document.querySelectorAll('.horse-card').forEach(c=>c.classList.remove('selected'));
+  const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='&#128052; Submit Booking Request';
+}
+
+// ══════════════════════════════════════════════════════════
+// TRAINING SCRIPT
+// ══════════════════════════════════════════════════════════
+let selectedPkg=null,selectedPrice=0;
+
+function selectPkg(el,name,sessions,price){
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPkg=name;selectedPrice=price;
+  document.getElementById('selectedPkgBox').style.display='block';
+  document.getElementById('selectedPkgLabel').textContent=name+' — '+price+' BD ('+sessions+')';
+}
+
+async function submitTraining(){
+  const name=document.getElementById('t-name').value.trim();
+  const phone=document.getElementById('t-phone').value.trim();
+  const date=document.getElementById('t-date').value;
+  const time=document.getElementById('t-time').value;
+  if(!selectedPkg){alert('&#9888;&#65039; Please select a package.');return;}
+  if(!name||!phone||!date||!time){alert('&#9888;&#65039; Please fill all fields.');return;}
+  const btn=document.getElementById('trainBtn');btn.disabled=true;btn.textContent='&#9203; Submitting...';
+  try{
+    await sbPost('income',{date,start_time:time,customer_name:name+' | '+phone,activity:'Lesson',qty:1,amount_bd:selectedPrice,paid_bd:0,notes:'TRAINING REQUEST — Package: '+selectedPkg+' | Phone: '+phone,status:'Pending'});
+    document.getElementById('trainingForm').style.display='none';
+    document.getElementById('trainSuccess').style.display='block';
+    document.getElementById('trainSuccessText').innerHTML='Thank you <strong>'+name+'</strong>!<br><br>Package: <strong>'+selectedPkg+'</strong><br>Amount: <strong>'+selectedPrice+' BD</strong><br><br>Transfer to IBAN:<br><strong>BH23BIBB00100002375646</strong>';
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='&#127919; Submit Enrollment';}
+}
+
+function resetTraining(){
+  document.getElementById('trainingForm').style.display='block';
+  document.getElementById('trainSuccess').style.display='none';
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('selectedPkgBox').style.display='none';
+  ['t-name','t-phone','t-date','t-time'].forEach(id=>document.getElementById(id).value='');
+  selectedPkg=null;selectedPrice=0;
+  const btn=document.getElementById('trainBtn');btn.disabled=false;btn.textContent='&#127919; Submit Enrollment';
+}
+
+// ══════════════════════════════════════════════════════════
+// OWNER PORTAL SCRIPT
+// ══════════════════════════════════════════════════════════
+let ownerHorses=[];let currentOwner='';
+
+function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').trim():'';}
+
+async function doOwnerLogin(){
+  const phone=document.getElementById('ownerPhone').value.trim();
+  if(!phone){alert('Please enter your phone number');return;}
+  const btn=document.querySelector('#ownerLoginWrap .login-btn');
+  btn.textContent='&#9203; Checking...';btn.disabled=true;
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
+    const list=await r.json();
+    const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(phone)&&h.horse_name);
+    if(!matched.length){
+      document.getElementById('ownerErr').style.display='block';
+      btn.textContent='&#128272; Login';btn.disabled=false;return;
+    }
+    ownerHorses=matched;currentOwner=matched[0].owner||'Owner';
+    sessionStorage.setItem('owner_phone',phone);
+    sessionStorage.setItem('owner_name',currentOwner);
+    showOwnerPortal();
+  }catch(e){alert('Error: '+e.message);btn.textContent='&#128272; Login';btn.disabled=false;}
+}
+
+function showOwnerPortal(){
+  document.getElementById('ownerLoginWrap').style.display='none';
+  document.getElementById('ownerPortal').style.display='block';
+  document.getElementById('logoutOwnerBtn').classList.remove('hidden');
+  document.getElementById('ownerNameDisplay').textContent=currentOwner;
+  renderOwnerHorses();
+}
+
+function logoutOwner(){
+  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');
+  ownerHorses=[];currentOwner='';
+  document.getElementById('ownerLoginWrap').style.display='flex';
+  document.getElementById('ownerPortal').style.display='none';
+  document.getElementById('ownerPhone').value='';
+  document.getElementById('logoutOwnerBtn').classList.add('hidden');
+}
+
+function renderOwnerHorses(){
+  document.getElementById('ownerHorseList').innerHTML=ownerHorses.map((h,i)=>`
+    <div class="horse-card" style="flex-direction:column;align-items:flex-start;margin-bottom:14px">
+      <div class="horse-header">
+        <div class="horse-avatar">&#128052;</div>
+        <div style="flex:1">
+          <div class="horse-name">${h.horse_name}</div>
+          <div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; <span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'&#8212;'}</span></div>
+        </div>
+        <button class="edit-toggle" onclick="toggleOwnerEdit(${i})">&#9999;&#65039; Edit</button>
+      </div>
+      <div id="ownerInfo_${i}" class="info-grid" style="width:100%">
+        <div class="info-item"><div class="info-label">Sex</div><div class="info-value">${h.sex||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Color</div><div class="info-value">${h.color||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Breed</div><div class="info-value">${h.breed||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Birth Date</div><div class="info-value">${fmt(h.birth_date)}</div></div>
+        <div class="info-item"><div class="info-label">Microchip</div><div class="info-value">${h.microchip||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Passport</div><div class="info-value">${h.passport||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Farrier Date</div><div class="info-value">${fmt(h.farrier_date)}</div></div>
+        <div class="info-item"><div class="info-label">Vaccine Date</div><div class="info-value">${fmt(h.vaccine_date)}</div></div>
+        <div class="info-item"><div class="info-label">Worm Date</div><div class="info-value">${fmt(h.worm_date)}</div></div>
+        <div class="info-item"><div class="info-label">Medicant</div><div class="info-value">${h.medicant||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Contact</div><div class="info-value">${h.contact?String(h.contact).replace('.0',''):'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Address</div><div class="info-value">${h.address||'&#8212;'}</div></div>
+      </div>
+      <div class="edit-form" id="ownerEdit_${i}" style="width:100%">
+        <div class="form-grid">
+          <div class="form-group"><label>Horse Name</label><input type="text" id="oe_name_${i}" value="${h.horse_name||''}"></div>
+          <div class="form-group"><label>Contact</label><input type="text" id="oe_contact_${i}" value="${h.contact?String(h.contact).replace('.0',''):''}"></div>
+          <div class="form-group"><label>CPR</label><input type="text" id="oe_cpr_${i}" value="${h.cpr||''}"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="oe_address_${i}" value="${h.address||''}"></div>
+          <div class="form-group"><label>Sex</label><select id="oe_sex_${i}">${['','Stallion','Mare','Gelding'].map(s=>'<option '+(h.sex===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
+          <div class="form-group"><label>Color</label><input type="text" id="oe_color_${i}" value="${h.color||''}"></div>
+          <div class="form-group"><label>Breed</label><input type="text" id="oe_breed_${i}" value="${h.breed||''}"></div>
+          <div class="form-group"><label>Birth Date</label><input type="date" id="oe_birth_${i}" value="${h.birth_date||''}"></div>
+          <div class="form-group"><label>Microchip</label><input type="text" id="oe_micro_${i}" value="${h.microchip||''}"></div>
+          <div class="form-group"><label>Passport</label><input type="text" id="oe_passport_${i}" value="${h.passport||''}"></div>
+          <div class="form-group"><label>Farrier Date</label><input type="date" id="oe_farrier_${i}" value="${h.farrier_date||''}"></div>
+          <div class="form-group"><label>Vaccine Date</label><input type="date" id="oe_vaccine_${i}" value="${h.vaccine_date||''}"></div>
+          <div class="form-group"><label>Worm Date</label><input type="date" id="oe_worm_${i}" value="${h.worm_date||''}"></div>
+          <div class="form-group"><label>Medicant</label><input type="text" id="oe_medicant_${i}" value="${h.medicant||''}"></div>
+          <div class="form-group"><label>Med Date</label><input type="date" id="oe_meddate_${i}" value="${h.med_date||''}"></div>
+        </div>
+        <button class="save-btn" onclick="saveOwnerHorse(${i},${h.id})">&#128190; Save Changes</button>
+        <button class="cancel-btn" onclick="toggleOwnerEdit(${i})">Cancel</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleOwnerEdit(i){
+  const form=document.getElementById('ownerEdit_'+i);
+  const info=document.getElementById('ownerInfo_'+i);
+  const open=form.style.display==='block';
+  form.style.display=open?'none':'block';
+  info.style.display=open?'grid':'none';
+}
+
+async function saveOwnerHorse(i,id){
+  const btn=document.querySelector('#ownerEdit_'+i+' .save-btn');
+  btn.disabled=true;btn.textContent='&#9203; Saving...';
+  try{
+    const data={
+      horse_name:document.getElementById('oe_name_'+i).value,
+      contact:document.getElementById('oe_contact_'+i).value||null,
+      cpr:document.getElementById('oe_cpr_'+i).value||null,
+      address:document.getElementById('oe_address_'+i).value||null,
+      sex:document.getElementById('oe_sex_'+i).value||null,
+      color:document.getElementById('oe_color_'+i).value||null,
+      breed:document.getElementById('oe_breed_'+i).value||null,
+      birth_date:document.getElementById('oe_birth_'+i).value||null,
+      microchip:document.getElementById('oe_micro_'+i).value||null,
+      passport:document.getElementById('oe_passport_'+i).value||null,
+      farrier_date:document.getElementById('oe_farrier_'+i).value||null,
+      vaccine_date:document.getElementById('oe_vaccine_'+i).value||null,
+      worm_date:document.getElementById('oe_worm_'+i).value||null,
+      medicant:document.getElementById('oe_medicant_'+i).value||null,
+      med_date:document.getElementById('oe_meddate_'+i).value||null,
+    };
+    await sbPatch('horses',id,data);
+    Object.assign(ownerHorses[i],data);
+    toggleOwnerEdit(i);
+    renderOwnerHorses();
+    alert('&#9989; Horse updated successfully!');
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='&#128190; Save Changes';}
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+// Auto-restore owner session
+const savedPhone=sessionStorage.getItem('owner_phone');
+const savedOwnerName=sessionStorage.getItem('owner_name');
+if(savedPhone){
+  // Will reload on navigate to owner page
+}
+
+// Load CC horses when booking page is shown
+const origNavigate = navigate;
+window.navigate = function(page){
+  origNavigate(page);
+  if(page==='booking') loadCCHorses();
+  if(page==='owner' && savedPhone){
+    // restore session
+    (async()=>{
+      const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
+      const list=await r.json();
+      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
+      if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
+    })();
+  }
+};
+
+setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);</script>
 </body>
 </html>
