@@ -852,7 +852,6 @@ async function loadAll(){
     document.getElementById('syncStatus').textContent='&#10003; '+new Date().toLocaleTimeString('en-GB');
     buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();populateLists();
     ov.style.display='none';
-
   }catch(e){
     console.error('Load error:',e);
     setMsg('&#10007; '+e.message,'Tap Retry to try again');
@@ -860,6 +859,7 @@ async function loadAll(){
     document.getElementById('spinner').style.display='none';
     document.getElementById('retryBtn').style.display='block';
     document.getElementById('syncStatus').textContent='&#10007; Error';
+    ov.style.display='none';
   }
 }
 function showPage(id,btn){
@@ -1201,8 +1201,7 @@ function renderPag(id,total,cur,fn){
   if(e<total)h+='<span style="padding:4px">&#8230;</span><button class="page-btn" onclick="('+fn.toString()+')('+total+')">'+total+'</button>';
   el.innerHTML=h;
 }
-loadAll();
-setInterval(loadAll,10*60*1000);
+// loadAll called manually when admin logs in
 
 
 // ══════════════════════════════════════════════════════════
@@ -1433,21 +1432,23 @@ if(savedPhone){
   // Will reload on navigate to owner page
 }
 
-// Load CC horses when booking page is shown
-const origNavigate = navigate;
-window.navigate = function(page){
-  origNavigate(page);
+// Extra actions on navigate
+function onNavigate(page) {
   if(page==='booking') loadCCHorses();
-  if(page==='owner' && savedPhone){
-    // restore session
+  if(page==='owner' && sessionStorage.getItem('owner_phone')) {
     (async()=>{
+      const phone = sessionStorage.getItem('owner_phone');
       const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
       const list=await r.json();
-      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
-      if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
+      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(phone)&&h.horse_name);
+      if(matched.length){
+        ownerHorses=matched;
+        currentOwner=sessionStorage.getItem('owner_name')||matched[0].owner||'Owner';
+        showOwnerPortal();
+      }
     })();
   }
-};
+}
 
 setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);
 </script>
