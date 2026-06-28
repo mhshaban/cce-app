@@ -684,10 +684,7 @@ const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589',
 // DASHBOARD SCRIPT (from dashboard.html)
 // ══════════════════════════════════════════════════════════
 
-// Auth check - redirect to login if not authenticated
-if (sessionStorage.getItem('cce_auth') !== 'true') {
-  window.location.href = 'admin.html';
-}
+// Auth handled by navigate() function
 // const SB_URL='https://ipiarzkljcictghtkcri.supabase.co'; (removed duplicate)
 // const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch'; (removed duplicate)
 // const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'}; (removed duplicate)
