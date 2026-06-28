@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCE — Book a Horse Ride</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#C8923A}
+.horse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:6px}
+.horse-card{border:2px solid #E3D9C6;border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.horse-card:hover{border-color:#C8923A;background:#FEF3E2}
+.horse-card.selected{border-color:#C8923A;background:#FEF3E2}
+.horse-card .h-icon{font-size:28px;margin-bottom:6px}
+.horse-card .h-name{font-size:13px;font-weight:700;color:#1A2744}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="header">
+  <span style="font-size:22px">🏇</span>
+  <div>
+    <div style="font-size:15px;font-weight:700">CCE Equestrian Center</div>
+    <div style="font-size:11px;color:#C8923A">Book a Horse Ride</div>
+  </div>
+  <a href="index.html">← Back</a>
+</div>
+
+<div class="hero">
+  <div class="hero-icon">🐴</div>
+  <div class="hero-title">Book a Horse Ride</div>
+  <div class="hero-sub">حجز جولة على الخيل</div>
+</div>
+
+<div class="container">
+  <!-- Booking Form -->
+  <div id="bookingForm">
+    <div class="card">
+      <div class="card-title">📋 Your Details</div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="b-name" placeholder="Enter your full name">
+      </div>
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="tel" id="b-phone" placeholder="e.g. 39001234">
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="b-date" min="">
+      </div>
+      <div class="form-group">
+        <label>Preferred Time *</label>
+        <input type="time" id="b-time">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🐴 Select a Horse</div>
+      <div class="horse-grid" id="horseGrid">
+        <div style="color:#7A8399;font-size:13px">Loading horses...</div>
+      </div>
+      <input type="hidden" id="b-horse">
+    </div>
+
+    <div class="note-box">
+      <div class="note-title">💳 Payment Note</div>
+      <div class="note-text">
+        Booking will be confirmed after payment. Please transfer the ride fee to:<br>
+        <span class="iban">BH23BIBB00100002375646</span><br><br>
+        Send payment proof via WhatsApp and our team will confirm your booking within 24 hours.
+      </div>
+    </div>
+
+    <button class="btn" onclick="submitBooking()">🐴 Submit Booking Request</button>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-box" id="successBox">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Booking Request Submitted!</div>
+    <div class="success-text">
+      Thank you! Your booking request has been received.<br><br>
+      Please transfer the payment to IBAN:<br>
+      <strong>BH23BIBB00100002375646</strong><br><br>
+      Your booking will be confirmed after payment verification.
+    </div>
+    <button class="btn" style="margin-top:20px" onclick="newBooking()">📋 New Booking</button>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://ipiarzkljcictghtkcri.supabase.co';
+const SB_KEY = 'sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
+const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+
+// Set min date to today
+document.getElementById('b-date').min = new Date().toISOString().split('T')[0];
+
+// Load CC horses that are Available
+async function loadHorses() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/horses?owner=eq.CC&status=eq.Available&select=id,horse_name`, {headers:HDR});
+    const horses = await r.json();
+    const grid = document.getElementById('horseGrid');
+    if(!horses.length) {
+      grid.innerHTML = '<p style="color:#7A8399;font-size:13px">No horses available at the moment.</p>';
+      return;
+    }
+    grid.innerHTML = horses.map(h=>`
+      <div class="horse-card" onclick="selectHorse('${h.horse_name}',this)">
+        <div class="h-icon">🐴</div>
+        <div class="h-name">${h.horse_name}</div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('horseGrid').innerHTML = '<p style="color:#C0392B;font-size:13px">Error loading horses.</p>';
+  }
+}
+
+function selectHorse(name, el) {
+  document.querySelectorAll('.horse-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('b-horse').value = name;
+}
+
+async function submitBooking() {
+  const name  = document.getElementById('b-name').value.trim();
+  const phone = document.getElementById('b-phone').value.trim();
+  const date  = document.getElementById('b-date').value;
+  const time  = document.getElementById('b-time').value;
+  const horse = document.getElementById('b-horse').value;
+
+  if(!name||!phone||!date||!time||!horse) {
+    alert('⚠️ Please fill all fields and select a horse.');
+    return;
+  }
+
+  const btn = document.querySelector('.btn');
+  btn.disabled=true; btn.textContent='⏳ Submitting...';
+
+  try {
+    // Save booking as income record with status Pending
+    await fetch(`${SB_URL}/rest/v1/income`, {
+      method:'POST', headers:HDR,
+      body: JSON.stringify({
+        date, start_time: time,
+        customer_name: name + ' | ' + phone,
+        horse_name: horse,
+        activity: 'Hack',
+        qty: 1, amount_bd: 0, paid_bd: 0,
+        notes: 'BOOKING REQUEST — Phone: '+phone,
+        status: 'Pending'
+      })
+    });
+
+    document.getElementById('bookingForm').style.display='none';
+    document.getElementById('successBox').style.display='block';
+  } catch(e) {
+    alert('Error: '+e.message);
+    btn.disabled=false; btn.textContent='🐴 Submit Booking Request';
+  }
+}
+
+function newBooking() {
+  document.getElementById('bookingForm').style.display='block';
+  document.getElementById('successBox').style.display='none';
+  document.getElementById('b-name').value='';
+  document.getElementById('b-phone').value='';
+  document.getElementById('b-date').value='';
+  document.getElementById('b-time').value='';
+  document.getElementById('b-horse').value='';
+  document.querySelectorAll('.horse-card').forEach(c=>c.classList.remove('selected'));
+}
+
+loadHorses();
+</script>
+</body>
+</html>
