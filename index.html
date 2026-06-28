@@ -1034,7 +1034,15 @@ function renderHorses(){
   const q=(document.getElementById('horseSearch').value||'').toLowerCase();
   const st=document.getElementById('horseStFilter').value;
   const data=horses.filter(h=>{if(!h.horse_name)return false;const m=!q||(h.horse_name||'').toLowerCase().includes(q)||(h.owner||'').toLowerCase().includes(q);return m&&(!st||h.status===st);});
-  document.getElementById('horsesGrid').innerHTML=data.map(h=>`<div class="horse-card"><div style="font-size:34px">&#128052;</div><div style="flex:1"><div class="horse-name">${h.horse_name}</div><div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; ${h.owner||'&#8212;'}</div><div class="horse-meta">${[h.sex,h.color,h.breed].filter(Boolean).join(' &middot; ')||'&#8212;'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'&#8212;'}</span>${parseFloat(h.livery_bd)>0?'<span class="badge badge-navy">Livery: '+BD(h.livery_bd)+'</span>':''}</div>${h.contact?'<div style="font-size:11px;color:var(--muted);margin-top:4px">&#128222; '+h.contact+'</div>':''}${h.farrier_date?'<div style="font-size:11px;color:var(--muted)">&#128295; Farrier: '+fmt(h.farrier_date)+'</div>':''}${h.vaccine_date?'<div style="font-size:11px;color:var(--muted)">&#128137; Vaccine: '+fmt(h.vaccine_date)+'</div>':''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:6px 12px" onclick="editHorse(${h.id})">&#9999;&#65039; Edit</button><button class="action-btn" style="background:#E8EAF0;color:var(--amber);padding:6px 12px" onclick="editOwnerPwd(${h.id},'${(h.horse_name||'').replace(/'/g,'\\'')}','${(h.owner||'').replace(/'/g,'\\'')}')">&#128273; Password</button><button class="action-btn" style="background:${h.status==='Available'?'#FEF3E2':'#E8F5EE'};color:${h.status==='Available'?'var(--amber)':'var(--green)'};padding:6px 12px" onclick="toggleHorse(${h.id},'${h.status}')">${h.status==='Available'?'&#128308; Occupy':'&#128994; Available'}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:6px 12px" onclick="delRec(&apos;horses&apos;,${h.id})">&#128465;&#65039;</button></div></div></div>`).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
+  document.getElementById('horsesGrid').innerHTML=data.map(h=>{
+    const hid=h.id;
+    const st=h.status||'';
+    const stBadge=st==='Available'?'badge-green':st==='Occupied'?'badge-red':'badge-amber';
+    const toggleBg=st==='Available'?'#FEF3E2':'#E8F5EE';
+    const toggleColor=st==='Available'?'var(--amber)':'var(--green)';
+    const toggleLabel=st==='Available'?'&#128308; Occupy':'&#128994; Available';
+    return `<div class="horse-card"><div style="font-size:34px">&#128052;</div><div style="flex:1"><div class="horse-name">${h.horse_name}</div><div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; ${h.owner||'&#8212;'}</div><div class="horse-meta">${[h.sex,h.color,h.breed].filter(Boolean).join(' &middot; ')||'&#8212;'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${stBadge}">${st||'&#8212;'}</span>${parseFloat(h.livery_bd)>0?'<span class="badge badge-navy">Livery: '+BD(h.livery_bd)+'</span>':''}</div>${h.contact?'<div style="font-size:11px;color:var(--muted);margin-top:4px">&#128222; '+h.contact+'</div>':''}${h.farrier_date?'<div style="font-size:11px;color:var(--muted)">&#128295; Farrier: '+fmt(h.farrier_date)+'</div>':''}${h.vaccine_date?'<div style="font-size:11px;color:var(--muted)">&#128137; Vaccine: '+fmt(h.vaccine_date)+'</div>':''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:6px 12px" onclick="editHorse(${hid})">&#9999;&#65039; Edit</button><button class="action-btn" style="background:#E8EAF0;color:var(--amber);padding:6px 12px" onclick="editOwnerPwd(${hid})">&#128273; Password</button><button class="action-btn" style="background:${toggleBg};color:${toggleColor};padding:6px 12px" onclick="toggleHorse(${hid},'${st}')">${toggleLabel}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:6px 12px" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+  }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
   const name=document.getElementById('h-name').value.trim();
@@ -1119,9 +1127,11 @@ function renderBookings(){
   renderPag('bookPag',pages,bookPage,p=>{bookPage=p;renderBookings();});
 }
 
-function editOwnerPwd(id,horseName,ownerName){
-  const h=horses.find(x=>x.id===id);
-  const cur=h&&h.owner_pwd?h.owner_pwd:'';
+function editOwnerPwd(id){
+  const h=horses.find(x=>x.id===id);if(!h)return;
+  const horseName=h.horse_name||'';
+  const ownerName=h.owner||'';
+  const cur=h.owner_pwd||'';
   openModal('&#128273; Owner Password — '+horseName,`
     <div style="margin-bottom:14px;padding:12px;background:var(--sand);border-radius:10px;font-size:13px">
       <strong>Horse:</strong> ${horseName}<br>
@@ -1528,9 +1538,9 @@ if(savedPhone){
 }
 
 // Load CC horses when booking page is shown
-const origNavigate = navigate;
+const _origNavigate = window.navigate || navigate;
 window.navigate = function(page){
-  origNavigate(page);
+  _origNavigate(page);
   if(page==='booking') loadCCHorses();
   if(page==='owner' && savedPhone){
     // restore session
