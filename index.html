@@ -763,16 +763,359 @@ const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','
 const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589','#E67E22'];
 
 // ══════════════════════════════════════════════════════════
-// DASHBOARD SCRIPT (from dashboard.html)
+// DASHBOARD SCRIPT
 // ══════════════════════════════════════════════════════════
 
-// Auth handled by navigate() function
-// const SB_URL='https://ipiarzkljcictghtkcri.supabase.co'; (removed duplicate)
-// const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch'; (removed duplicate)
-// const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'}; (removed duplicate)
-// Supabase functions already declared above
+/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+;
+  delete data.id;
+  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
+/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});if(!r.ok)throw new Error(await r.text());}
+let income=[],expenses=[],horses=[],breeding=[];
+let incPage=1,expPage=1;
+';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB');}catch(e){return d;}};
+function logout() {
+  sessionStorage.removeItem('cce_auth');
+  window.location.href = 'admin.html';
+}
+function buildDash(){
+  const rev=income.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
+  const pexp=expenses.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
+  const pend=expenses.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  const exp=pexp-pend;
+  const profit=rev-exp;
+  const pendInc=income.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  const ov=expenses.filter(r=>r.status==='Pending'&&r.due_date);
+  const ovAmt=ov.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  const actH=horses.filter(h=>h.status==='Available').length;
+  const totL=income.filter(r=>r.activity==='Lesson').length;
+  const totH=income.filter(r=>r.activity==='Hack').length;
+  if(ov.length>0){
+    document.getElementById('overdueBanner').classList.remove('hidden');
+    document.getElementById('overdueText').textContent=ov.length+' payment(s) &#8212; '+BD(ovAmt);
+    document.getElementById('overdueBadge').classList.remove('hidden');
+    document.getElementById('overdueCount').textContent=ov.length;
+  }else{
+    document.getElementById('overdueBanner').classList.add('hidden');
+    document.getElementById('overdueBadge').classList.add('hidden');
+  }
+  const stats=[
+    {l:'Total Revenue',v:BD(rev),c:'var(--green)'},
+    {l:'Total Expenses',v:BD(exp),c:'var(--red)'},
+    {l:'Net Profit',v:BD(profit),c:profit>=0?'var(--green)':'var(--red)'},
+    {l:'Pending Income',v:BD(pendInc),c:'var(--amber)'},
+    {l:'Unpaid Expenses',v:BD(pend),c:'var(--amber)'},
+    {l:'Overdue',v:BD(ovAmt),c:'var(--red)'},
+    {l:'Horses (Active)',v:actH,c:'var(--navy)'},
+    {l:'Total Lessons',v:totL,c:'var(--navy)'},
+    {l:'Total Hack',v:totH,c:'var(--navy)'},
+  ];
+  document.getElementById('statsGrid').innerHTML=stats.map(s=>`<div class="stat-box"><div class="stat-label">${s.l}</div><div class="stat-value" style="color:${s.c}">${s.v}</div></div>`).join('');
+  const mo={};
+  income.forEach(r=>{const m=(r.date||'').slice(0,7);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=parseFloat(r.paid_bd)||0;});
+  expenses.forEach(r=>{const m=(r.date||'').slice(0,7);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=parseFloat(r.paid_bd)||0;});
+  const months=Object.entries(mo).sort(([a],[b])=>a.localeCompare(b)).slice(-9);
+  const mx=Math.max(...months.flatMap(([,v])=>[v.rev,v.exp]),1);
+  document.getElementById('barChart').innerHTML=months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join('');
+  const aM={};income.forEach(r=>{const a=r.activity||'Other';aM[a]=(aM[a]||0)+(parseFloat(r.paid_bd)||0);});
+  document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
+  const eM={};expenses.forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+(parseFloat(r.paid_bd)||0);});
+  document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
+  document.getElementById('recentInc').innerHTML=incTblHTML([...income].reverse().slice(0,10));
+}
+function incTblHTML(data){
+  if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Activity</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+    data.map(function(r){
+      return '<tr>'+
+        '<td>'+fmt(r.date)+'</td>'+
+        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+
+        '<td>'+(r.customer_name||'&mdash;')+'</td>'+
+        '<td>'+(r.horse_name||'&mdash;')+'</td>'+
+        '<td><span class="badge badge-amber">'+(r.activity||'')+'</span></td>'+
+        '<td>'+(r.qty||1)+'</td>'+
+        '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
+        '<td>'+BD(r.paid_bd)+'</td>'+
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+        '<td style="white-space:nowrap">'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+
+          (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;income&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
+          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;income&apos;,'+r.id+')">&#128465;&#65039;</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table>';
+}
+
+function renderIncome(){
+  const q=(document.getElementById('incSearch').value||'').toLowerCase();
+  const ac=document.getElementById('incActFilter').value;
+  const st=document.getElementById('incStFilter').value;
+  let data=income.filter(r=>{const m=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(r.activity||'').toLowerCase().includes(q);return m&&(!ac||r.activity===ac)&&(!st||r.status===st);});
+  document.getElementById('incCount').textContent=data.length;
+  document.getElementById('incTotalAmt').textContent='Total: '+BD(data.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0));
+  const pages=Math.ceil(data.length/PER)||1;incPage=Math.min(incPage,pages);
+  document.getElementById('incTable').innerHTML=incTblHTML([...data].reverse().slice((incPage-1)*PER,incPage*PER));
+  renderPag('incPag',pages,incPage,p=>{incPage=p;renderIncome();});
+}
+async function addIncome(){
+  const date=document.getElementById('inc-date').value;
+  const cust=document.getElementById('inc-customer').value.trim();
+  const amt=parseFloat(document.getElementById('inc-amount').value)||0;
+  if(!date||!cust||!amt){alert('Fill: Date, Customer, Amount');return;}
+  const qty=parseFloat(document.getElementById('inc-qty').value)||1;
+  const total=qty*amt;
+  const paid=parseFloat(document.getElementById('inc-paid').value)||0;
+  const btn=document.getElementById('incSaveBtn');btn.disabled=true;btn.textContent='Saving...';
+  try{
+    await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:document.getElementById('inc-activity').value,qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});
+    ['inc-date','inc-due','inc-customer','inc-amount','inc-notes','inc-start','inc-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Save to Database';}
+}
+function expTblHTML(data){
+  if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+    data.map(function(r){
+      return '<tr>'+
+        '<td>'+fmt(r.date)+'</td>'+
+        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+
+        '<td><span class="badge badge-amber">'+(r.category||'')+'</span></td>'+
+        '<td>'+(r.supplier||'&mdash;')+'</td>'+
+        '<td>'+(r.qty||1)+'</td>'+
+        '<td class="money-red">'+BD(r.amount_bd)+'</td>'+
+        '<td>'+BD(r.paid_bd)+'</td>'+
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+        '<td style="white-space:nowrap">'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editExpense('+r.id+')">&#9999;&#65039;</button>'+
+          (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;expenses&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
+          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;expenses&apos;,'+r.id+')">&#128465;&#65039;</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table>';
+}
+
+function renderExpenses(){
+  const q=(document.getElementById('expSearch').value||'').toLowerCase();
+  const ca=document.getElementById('expCatFilter').value;
+  const st=document.getElementById('expStFilter').value;
+  let data=expenses.filter(r=>{const m=!q||(r.supplier||'').toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q);return m&&(!ca||r.category===ca)&&(!st||r.status===st);});
+  document.getElementById('expCount').textContent=data.length;
+  document.getElementById('expTotalAmt').textContent='Total: '+BD(data.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0));
+  const pages=Math.ceil(data.length/PER)||1;expPage=Math.min(expPage,pages);
+  document.getElementById('expTable').innerHTML=expTblHTML([...data].reverse().slice((expPage-1)*PER,expPage*PER));
+  renderPag('expPag',pages,expPage,p=>{expPage=p;renderExpenses();});
+}
+async function addExpense(){
+  const date=document.getElementById('exp-date').value;
+  const sup=document.getElementById('exp-supplier').value.trim();
+  const amt=parseFloat(document.getElementById('exp-amount').value)||0;
+  if(!date||!sup||!amt){alert('Fill: Date, Supplier, Amount');return;}
+  const qty=parseFloat(document.getElementById('exp-qty').value)||1;
+  const total=qty*amt;
+  const paid=parseFloat(document.getElementById('exp-paid').value)||0;
+  const btn=document.getElementById('expSaveBtn');btn.disabled=true;btn.textContent='Saving...';
+  try{
+    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:document.getElementById('exp-cat').value,supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:document.getElementById('exp-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});
+    ['exp-date','exp-due','exp-supplier','exp-amount','exp-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('exp-qty').value='1';document.getElementById('exp-paid').value='0';document.getElementById('exp-total').value='';
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Save to Database';}
+}
+function renderOverdue(){
+  const data=expenses.filter(r=>r.status==='Pending'&&r.due_date);
+  const total=data.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  document.getElementById('overdueList').innerHTML=!data.length?'<p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p>':'<div style="margin-bottom:14px"><span class="badge badge-red" style="font-size:14px;padding:6px 16px">Total: '+BD(total)+'</span></div><div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+data.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${r.category||''}</span></td><td>${r.supplier||'&#8212;'}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${r.notes||'&#8212;'}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid(&apos;expenses&apos;,${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+'</tbody></table></div>';
+}
+function renderHorses(){
+  const q=(document.getElementById('horseSearch').value||'').toLowerCase();
+  const st=document.getElementById('horseStFilter').value;
+  const data=horses.filter(h=>{if(!h.horse_name)return false;const m=!q||(h.horse_name||'').toLowerCase().includes(q)||(h.owner||'').toLowerCase().includes(q);return m&&(!st||h.status===st);});
+  document.getElementById('horsesGrid').innerHTML=data.map(h=>`<div class="horse-card"><div style="font-size:34px">&#128052;</div><div style="flex:1"><div class="horse-name">${h.horse_name}</div><div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; ${h.owner||'&#8212;'}</div><div class="horse-meta">${[h.sex,h.color,h.breed].filter(Boolean).join(' &middot; ')||'&#8212;'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'&#8212;'}</span>${parseFloat(h.livery_bd)>0?'<span class="badge badge-navy">Livery: '+BD(h.livery_bd)+'</span>':''}</div>${h.contact?'<div style="font-size:11px;color:var(--muted);margin-top:4px">&#128222; '+h.contact+'</div>':''}${h.farrier_date?'<div style="font-size:11px;color:var(--muted)">&#128295; Farrier: '+fmt(h.farrier_date)+'</div>':''}${h.vaccine_date?'<div style="font-size:11px;color:var(--muted)">&#128137; Vaccine: '+fmt(h.vaccine_date)+'</div>':''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:6px 12px" onclick="editHorse(${h.id})">&#9999;&#65039; Edit</button><button class="action-btn" style="background:${h.status==='Available'?'#FEF3E2':'#E8F5EE'};color:${h.status==='Available'?'var(--amber)':'var(--green)'};padding:6px 12px" onclick="toggleHorse(${h.id},'${h.status}')">${h.status==='Available'?'&#128308; Occupy':'&#128994; Available'}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:6px 12px" onclick="delRec(&apos;horses&apos;,${h.id})">&#128465;&#65039;</button></div></div></div>`).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
+}
+async function addHorse(){
+  const name=document.getElementById('h-name').value.trim();
+  const owner=document.getElementById('h-owner').value.trim();
+  if(!name||!owner){alert('Fill: Horse Name and Owner');return;}
+  const btn=document.getElementById('horseSaveBtn');btn.disabled=true;btn.textContent='Saving...';
+  try{
+    await sbPost('horses',{stable_no:document.getElementById('h-stable').value||null,status:document.getElementById('h-status').value,horse_name:name,owner,contact:document.getElementById('h-contact').value||null,sex:document.getElementById('h-sex').value||null,color:document.getElementById('h-color').value||null,breed:document.getElementById('h-breed').value||null,livery_bd:parseFloat(document.getElementById('h-livery').value)||0,start_date:document.getElementById('h-start').value||null});
+    ['h-stable','h-name','h-owner','h-contact','h-color','h-breed'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('h-livery').value='0';
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Save to Database';}
+}
+async function toggleHorse(id,cur){
+  const ns=cur==='Available'?'Occupied':'Available';
+  if(!confirm('Change status to "'+ns+'"?'))return;
+  await sbPatch('horses',id,{status:ns});await loadAll();
+}
+function renderBreeding(){
+  const q=(document.getElementById('breedSearch').value||'').toLowerCase();
+  const data=breeding.filter(r=>!q||(r.mare_name||'').toLowerCase().includes(q)||(r.owner||'').toLowerCase().includes(q));
+  document.getElementById('breedList').innerHTML=data.map(r=>{
+    const days=['day1','day2','day3','day4','day5','day6','day7','day8','day9'].filter(d=>r[d]).map(d=>'<div class="breed-day">&#128197; '+fmt(r[d])+'</div>').join('');
+    return '<div class="breed-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">&#128014; '+r.mare_name+'</div><div style="font-size:12px;color:var(--muted)">'+(r.owner||'')+' &middot; '+(r.mobile||'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-navy">'+(r.count||0)+' visits</span><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editBreeding('+r.id+')">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;breeding&apos;,${r.id})">&#128465;&#65039;</button></div></div><div class="breed-days">'+(days||'<span style="color:var(--muted);font-size:13px">No dates</span>')+'</div></div>';
+  }).join('')||'<p style="color:var(--muted);padding:12px">No records</p>';
+}
+async function addBreeding(){
+  const mare=document.getElementById('b-mare').value.trim();
+  const owner=document.getElementById('b-owner').value.trim();
+  if(!mare||!owner){alert('Fill: Mare Name and Owner');return;}
+  const btn=document.getElementById('breedSaveBtn');btn.disabled=true;btn.textContent='Saving...';
+  try{
+    await sbPost('breeding',{mare_name:mare,owner,mobile:document.getElementById('b-mobile').value||null,count:1,day1:document.getElementById('b-d1').value||null,day2:document.getElementById('b-d2').value||null,day3:document.getElementById('b-d3').value||null});
+    ['b-mare','b-owner','b-mobile','b-d1','b-d2','b-d3'].forEach(id=>document.getElementById(id).value='');
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Save to Database';}
+}
+function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modalOverlay').classList.remove('hidden');}
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
+function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort().map(n=>'<option value="'+n+'" '+(n===sel?'selected':'')+'>'+n+'</option>').join('');}
+function editIncome(id){
+  const r=income.find(x=>x.id===id);if(!r)return;
+  const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
+  openModal('Edit Income',`<div class="form-grid">
+    <div class="form-group"><label>Date</label><input type="date" id="ei-date" value="${r.date||''}"></div>
+    <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${r.due_date||''}"></div>
+    <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${r.customer_name||''}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+c+'">').join('')}</datalist></div>
+    <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
+    <div class="form-group"><label>Activity</label><select id="ei-act">${['Hack','Lesson','Livery','Breeding','Shuwar','Others'].map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
+    <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ei-amt" value="${apu.toFixed(3)}" oninput="cET('inc')"></div>
+    <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ei-total" value="${r.amount_bd}" readonly></div>
+    <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ei-paid" value="${r.paid_bd||0}"></div>
+    <div class="form-group"><label>Start Time</label><input type="time" id="ei-start" value="${r.start_time||''}"></div>
+    <div class="form-group"><label>End Time</label><input type="time" id="ei-end" value="${r.end_time||''}"></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="ei-notes" value="${r.notes||''}"></div>
+  </div><div class="btn-row"><button class="btn btn-green" onclick="saveIncome(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveIncome(id){
+  const qty=parseFloat(document.getElementById('ei-qty').value)||1;
+  const amt=parseFloat(document.getElementById('ei-amt').value)||0;
+  const total=qty*amt;const paid=parseFloat(document.getElementById('ei-paid').value)||0;
+  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity:document.getElementById('ei-act').value,qty,amount_bd:total,paid_bd:paid,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+function editExpense(id){
+  const r=expenses.find(x=>x.id===id);if(!r)return;
+  const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
+  openModal('Edit Expense',`<div class="form-grid">
+    <div class="form-group"><label>Date</label><input type="date" id="ee-date" value="${r.date||''}"></div>
+    <div class="form-group"><label>Due Date</label><input type="date" id="ee-due" value="${r.due_date||''}"></div>
+    <div class="form-group"><label>Category</label><select id="ee-cat">${['Salary','Qeshbar','Hay','Maintenance','Farrier','Shuwar','Medicant','Trash Container','Leading','Others'].map(c=>'<option '+(r.category===c?'selected':'')+'>'+c+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Supplier</label><input type="text" id="ee-sup" value="${r.supplier||''}"></div>
+    <div class="form-group"><label>Qty</label><input type="number" id="ee-qty" value="${qty}" min="1" oninput="cET('exp')"></div>
+    <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ee-amt" value="${apu.toFixed(3)}" oninput="cET('exp')"></div>
+    <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ee-total" value="${r.amount_bd}" readonly></div>
+    <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ee-paid" value="${r.paid_bd||0}"></div>
+    <div class="form-group"><label>Horse</label><select id="ee-horse"><option value="">&#8212;</option>${hOpts(r.horse)}</select></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="ee-notes" value="${r.notes||''}"></div>
+  </div><div class="btn-row"><button class="btn btn-red" onclick="saveExpense(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveExpense(id){
+  const qty=parseFloat(document.getElementById('ee-qty').value)||1;
+  const amt=parseFloat(document.getElementById('ee-amt').value)||0;
+  const total=qty*amt;const paid=parseFloat(document.getElementById('ee-paid').value)||0;
+  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:document.getElementById('ee-cat').value,supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:document.getElementById('ee-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+function editHorse(id){
+  const h=horses.find(x=>x.id===id);if(!h)return;
+  openModal('Edit Horse &#8212; '+h.horse_name,`<div class="form-grid">
+    <div class="form-group"><label>Stable No</label><input type="text" id="eh-stable" value="${h.stable_no||''}"></div>
+    <div class="form-group"><label>Horse Name</label><input type="text" id="eh-name" value="${h.horse_name||''}"></div>
+    <div class="form-group"><label>Owner</label><input type="text" id="eh-owner" value="${h.owner||''}"></div>
+    <div class="form-group"><label>Contact</label><input type="text" id="eh-contact" value="${h.contact||''}"></div>
+    <div class="form-group"><label>CPR</label><input type="text" id="eh-cpr" value="${h.cpr||''}"></div>
+    <div class="form-group"><label>Address</label><input type="text" id="eh-address" value="${h.address||''}"></div>
+    <div class="form-group"><label>Sex</label><select id="eh-sex">${['','Stallion','Mare','Gelding'].map(s=>'<option '+(h.sex===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Color</label><input type="text" id="eh-color" value="${h.color||''}"></div>
+    <div class="form-group"><label>Breed</label><input type="text" id="eh-breed" value="${h.breed||''}"></div>
+    <div class="form-group"><label>Livery BD/month</label><input type="number" step="0.001" id="eh-livery" value="${h.livery_bd||0}"></div>
+    <div class="form-group"><label>AC Livery BD</label><input type="number" step="0.001" id="eh-aclivery" value="${h.ac_livery_bd||0}"></div>
+    <div class="form-group"><label>Livery Type</label><input type="text" id="eh-lvtype" value="${h.livery_type||''}"></div>
+    <div class="form-group"><label>Payment</label><input type="text" id="eh-payment" value="${h.payment||''}"></div>
+    <div class="form-group"><label>Status</label><select id="eh-status">${['Available','Occupied','Away'].map(s=>'<option '+(h.status===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Start Date</label><input type="date" id="eh-start" value="${h.start_date||''}"></div>
+    <div class="form-group"><label>Birth Date</label><input type="date" id="eh-birth" value="${h.birth_date||''}"></div>
+    <div class="form-group"><label>Microchip</label><input type="text" id="eh-micro" value="${h.microchip||''}"></div>
+    <div class="form-group"><label>Passport</label><input type="text" id="eh-passport" value="${h.passport||''}"></div>
+    <div class="form-group"><label>Farrier Date</label><input type="date" id="eh-farrier" value="${h.farrier_date||''}"></div>
+    <div class="form-group"><label>Worm Date</label><input type="date" id="eh-worm" value="${h.worm_date||''}"></div>
+    <div class="form-group"><label>Vaccine Date</label><input type="date" id="eh-vaccine" value="${h.vaccine_date||''}"></div>
+    <div class="form-group"><label>Medicant</label><input type="text" id="eh-medicant" value="${h.medicant||''}"></div>
+    <div class="form-group"><label>Med Date</label><input type="date" id="eh-meddate" value="${h.med_date||''}"></div>
+  </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveHorse(id){
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_date:document.getElementById('eh-farrier').value||null,worm_date:document.getElementById('eh-worm').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+function editBreeding(id){
+  const r=breeding.find(x=>x.id===id);if(!r)return;
+  openModal('Edit Breeding &#8212; '+r.mare_name,`<div class="form-grid">
+    <div class="form-group"><label>Mare Name</label><input type="text" id="eb-mare" value="${r.mare_name||''}"></div>
+    <div class="form-group"><label>Owner</label><input type="text" id="eb-owner" value="${r.owner||''}"></div>
+    <div class="form-group"><label>Mobile</label><input type="text" id="eb-mobile" value="${r.mobile||''}"></div>
+    <div class="form-group"><label>Day 1</label><input type="date" id="eb-d1" value="${r.day1||''}"></div>
+    <div class="form-group"><label>Day 2</label><input type="date" id="eb-d2" value="${r.day2||''}"></div>
+    <div class="form-group"><label>Day 3</label><input type="date" id="eb-d3" value="${r.day3||''}"></div>
+    <div class="form-group"><label>Day 4</label><input type="date" id="eb-d4" value="${r.day4||''}"></div>
+    <div class="form-group"><label>Day 5</label><input type="date" id="eb-d5" value="${r.day5||''}"></div>
+    <div class="form-group"><label>Day 6</label><input type="date" id="eb-d6" value="${r.day6||''}"></div>
+    <div class="form-group"><label>Day 7</label><input type="date" id="eb-d7" value="${r.day7||''}"></div>
+    <div class="form-group"><label>Day 8</label><input type="date" id="eb-d8" value="${r.day8||''}"></div>
+    <div class="form-group"><label>Day 9</label><input type="date" id="eb-d9" value="${r.day9||''}"></div>
+  </div><div class="btn-row"><button class="btn btn-navy" onclick="saveBreeding(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveBreeding(id){
+  try{await sbPatch('breeding',id,{mare_name:document.getElementById('eb-mare').value,owner:document.getElementById('eb-owner').value,mobile:document.getElementById('eb-mobile').value||null,day1:document.getElementById('eb-d1').value||null,day2:document.getElementById('eb-d2').value||null,day3:document.getElementById('eb-d3').value||null,day4:document.getElementById('eb-d4').value||null,day5:document.getElementById('eb-d5').value||null,day6:document.getElementById('eb-d6').value||null,day7:document.getElementById('eb-d7').value||null,day8:document.getElementById('eb-d8').value||null,day9:document.getElementById('eb-d9').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+async function markPaid(t,id,amt){
+  if(!confirm('Mark as Paid ('+BD(amt)+')?'))return;
+  try{await sbPatch(t,id,{paid_bd:parseFloat(amt)||0,status:'Paid'});await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+async function delRec(t,id){
+  if(!confirm('Delete this record? Cannot be undone.'))return;
+  try{await sbDel(t,id);await loadAll();}catch(e){alert('Error: '+e.message);}
+}
+function toggleForm(id){const el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+function calcTotal(p){
+  const qty=parseFloat(document.getElementById(p+'-qty')?.value)||1;
+  const amt=parseFloat(document.getElementById(p+'-amount')?.value)||0;
+  const el=document.getElementById(p+'-total');if(el)el.value=(qty*amt).toFixed(3);
+}
+function cET(p){
+  const qty=parseFloat(document.getElementById(p==='inc'?'ei-qty':'ee-qty')?.value)||1;
+  const amt=parseFloat(document.getElementById(p==='inc'?'ei-amt':'ee-amt')?.value)||0;
+  const el=document.getElementById(p==='inc'?'ei-total':'ee-total');if(el)el.value=(qty*amt).toFixed(3);
+}
+function populateLists(){
+  const cl=document.getElementById('cList');
+  if(cl)cl.innerHTML=[...new Set(income.map(r=>r.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+c+'">').join('');
+  const hn=horses.map(h=>h.horse_name).filter(Boolean).sort();
+  const ih=document.getElementById('inc-horse');
+  if(ih)ih.innerHTML='<option value="">&#8212; Select &#8212;</option>'+hn.map(h=>'<option>'+h+'</option>').join('');
+  const eh=document.getElementById('exp-horse');
+  if(eh)eh.innerHTML='<option value="">&#8212; None &#8212;</option>'+hn.map(h=>'<option>'+h+'</option>').join('');
+}
+function renderPag(id,total,cur,fn){
+  const el=document.getElementById(id);if(total<=1){el.innerHTML='';return;}
+  const s=Math.max(1,cur-3),e=Math.min(total,s+6);let h='';
+  if(s>1)h+='<button class="page-btn" onclick="('+fn.toString()+')(1)">1</button><span style="padding:4px">&#8230;</span>';
+  for(let i=s;i<=e;i++)h+='<button class="page-btn'+(i===cur?' active':'')+'" onclick="('+fn.toString()+')('+i+')">'+i+'</button>';
+  if(e<total)h+='<span style="padding:4px">&#8230;</span><button class="page-btn" onclick="('+fn.toString()+')('+total+')">'+total+'</button>';
+  el.innerHTML=h;
+}
 
 
+// END DASHBOARD SCRIPT
 // ══════════════════════════════════════════════════════════
 // BOOKING SCRIPT
 // ══════════════════════════════════════════════════════════
