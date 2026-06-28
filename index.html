@@ -862,14 +862,8 @@ async function loadAll(){
     ov.style.display='none';
   }
 }
-function showPage(id,btn){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
-  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding'};
-  document.getElementById('headerSub').textContent=L[id]||id;
-}
+// showPage replaced by showDashPage in single-page app
+function showPage(id,btn){ showDashPage(id,btn); }
 function buildDash(){
   const rev=income.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
   const pexp=expenses.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
