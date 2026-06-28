@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCE — Training Packages</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.packages{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:400px){.packages{grid-template-columns:1fr}}
+.pkg-card{border:2px solid #E3D9C6;border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
+.pkg-card:hover{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.selected{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.popular::before{content:'⭐ Popular';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#C8923A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.pkg-icon{font-size:32px;margin-bottom:8px}
+.pkg-name{font-size:14px;font-weight:700;color:#1A2744;margin-bottom:4px}
+.pkg-sessions{font-size:12px;color:#7A8399;margin-bottom:8px}
+.pkg-price{font-size:22px;font-weight:700;color:#C8923A}
+.pkg-price span{font-size:12px;color:#7A8399;font-weight:400}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:inherit;outline:none}
+.form-group input:focus{border-color:#C8923A}
+.selected-pkg-box{background:#FEF3E2;border:1px solid #C8923A;border-radius:10px;padding:14px;margin-bottom:16px;display:none;text-align:center}
+.selected-pkg-box .pkg-label{font-size:13px;color:#7A8399}
+.selected-pkg-box .pkg-value{font-size:16px;font-weight:700;color:#C8923A;margin-top:2px}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="header">
+  <span style="font-size:22px">🏇</span>
+  <div>
+    <div style="font-size:15px;font-weight:700">CCE Equestrian Center</div>
+    <div style="font-size:11px;color:#C8923A">Training Packages</div>
+  </div>
+  <a href="index.html">← Back</a>
+</div>
+
+<div class="hero">
+  <div class="hero-icon">🎯</div>
+  <div class="hero-title">Training Packages</div>
+  <div class="hero-sub">باقات تدريب ركوب الخيل</div>
+</div>
+
+<div class="container">
+  <div id="trainingForm">
+    <!-- Packages -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:15px;font-weight:700;color:#1A2744;margin-bottom:14px">🎯 Choose Your Package</div>
+      <div class="packages">
+        <div class="pkg-card" onclick="selectPkg(this,'Single Session','1 Session',10)">
+          <div class="pkg-icon">🎯</div>
+          <div class="pkg-name">Single Session</div>
+          <div class="pkg-sessions">1 session</div>
+          <div class="pkg-price">10 <span>BD</span></div>
+        </div>
+        <div class="pkg-card popular" onclick="selectPkg(this,'4 Sessions Package','4 sessions / month',35)">
+          <div class="pkg-icon">📅</div>
+          <div class="pkg-name">Starter Pack</div>
+          <div class="pkg-sessions">4 sessions / month</div>
+          <div class="pkg-price">35 <span>BD</span></div>
+        </div>
+        <div class="pkg-card" onclick="selectPkg(this,'8 Sessions Package','8 sessions / month',70)">
+          <div class="pkg-icon">🌟</div>
+          <div class="pkg-name">Advanced Pack</div>
+          <div class="pkg-sessions">8 sessions / month</div>
+          <div class="pkg-price">70 <span>BD</span></div>
+        </div>
+        <div class="pkg-card" onclick="selectPkg(this,'12 Sessions Package','12 sessions / month',100)">
+          <div class="pkg-icon">🏆</div>
+          <div class="pkg-name">Pro Pack</div>
+          <div class="pkg-sessions">12 sessions / month</div>
+          <div class="pkg-price">100 <span>BD</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected Package Display -->
+    <div class="selected-pkg-box" id="selectedPkgBox">
+      <div class="pkg-label">Selected Package</div>
+      <div class="pkg-value" id="selectedPkgLabel">—</div>
+    </div>
+
+    <!-- Form -->
+    <div class="card">
+      <div class="card-title">📋 Your Details</div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="t-name" placeholder="Enter your full name">
+      </div>
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="tel" id="t-phone" placeholder="e.g. 39001234">
+      </div>
+      <div class="form-group">
+        <label>Preferred Start Date *</label>
+        <input type="date" id="t-date" min="">
+      </div>
+      <div class="form-group">
+        <label>Preferred Time *</label>
+        <input type="time" id="t-time">
+      </div>
+    </div>
+
+    <div class="note-box">
+      <div class="note-title">💳 Payment Note</div>
+      <div class="note-text">
+        Your enrollment will be confirmed after payment. Please transfer the package fee to:<br>
+        <span class="iban">BH23BIBB00100002375646</span><br><br>
+        Send payment proof via WhatsApp and our team will confirm your enrollment within 24 hours.
+      </div>
+    </div>
+
+    <button class="btn" onclick="submitTraining()">🎯 Submit Enrollment Request</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-box" id="successBox">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Enrollment Request Submitted!</div>
+    <div class="success-text" id="successText"></div>
+    <button class="btn" style="margin-top:20px" onclick="newRequest()">📋 New Request</button>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://ipiarzkljcictghtkcri.supabase.co';
+const SB_KEY = 'sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
+const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+
+document.getElementById('t-date').min = new Date().toISOString().split('T')[0];
+
+let selectedPkg = null;
+let selectedPrice = 0;
+
+function selectPkg(el, name, sessions, price) {
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPkg = name;
+  selectedPrice = price;
+  const box = document.getElementById('selectedPkgBox');
+  box.style.display = 'block';
+  document.getElementById('selectedPkgLabel').textContent = name + ' — ' + price + ' BD (' + sessions + ')';
+}
+
+async function submitTraining() {
+  const name  = document.getElementById('t-name').value.trim();
+  const phone = document.getElementById('t-phone').value.trim();
+  const date  = document.getElementById('t-date').value;
+  const time  = document.getElementById('t-time').value;
+
+  if(!selectedPkg) { alert('⚠️ Please select a package.'); return; }
+  if(!name||!phone||!date||!time) { alert('⚠️ Please fill all fields.'); return; }
+
+  const btn = document.querySelector('.btn');
+  btn.disabled=true; btn.textContent='⏳ Submitting...';
+
+  try {
+    await fetch(`${SB_URL}/rest/v1/income`, {
+      method:'POST', headers:HDR,
+      body: JSON.stringify({
+        date,
+        start_time: time,
+        customer_name: name + ' | ' + phone,
+        activity: 'Lesson',
+        qty: 1,
+        amount_bd: selectedPrice,
+        paid_bd: 0,
+        notes: 'TRAINING REQUEST — Package: ' + selectedPkg + ' | Phone: ' + phone,
+        status: 'Pending'
+      })
+    });
+
+    document.getElementById('trainingForm').style.display='none';
+    const successBox = document.getElementById('successBox');
+    successBox.style.display='block';
+    document.getElementById('successText').innerHTML = `
+      Thank you <strong>${name}</strong>!<br><br>
+      Package: <strong>${selectedPkg}</strong><br>
+      Amount: <strong>${selectedPrice} BD</strong><br>
+      Start Date: <strong>${date}</strong><br><br>
+      Please transfer <strong>${selectedPrice} BD</strong> to IBAN:<br>
+      <strong>BH23BIBB00100002375646</strong><br><br>
+      Send payment proof via WhatsApp to confirm your enrollment.
+    `;
+  } catch(e) {
+    alert('Error: '+e.message);
+    btn.disabled=false; btn.textContent='🎯 Submit Enrollment Request';
+  }
+}
+
+function newRequest() {
+  document.getElementById('trainingForm').style.display='block';
+  document.getElementById('successBox').style.display='none';
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('selectedPkgBox').style.display='none';
+  ['t-name','t-phone','t-date','t-time'].forEach(id=>document.getElementById(id).value='');
+  selectedPkg=null; selectedPrice=0;
+  const btn = document.querySelector('.btn');
+  btn.disabled=false; btn.textContent='🎯 Submit Enrollment Request';
+}
+</script>
+</body>
+</html>
