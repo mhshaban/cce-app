@@ -630,6 +630,8 @@ function navigate(page) {
   if(page==='owner' && sessionStorage.getItem('owner_phone')) {
     logoutOwner.classList.remove('hidden');
   }
+  // Trigger page-specific actions
+  if(typeof onNavigate === 'function') onNavigate(page);
 }
 
 function goHome() {
