@@ -594,6 +594,86 @@ async function sbPatch(t,id,d){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq
 async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});if(!r.ok)throw new Error(await r.text());}
 
 // ══════════════════════════════════════════════════════════
+// LOAD DATA
+// ══════════════════════════════════════════════════════════
+async function loadAll(){
+  const ov=document.getElementById('loadingOverlay');
+  const msg=document.getElementById('loadingMsg');
+  const dbg=document.getElementById('debugInfo');
+  const setMsg=(m,d='')=>{msg.textContent=m;if(d&&dbg)dbg.textContent=d;};
+  ov.style.display='flex';
+  try{
+    setMsg('Connecting to database...','Testing connection...');
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    let testRes;
+    try{
+      testRes=await fetch(`${SB_URL}/rest/v1/income?select=id&limit=1`,{headers:HDR,signal:ctrl.signal});
+      clearTimeout(tid);
+    }catch(fetchErr){
+      clearTimeout(tid);
+      if(fetchErr.name==='AbortError')throw new Error('Timeout — check connection');
+      throw new Error('Network error: '+fetchErr.message);
+    }
+    if(!testRes.ok)throw new Error('Auth error '+testRes.status);
+    setMsg('Loading income...');
+    income=await sbGet('income','select=*&limit=2000');
+    setMsg('Loading expenses...',income.length+' income records');
+    expenses=await sbGet('expenses','select=*&limit=1000');
+    setMsg('Loading horses...',expenses.length+' expenses');
+    horses=await sbGet('horses','select=*&limit=200');
+    setMsg('Loading breeding...',horses.length+' horses');
+    breeding=await sbGet('breeding','select=*&limit=200');
+    document.getElementById('syncStatus').textContent='✅ '+new Date().toLocaleTimeString('en-GB');
+    buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();populateLists();
+    ov.style.display='none';
+  }catch(e){
+    console.error('Load error:',e);
+    setMsg('❌ '+e.message,'Tap Retry to try again');
+    if(dbg)dbg.style.color='#ff9999';
+    document.getElementById('spinner').style.display='none';
+    document.getElementById('retryBtn').style.display='block';
+    document.getElementById('syncStatus').textContent='❌ Error';
+    ov.style.display='none';
+  }
+}
+
+async function forceLoad(){
+  document.getElementById('retryBtn').style.display='none';
+  document.getElementById('spinner').style.display='block';
+  await loadAll();
+}
+
+async function downloadBackup(){
+  const btn=document.getElementById('backupBtn');
+  btn.textContent='⏳ Preparing...';btn.disabled=true;
+  try{
+    const [inc,exp,hor,bre]=await Promise.all([
+      sbGet('income','select=*&limit=5000'),
+      sbGet('expenses','select=*&limit=5000'),
+      sbGet('horses','select=*&limit=500'),
+      sbGet('breeding','select=*&limit=500'),
+    ]);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(inc.map(r=>({'ID':r.id,'Date':r.date,'Due Date':r.due_date,'Customer':r.customer_name,'Horse':r.horse_name,'Activity':r.activity,'Qty':r.qty,'Amount BD':r.amount_bd,'Paid BD':r.paid_bd,'Notes':r.notes,'Status':r.status}))),'Income');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(exp.map(r=>({'ID':r.id,'Date':r.date,'Due Date':r.due_date,'Category':r.category,'Supplier':r.supplier,'Qty':r.qty,'Amount BD':r.amount_bd,'Paid BD':r.paid_bd,'Horse':r.horse,'Notes':r.notes,'Status':r.status}))),'Expenses');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hor.map(r=>({'ID':r.id,'Stable':r.stable_no,'Status':r.status,'Horse':r.horse_name,'Owner':r.owner,'Contact':r.contact,'Livery BD':r.livery_bd}))),'Horses');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(bre.map(r=>({'ID':r.id,'Mare':r.mare_name,'Owner':r.owner,'Mobile':r.mobile}))),'Breeding');
+    const totalRev=inc.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
+    const totalExp=exp.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0)-exp.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([
+      {Metric:'Total Revenue BD',Value:totalRev.toFixed(3)},
+      {Metric:'Total Expenses BD',Value:totalExp.toFixed(3)},
+      {Metric:'Net Profit BD',Value:(totalRev-totalExp).toFixed(3)},
+      {Metric:'Backup Date',Value:new Date().toLocaleDateString('en-GB')},
+    ]),'Summary');
+    XLSX.writeFile(wb,`CCE_Backup_${new Date().toISOString().slice(0,10)}.xlsx`);
+    btn.textContent='✅ Downloaded!';
+    setTimeout(()=>{btn.textContent='🖫 Backup';btn.disabled=false;},2000);
+  }catch(e){alert('Backup error: '+e.message);btn.textContent='🖫 Backup';btn.disabled=false;}
+}
+
+// ══════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════
 let currentPage = 'home';
