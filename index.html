@@ -287,25 +287,25 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
 <div class="app-page active" id="page-home">
   <div class="home-wrap">
     <div class="home-grid">
-      <div class="home-card" onclick="navigate('booking')">
+      <div class="home-card" data-page="booking" role="button" tabindex="0">
         <div class="hc-icon">&#128052;</div>
         <div class="hc-title">Book a Horse Ride</div>
         <div class="hc-desc">حجز جولة على الخيل — اختر الخيل والوقت</div>
         <div class="hc-btn">Book Now</div>
       </div>
-      <div class="home-card" onclick="navigate('training')">
+      <div class="home-card" data-page="training" role="button" tabindex="0">
         <div class="hc-icon">&#127919;</div>
         <div class="hc-title">Training Packages</div>
         <div class="hc-desc">باقات تدريب ركوب الخيل للمبتدئين والمحترفين</div>
         <div class="hc-btn">View Packages</div>
       </div>
-      <div class="home-card" onclick="navigate('owner')">
+      <div class="home-card" data-page="owner" role="button" tabindex="0">
         <div class="hc-icon">&#128272;</div>
         <div class="hc-title">Horse Owner Portal</div>
         <div class="hc-desc">بوابة ملاك الخيول — اطلع على بيانات حصانك وحدّثها</div>
         <div class="hc-btn">Owner Login</div>
       </div>
-      <div class="home-card" onclick="navigate('admin')" style="border:2px solid #1A2744">
+      <div class="home-card" data-page="admin" role="button" tabindex="0" style="border:2px solid #1A2744">
         <div class="hc-icon">&#128202;</div>
         <div class="hc-title">Staff Dashboard</div>
         <div class="hc-desc">لوحة الإدارة — للموظفين فقط</div>
@@ -579,6 +579,39 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">&#10005;</button></div><div id="modalBody"></div></div>
 </div>
+
+<script>
+(function(){
+  function setPage(page){
+    var target=document.getElementById('page-'+page);
+    if(!target){return false;}
+    document.querySelectorAll('.app-page').forEach(function(p){p.classList.remove('active');});
+    target.classList.add('active');
+    window.currentPage=page;
+    var headerSub=document.getElementById('headerSub');
+    var labels={home:'مركز تعليم ركوب الخيل',booking:'Book a Horse Ride',training:'Training Packages',owner:'Owner Portal',admin:'Staff Login',dashboard:'Dashboard'};
+    if(headerSub){headerSub.textContent=labels[page]||page;}
+    ['backBtn','syncStatus','refreshBtn','backupBtn','logoutAdminBtn','logoutOwnerBtn','overdueBadge'].forEach(function(id){
+      var el=document.getElementById(id); if(el){el.classList.add('hidden');}
+    });
+    var backBtn=document.getElementById('backBtn');
+    if(page!=='home' && page!=='dashboard' && backBtn){backBtn.classList.remove('hidden');}
+    if(page==='dashboard'){['syncStatus','refreshBtn','backupBtn','logoutAdminBtn','overdueBadge'].forEach(function(id){var el=document.getElementById(id); if(el){el.classList.remove('hidden');}});}
+    if(page==='owner' && sessionStorage.getItem('owner_phone')){var lo=document.getElementById('logoutOwnerBtn'); if(lo){lo.classList.remove('hidden');}}
+    window.scrollTo(0,0);
+    return true;
+  }
+  window.navigate=setPage;
+  window.goHome=function(){setPage('home');};
+  document.addEventListener('click',function(e){
+    var card=e.target.closest('[data-page]');
+    if(card){e.preventDefault(); setPage(card.getAttribute('data-page'));}
+  },true);
+  document.addEventListener('keydown',function(e){
+    if((e.key==='Enter'||e.key===' ') && e.target.matches('[data-page]')){e.preventDefault(); setPage(e.target.getAttribute('data-page'));}
+  });
+})();
+</script>
 
 <script>
 // ══════════════════════════════════════════════════════════
