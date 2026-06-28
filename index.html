@@ -684,6 +684,7 @@ const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589',
 // DASHBOARD SCRIPT (from dashboard.html)
 // ══════════════════════════════════════════════════════════
 
+// Admin auth check removed for single-page router.
 async function downloadBackup(){
   const btn=document.getElementById('backupBtn');
   btn.textContent='&#9203; Preparing...';btn.disabled=true;
@@ -771,8 +772,7 @@ async function downloadBackup(){
 }
 
 function logout() {
-  sessionStorage.removeItem('cce_auth');
-  navigate('home');
+  logoutAdmin();
 }
 function skipLoad(){
   document.getElementById('loadingOverlay').style.display='none';
@@ -1176,9 +1176,6 @@ function renderPag(id,total,cur,fn){
   if(e<total)h+='<span style="padding:4px">&#8230;</span><button class="page-btn" onclick="('+fn.toString()+')('+total+')">'+total+'</button>';
   el.innerHTML=h;
 }
-loadAll();
-setInterval(loadAll,10*60*1000);
-
 
 // ══════════════════════════════════════════════════════════
 // BOOKING SCRIPT
@@ -1402,28 +1399,26 @@ async function saveOwnerHorse(i,id){
 // INIT
 // ══════════════════════════════════════════════════════════
 // Auto-restore owner session
-const savedPhone=sessionStorage.getItem('owner_phone');
-const savedOwnerName=sessionStorage.getItem('owner_name');
-if(savedPhone){
-  // Will reload on navigate to owner page
-}
-
-// Load CC horses when booking page is shown
+// Load page-specific data only after user navigates.
 const origNavigate = navigate;
 window.navigate = function(page){
   origNavigate(page);
   if(page==='booking') loadCCHorses();
-  if(page==='owner' && savedPhone){
-    // restore session
-    (async()=>{
-      const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
-      const list=await r.json();
-      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
-      if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
-    })();
+  if(page==='owner') {
+    const savedPhone=sessionStorage.getItem('owner_phone');
+    const savedOwnerName=sessionStorage.getItem('owner_name');
+    if(savedPhone){
+      (async()=>{
+        const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
+        const list=await r.json();
+        const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
+        if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
+      })();
+    }
   }
 };
 
-setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);</script>
+setInterval(()=>{if(currentPage==='dashboard' && sessionStorage.getItem('cce_auth')==='true')loadAll();},10*60*1000);
+</script>
 </body>
 </html>
