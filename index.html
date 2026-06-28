@@ -287,25 +287,25 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
 <div class="app-page active" id="page-home">
   <div class="home-wrap">
     <div class="home-grid">
-      <div class="home-card" data-page="booking" role="button" tabindex="0">
+      <div class="home-card" onclick="navigate('booking')">
         <div class="hc-icon">&#128052;</div>
         <div class="hc-title">Book a Horse Ride</div>
         <div class="hc-desc">حجز جولة على الخيل — اختر الخيل والوقت</div>
         <div class="hc-btn">Book Now</div>
       </div>
-      <div class="home-card" data-page="training" role="button" tabindex="0">
+      <div class="home-card" onclick="navigate('training')">
         <div class="hc-icon">&#127919;</div>
         <div class="hc-title">Training Packages</div>
         <div class="hc-desc">باقات تدريب ركوب الخيل للمبتدئين والمحترفين</div>
         <div class="hc-btn">View Packages</div>
       </div>
-      <div class="home-card" data-page="owner" role="button" tabindex="0">
+      <div class="home-card" onclick="navigate('owner')">
         <div class="hc-icon">&#128272;</div>
         <div class="hc-title">Horse Owner Portal</div>
         <div class="hc-desc">بوابة ملاك الخيول — اطلع على بيانات حصانك وحدّثها</div>
         <div class="hc-btn">Owner Login</div>
       </div>
-      <div class="home-card" data-page="admin" role="button" tabindex="0" style="border:2px solid #1A2744">
+      <div class="home-card" onclick="navigate('admin')" style="border:2px solid #1A2744">
         <div class="hc-icon">&#128202;</div>
         <div class="hc-title">Staff Dashboard</div>
         <div class="hc-desc">لوحة الإدارة — للموظفين فقط</div>
@@ -463,6 +463,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
     <button class="nav-btn" id="nav-overdue"  onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
     <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
     <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
+    <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -555,6 +556,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
       </div>
       <div class="horse-grid" id="horsesGrid"></div>
     </div>
+    <div class="section" id="page-bookings">
+      <div class="search-bar">
+        <input type="text" id="bookSearch" placeholder="&#128269; Search name or horse..." oninput="renderBookings()">
+        <select id="bookTypeFilter" onchange="renderBookings()"><option value="">All Types</option><option value="BOOKING">Hack Rides</option><option value="TRAINING">Training Packages</option></select>
+        <select id="bookStFilter" onchange="renderBookings()"><option value="">All Status</option><option>Pending</option><option>Paid</option></select>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128203; Bookings &amp; Training Requests &#8212; <span id="bookCount">0</span> records</div>
+        <div class="tbl-wrap" id="bookTable"></div>
+        <div class="pagination" id="bookPag"></div>
+      </div>
+    </div>
     <div class="section" id="page-breeding">
       <div class="card"><div class="card-title" onclick="toggleForm('breedForm')" style="cursor:pointer">&#10133; Add Breeding Record <span style="margin-left:auto;font-size:12px;color:var(--muted)">&#9660; expand</span></div>
         <div id="breedForm" style="display:none">
@@ -579,39 +592,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">&#10005;</button></div><div id="modalBody"></div></div>
 </div>
-
-<script>
-(function(){
-  function setPage(page){
-    var target=document.getElementById('page-'+page);
-    if(!target){return false;}
-    document.querySelectorAll('.app-page').forEach(function(p){p.classList.remove('active');});
-    target.classList.add('active');
-    window.currentPage=page;
-    var headerSub=document.getElementById('headerSub');
-    var labels={home:'مركز تعليم ركوب الخيل',booking:'Book a Horse Ride',training:'Training Packages',owner:'Owner Portal',admin:'Staff Login',dashboard:'Dashboard'};
-    if(headerSub){headerSub.textContent=labels[page]||page;}
-    ['backBtn','syncStatus','refreshBtn','backupBtn','logoutAdminBtn','logoutOwnerBtn','overdueBadge'].forEach(function(id){
-      var el=document.getElementById(id); if(el){el.classList.add('hidden');}
-    });
-    var backBtn=document.getElementById('backBtn');
-    if(page!=='home' && page!=='dashboard' && backBtn){backBtn.classList.remove('hidden');}
-    if(page==='dashboard'){['syncStatus','refreshBtn','backupBtn','logoutAdminBtn','overdueBadge'].forEach(function(id){var el=document.getElementById(id); if(el){el.classList.remove('hidden');}});}
-    if(page==='owner' && sessionStorage.getItem('owner_phone')){var lo=document.getElementById('logoutOwnerBtn'); if(lo){lo.classList.remove('hidden');}}
-    window.scrollTo(0,0);
-    return true;
-  }
-  window.navigate=setPage;
-  window.goHome=function(){setPage('home');};
-  document.addEventListener('click',function(e){
-    var card=e.target.closest('[data-page]');
-    if(card){e.preventDefault(); setPage(card.getAttribute('data-page'));}
-  },true);
-  document.addEventListener('keydown',function(e){
-    if((e.key==='Enter'||e.key===' ') && e.target.matches('[data-page]')){e.preventDefault(); setPage(e.target.getAttribute('data-page'));}
-  });
-})();
-</script>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -706,7 +686,7 @@ function showDashPage(id, btn) {
 // STATE
 // ══════════════════════════════════════════════════════════
 let income=[],expenses=[],horses=[],breeding=[];
-let incPage=1,expPage=1;
+let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
 const fmt=d=>{if(!d)return '&#8212;';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB');}catch(e){return d;}};
@@ -717,7 +697,6 @@ const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589',
 // DASHBOARD SCRIPT (from dashboard.html)
 // ══════════════════════════════════════════════════════════
 
-// Admin auth check removed for single-page router.
 async function downloadBackup(){
   const btn=document.getElementById('backupBtn');
   btn.textContent='&#9203; Preparing...';btn.disabled=true;
@@ -805,7 +784,8 @@ async function downloadBackup(){
 }
 
 function logout() {
-  logoutAdmin();
+  sessionStorage.removeItem('cce_auth');
+  navigate('home');
 }
 function skipLoad(){
   document.getElementById('loadingOverlay').style.display='none';
@@ -858,7 +838,7 @@ async function loadAll(){
     setMsg('Done!',breeding.length+' breeding records loaded');
 
     document.getElementById('syncStatus').textContent='&#10003; '+new Date().toLocaleTimeString('en-GB');
-    buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();populateLists();
+    buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();
     ov.style.display='none';
 
   }catch(e){
@@ -875,7 +855,7 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
-  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding'};
+  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings'};
   document.getElementById('headerSub').textContent=L[id]||id;
 }
 function buildDash(){
@@ -952,7 +932,7 @@ function renderIncome(){
   const st=document.getElementById('incStFilter').value;
   let data=income.filter(r=>{const m=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(r.activity||'').toLowerCase().includes(q);return m&&(!ac||r.activity===ac)&&(!st||r.status===st);});
   document.getElementById('incCount').textContent=data.length;
-  document.getElementById('incTotalAmt').textContent='Total: '+BD(data.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0));
+  document.getElementById('incTotalAmt').textContent='Paid: '+BD(data.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0));
   const pages=Math.ceil(data.length/PER)||1;incPage=Math.min(incPage,pages);
   document.getElementById('incTable').innerHTML=incTblHTML([...data].reverse().slice((incPage-1)*PER,incPage*PER));
   renderPag('incPag',pages,incPage,p=>{incPage=p;renderIncome();});
@@ -1025,15 +1005,36 @@ async function addExpense(){
   finally{btn.disabled=false;btn.textContent='Save to Database';}
 }
 function renderOverdue(){
-  const data=expenses.filter(r=>r.status==='Pending'&&r.due_date);
-  const total=data.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
-  document.getElementById('overdueList').innerHTML=!data.length?'<p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p>':'<div style="margin-bottom:14px"><span class="badge badge-red" style="font-size:14px;padding:6px 16px">Total: '+BD(total)+'</span></div><div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+data.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${r.category||''}</span></td><td>${r.supplier||'&#8212;'}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${r.notes||'&#8212;'}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid(&apos;expenses&apos;,${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+'</tbody></table></div>';
+  const expData=expenses.filter(r=>r.status==='Pending'&&r.due_date);
+  const incData=income.filter(r=>r.status==='Pending'&&r.due_date);
+  const totalExp=expData.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  const totalInc=incData.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  let html='';
+  if(!expData.length&&!incData.length){
+    html='<p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p>';
+  } else {
+    if(incData.length){
+      html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128176; Overdue Income</div>';
+      html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Total: '+BD(totalInc)+'</span></div>';
+      html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Activity</th><th>Amount</th><th>Action</th></tr></thead><tbody>'+
+        incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
+        '</tbody></table></div>';
+    }
+    if(expData.length){
+      html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128184; Overdue Expenses</div>';
+      html+='<div style="margin-bottom:10px"><span class="badge badge-red" style="font-size:13px;padding:5px 14px">Total: '+BD(totalExp)+'</span></div>';
+      html+='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+
+        expData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${r.category||''}</span></td><td>${r.supplier||'&#8212;'}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${r.notes||'&#8212;'}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('expenses',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
+        '</tbody></table></div>';
+    }
+  }
+  document.getElementById('overdueList').innerHTML=html;
 }
 function renderHorses(){
   const q=(document.getElementById('horseSearch').value||'').toLowerCase();
   const st=document.getElementById('horseStFilter').value;
   const data=horses.filter(h=>{if(!h.horse_name)return false;const m=!q||(h.horse_name||'').toLowerCase().includes(q)||(h.owner||'').toLowerCase().includes(q);return m&&(!st||h.status===st);});
-  document.getElementById('horsesGrid').innerHTML=data.map(h=>`<div class="horse-card"><div style="font-size:34px">&#128052;</div><div style="flex:1"><div class="horse-name">${h.horse_name}</div><div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; ${h.owner||'&#8212;'}</div><div class="horse-meta">${[h.sex,h.color,h.breed].filter(Boolean).join(' &middot; ')||'&#8212;'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'&#8212;'}</span>${parseFloat(h.livery_bd)>0?'<span class="badge badge-navy">Livery: '+BD(h.livery_bd)+'</span>':''}</div>${h.contact?'<div style="font-size:11px;color:var(--muted);margin-top:4px">&#128222; '+h.contact+'</div>':''}${h.farrier_date?'<div style="font-size:11px;color:var(--muted)">&#128295; Farrier: '+fmt(h.farrier_date)+'</div>':''}${h.vaccine_date?'<div style="font-size:11px;color:var(--muted)">&#128137; Vaccine: '+fmt(h.vaccine_date)+'</div>':''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:6px 12px" onclick="editHorse(${h.id})">&#9999;&#65039; Edit</button><button class="action-btn" style="background:${h.status==='Available'?'#FEF3E2':'#E8F5EE'};color:${h.status==='Available'?'var(--amber)':'var(--green)'};padding:6px 12px" onclick="toggleHorse(${h.id},'${h.status}')">${h.status==='Available'?'&#128308; Occupy':'&#128994; Available'}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:6px 12px" onclick="delRec(&apos;horses&apos;,${h.id})">&#128465;&#65039;</button></div></div></div>`).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
+  document.getElementById('horsesGrid').innerHTML=data.map(h=>`<div class="horse-card"><div style="font-size:34px">&#128052;</div><div style="flex:1"><div class="horse-name">${h.horse_name}</div><div class="horse-meta">Stable #${h.stable_no||'&#8212;'} &middot; ${h.owner||'&#8212;'}</div><div class="horse-meta">${[h.sex,h.color,h.breed].filter(Boolean).join(' &middot; ')||'&#8212;'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge ${h.status==='Available'?'badge-green':h.status==='Occupied'?'badge-red':'badge-amber'}">${h.status||'&#8212;'}</span>${parseFloat(h.livery_bd)>0?'<span class="badge badge-navy">Livery: '+BD(h.livery_bd)+'</span>':''}</div>${h.contact?'<div style="font-size:11px;color:var(--muted);margin-top:4px">&#128222; '+h.contact+'</div>':''}${h.farrier_date?'<div style="font-size:11px;color:var(--muted)">&#128295; Farrier: '+fmt(h.farrier_date)+'</div>':''}${h.vaccine_date?'<div style="font-size:11px;color:var(--muted)">&#128137; Vaccine: '+fmt(h.vaccine_date)+'</div>':''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:6px 12px" onclick="editHorse(${h.id})">&#9999;&#65039; Edit</button><button class="action-btn" style="background:#E8EAF0;color:var(--amber);padding:6px 12px" onclick="editOwnerPwd(${h.id},'${(h.horse_name||'').replace(/'/g,'\\'')}','${(h.owner||'').replace(/'/g,'\\'')}')">&#128273; Password</button><button class="action-btn" style="background:${h.status==='Available'?'#FEF3E2':'#E8F5EE'};color:${h.status==='Available'?'var(--amber)':'var(--green)'};padding:6px 12px" onclick="toggleHorse(${h.id},'${h.status}')">${h.status==='Available'?'&#128308; Occupy':'&#128994; Available'}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:6px 12px" onclick="delRec(&apos;horses&apos;,${h.id})">&#128465;&#65039;</button></div></div></div>`).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
   const name=document.getElementById('h-name').value.trim();
@@ -1058,7 +1059,7 @@ function renderBreeding(){
   const data=breeding.filter(r=>!q||(r.mare_name||'').toLowerCase().includes(q)||(r.owner||'').toLowerCase().includes(q));
   document.getElementById('breedList').innerHTML=data.map(r=>{
     const days=['day1','day2','day3','day4','day5','day6','day7','day8','day9'].filter(d=>r[d]).map(d=>'<div class="breed-day">&#128197; '+fmt(r[d])+'</div>').join('');
-    return '<div class="breed-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">&#128014; '+r.mare_name+'</div><div style="font-size:12px;color:var(--muted)">'+(r.owner||'')+' &middot; '+(r.mobile||'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-navy">'+(r.count||0)+' visits</span><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editBreeding('+r.id+')">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;breeding&apos;,${r.id})">&#128465;&#65039;</button></div></div><div class="breed-days">'+(days||'<span style="color:var(--muted);font-size:13px">No dates</span>')+'</div></div>';
+    return '<div class="breed-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">&#128014; '+r.mare_name+'</div><div style="font-size:12px;color:var(--muted)">'+(r.owner||'')+' &middot; '+(r.mobile||'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-navy">'+(r.count||0)+' visits</span><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editBreeding('+r.id+')">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;breeding&apos;,'+r.id+')">&#128465;&#65039;</button></div></div><div class="breed-days">'+(days||'<span style="color:var(--muted);font-size:13px">No dates</span>')+'</div></div>';
   }).join('')||'<p style="color:var(--muted);padding:12px">No records</p>';
 }
 async function addBreeding(){
@@ -1073,6 +1074,92 @@ async function addBreeding(){
   }catch(e){alert('Error: '+e.message);}
   finally{btn.disabled=false;btn.textContent='Save to Database';}
 }
+function renderBookings(){
+  const q=(document.getElementById('bookSearch').value||'').toLowerCase();
+  const bt=document.getElementById('bookTypeFilter').value;
+  const st=document.getElementById('bookStFilter').value;
+  // Bookings = income records with notes containing BOOKING REQUEST or TRAINING REQUEST
+  let data=income.filter(r=>{
+    const notes=r.notes||'';
+    const isBooking=notes.includes('BOOKING REQUEST');
+    const isTraining=notes.includes('TRAINING REQUEST');
+    if(!isBooking&&!isTraining)return false;
+    if(bt==='BOOKING'&&!isBooking)return false;
+    if(bt==='TRAINING'&&!isTraining)return false;
+    const mq=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(notes).toLowerCase().includes(q);
+    return mq&&(!st||r.status===st);
+  });
+  document.getElementById('bookCount').textContent=data.length;
+  const pages=Math.ceil(data.length/PER)||1;bookPage=Math.min(bookPage,pages);
+  const pageData=[...data].reverse().slice((bookPage-1)*PER,bookPage*PER);
+  if(!pageData.length){document.getElementById('bookTable').innerHTML='<p style="color:var(--muted);padding:12px">No booking requests found</p>';document.getElementById('bookPag').innerHTML='';return;}
+  document.getElementById('bookTable').innerHTML='<table><thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Horse</th><th>Time</th><th>Package / Notes</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+    pageData.map(r=>{
+      const notes=r.notes||'';
+      const isTraining=notes.includes('TRAINING REQUEST');
+      const type=isTraining?'<span class="badge badge-navy">&#127919; Training</span>':'<span class="badge badge-amber">&#128052; Hack Ride</span>';
+      const pkgMatch=notes.match(/Package:\s*([^|]+)/);
+      const pkg=pkgMatch?pkgMatch[1].trim():'';
+      return '<tr>'+
+        '<td>'+fmt(r.date)+'</td>'+
+        '<td>'+type+'</td>'+
+        '<td>'+(r.customer_name||'&#8212;')+'</td>'+
+        '<td>'+(r.horse_name||'&#8212;')+'</td>'+
+        '<td>'+(r.start_time||'&#8212;')+'</td>'+
+        '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,''))+'</td>'+
+        '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+        '<td style="white-space:nowrap">'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+
+          (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
+          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table>';
+  renderPag('bookPag',pages,bookPage,p=>{bookPage=p;renderBookings();});
+}
+
+function editOwnerPwd(id,horseName,ownerName){
+  const h=horses.find(x=>x.id===id);
+  const cur=h&&h.owner_pwd?h.owner_pwd:'';
+  openModal('&#128273; Owner Password — '+horseName,`
+    <div style="margin-bottom:14px;padding:12px;background:var(--sand);border-radius:10px;font-size:13px">
+      <strong>Horse:</strong> ${horseName}<br>
+      <strong>Owner:</strong> ${ownerName}<br>
+      <strong>Login via:</strong> Contact phone number + this password (optional extra security)
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="text" value="${cur}" readonly style="background:#f0f0f0;cursor:not-allowed">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="text" id="opwd-new" placeholder="Enter new password..." value="">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="text" id="opwd-confirm" placeholder="Repeat new password...">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Leave blank to remove password (login by phone only)</div>
+    <div class="btn-row">
+      <button class="btn btn-amber" onclick="saveOwnerPwd(${id})">&#128190; Save Password</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+async function saveOwnerPwd(id){
+  const np=document.getElementById('opwd-new').value.trim();
+  const cp=document.getElementById('opwd-confirm').value.trim();
+  if(np&&np!==cp){alert('Passwords do not match!');return;}
+  try{
+    await sbPatch('horses',id,{owner_pwd:np||null});
+    const h=horses.find(x=>x.id===id);if(h)h.owner_pwd=np||null;
+    closeModal();
+    alert('&#9989; Password '+(np?'updated':'removed')+' successfully!');
+  }catch(e){alert('Error: '+e.message);}
+}
+
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modalOverlay').classList.remove('hidden');}
 function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
 function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort().map(n=>'<option value="'+n+'" '+(n===sel?'selected':'')+'>'+n+'</option>').join('');}
@@ -1209,6 +1296,8 @@ function renderPag(id,total,cur,fn){
   if(e<total)h+='<span style="padding:4px">&#8230;</span><button class="page-btn" onclick="('+fn.toString()+')('+total+')">'+total+'</button>';
   el.innerHTML=h;
 }
+loadAll();
+
 
 // ══════════════════════════════════════════════════════════
 // BOOKING SCRIPT
@@ -1432,26 +1521,28 @@ async function saveOwnerHorse(i,id){
 // INIT
 // ══════════════════════════════════════════════════════════
 // Auto-restore owner session
-// Load page-specific data only after user navigates.
+const savedPhone=sessionStorage.getItem('owner_phone');
+const savedOwnerName=sessionStorage.getItem('owner_name');
+if(savedPhone){
+  // Will reload on navigate to owner page
+}
+
+// Load CC horses when booking page is shown
 const origNavigate = navigate;
 window.navigate = function(page){
   origNavigate(page);
   if(page==='booking') loadCCHorses();
-  if(page==='owner') {
-    const savedPhone=sessionStorage.getItem('owner_phone');
-    const savedOwnerName=sessionStorage.getItem('owner_name');
-    if(savedPhone){
-      (async()=>{
-        const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
-        const list=await r.json();
-        const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
-        if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
-      })();
-    }
+  if(page==='owner' && savedPhone){
+    // restore session
+    (async()=>{
+      const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
+      const list=await r.json();
+      const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
+      if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
+    })();
   }
 };
 
-setInterval(()=>{if(currentPage==='dashboard' && sessionStorage.getItem('cce_auth')==='true')loadAll();},10*60*1000);
-</script>
+setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);</script>
 </body>
 </html>
