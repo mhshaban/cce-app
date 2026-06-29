@@ -489,6 +489,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
     <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
     <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
     <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
+    <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -581,6 +582,75 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
       </div>
       <div class="horse-grid" id="horsesGrid"></div>
     </div>
+
+    <div class="section" id="page-notifications">
+      <!-- Browser Push Card -->
+      <div class="card">
+        <div class="card-title">&#128242; Browser Push Notifications</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
+          <div id="pushStatus" style="font-size:13px;color:var(--muted)">&#9679; Status: Checking...</div>
+          <button class="btn btn-amber" id="pushEnableBtn" style="width:auto;padding:8px 20px" onclick="enablePush()">&#128276; Enable Notifications</button>
+          <button class="btn" id="pushTestBtn" style="width:auto;padding:8px 20px;background:#f0f0f0;color:var(--navy)" onclick="testPush()">&#128200; Test Notification</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">&#9432; يجب السماح بالإشعارات في المتصفح. تعمل حتى لو التطبيق في الخلفية.</div>
+      </div>
+
+      <!-- WhatsApp Settings Card -->
+      <div class="card">
+        <div class="card-title">&#128242; WhatsApp Notifications (CallMeBot)</div>
+        <div style="background:var(--sand);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px">
+          <strong>خطوات تفعيل CallMeBot:</strong><br>
+          1. أرسل <code style="background:#fff;padding:2px 6px;border-radius:4px">I allow callmebot to send me messages</code> إلى <strong>+34 644 82 98 80</strong> على WhatsApp<br>
+          2. ستصلك رسالة فيها <strong>API Key</strong><br>
+          3. أدخل رقمك والـ API Key أدناه
+        </div>
+        <div id="waNumbers" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+        <button class="btn btn-green" style="width:auto;padding:8px 20px" onclick="addWaNumber()">&#10133; Add WhatsApp Number</button>
+        <button class="btn btn-amber" style="width:auto;padding:8px 20px;margin-left:8px" onclick="testWhatsApp()">&#128200; Test WhatsApp</button>
+      </div>
+
+      <!-- Notification Schedule Card -->
+      <div class="card">
+        <div class="card-title">&#9201; جدول الإشعارات التلقائية</div>
+        <div class="form-grid" style="margin-top:10px">
+          <div class="form-group">
+            <label>إرسال يومي في الساعة</label>
+            <input type="time" id="notifTime" value="08:00">
+          </div>
+          <div class="form-group">
+            <label>إرسال إشعارات الحجوزات</label>
+            <select id="notifBookings"><option value="1">فوري عند الحجز</option><option value="0">يدوي فقط</option></select>
+          </div>
+        </div>
+        <div style="margin:14px 0;font-size:13px;font-weight:700;color:var(--navy)">أنواع الإشعارات المفعّلة:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-farrier" checked> &#128295; Farrier (تجاوز 30 يوم)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-deworm" checked> &#128027; Deworm (تجاوز 90 يوم)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-vaccine" checked> &#128137; Vaccine (تجاوز 150 يوم)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-teeth" checked> &#129463; Teeth (تجاوز 180 يوم)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-overdue" checked> &#128176; Overdue Payments
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="notif-bookings" checked> &#128203; New Bookings
+          </label>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-green" style="width:auto;padding:8px 20px" onclick="saveNotifSettings()">&#128190; Save Settings</button>
+          <button class="btn btn-amber" style="width:auto;padding:8px 20px" onclick="sendAllNotifications()">&#128276; Send Now</button>
+        </div>
+        <div id="notifLog" style="margin-top:12px;font-size:12px;color:var(--muted);max-height:120px;overflow-y:auto"></div>
+      </div>
+    </div>
+
     <div class="section" id="page-bookings">
       <div class="search-bar">
         <input type="text" id="bookSearch" placeholder="&#128269; Search name or horse..." oninput="renderBookings()">
@@ -864,7 +934,7 @@ async function loadAll(){
     setMsg('Done!',breeding.length+' breeding records loaded');
 
     document.getElementById('syncStatus').textContent='\u2713 '+new Date().toLocaleTimeString('en-GB');
-    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();
+    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();initNotifications();checkScheduledNotifications();
     ov.style.display='none';
 
   }catch(e){
@@ -881,7 +951,7 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
-  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings'};
+  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings',notifications:'Notifications'};
   document.getElementById('headerSub').textContent=L[id]||id;
 }
 function buildDash(){
@@ -974,6 +1044,11 @@ async function addIncome(){
   const btn=document.getElementById('incSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
     await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:document.getElementById('inc-activity').value,qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});
+    // Notify if booking
+    const notes=document.getElementById('inc-notes').value||'';
+    if(notes.includes('BOOKING REQUEST')||notes.includes('TRAINING REQUEST')){
+      notifyNewBooking(cust,document.getElementById('inc-horse').value||'?',document.getElementById('inc-start').value||date);
+    }
     ['inc-date','inc-due','inc-customer','inc-amount','inc-notes','inc-start','inc-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';
     await loadAll();
@@ -1734,6 +1809,277 @@ window.navigate = function(page){
   }
 };
 
-setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);</script>
+setInterval(()=>{if(currentPage==='dashboard')loadAll();},10*60*1000);
+// ══════════════════════════════════════════════════════════
+// NOTIFICATIONS SYSTEM
+// ══════════════════════════════════════════════════════════
+
+// ── Storage helpers ──
+function notifGet(k){try{return JSON.parse(localStorage.getItem('cce_notif_'+k));}catch{return null;}}
+function notifSet(k,v){localStorage.setItem('cce_notif_'+k,JSON.stringify(v));}
+
+// ── Init ──
+function initNotifications(){
+  // Load saved settings
+  const time=notifGet('time')||'08:00';
+  const el=document.getElementById('notifTime');
+  if(el) el.value=time;
+
+  const checks=['farrier','deworm','vaccine','teeth','overdue','bookings'];
+  checks.forEach(k=>{
+    const saved=notifGet('check_'+k);
+    const el=document.getElementById('notif-'+k);
+    if(el&&saved!==null) el.checked=saved;
+  });
+
+  // Render WhatsApp numbers
+  renderWaNumbers();
+
+  // Check browser push status
+  checkPushStatus();
+}
+
+// ── Browser Push ──
+function checkPushStatus(){
+  const el=document.getElementById('pushStatus');
+  const btn=document.getElementById('pushEnableBtn');
+  if(!('Notification' in window)){
+    if(el) el.innerHTML='&#10060; Browser Push غير مدعوم في هذا المتصفح';
+    if(btn) btn.disabled=true;
+    return;
+  }
+  if(Notification.permission==='granted'){
+    if(el) el.innerHTML='&#9989; مفعّل — الإشعارات تعمل';
+    if(btn){btn.textContent='&#128276; Enabled';btn.style.background='var(--green)';}
+  } else if(Notification.permission==='denied'){
+    if(el) el.innerHTML='&#10060; محظور — يرجى السماح من إعدادات المتصفح';
+    if(btn) btn.disabled=true;
+  } else {
+    if(el) el.innerHTML='&#9675; في انتظار الإذن';
+  }
+}
+
+async function enablePush(){
+  if(!('Notification' in window)){alert('Browser Push غير مدعوم');return;}
+  const perm=await Notification.requestPermission();
+  checkPushStatus();
+  if(perm==='granted') sendBrowserPush('CCE Notifications','✅ تم تفعيل الإشعارات بنجاح!','🐴');
+}
+
+function sendBrowserPush(title, body, icon){
+  if(Notification.permission!=='granted') return;
+  try{
+    new Notification(title,{body,icon:icon||'🐴',badge:'🐴',tag:'cce-'+Date.now()});
+  }catch(e){console.log('Push error:',e);}
+}
+
+function testPush(){
+  if(Notification.permission!=='granted'){alert('يجب تفعيل الإشعارات أولاً');return;}
+  sendBrowserPush('CCE — Test Notification','🐴 هذا اختبار للإشعارات — كل شيء يعمل!');
+  logNotif('✅ تم إرسال Browser Push تجريبي');
+}
+
+// ── WhatsApp (CallMeBot) ──
+function renderWaNumbers(){
+  const numbers=notifGet('wa_numbers')||[];
+  const container=document.getElementById('waNumbers');
+  if(!container) return;
+  if(!numbers.length){
+    container.innerHTML='<div style="font-size:13px;color:var(--muted)">لا توجد أرقام مضافة بعد</div>';
+    return;
+  }
+  container.innerHTML=numbers.map((n,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;background:var(--sand);padding:10px 14px;border-radius:10px">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">&#128242; ${n.label||'رقم '+(i+1)}</div>
+        <div style="font-size:12px;color:var(--muted)">${n.phone} · API Key: ${n.apiKey?'••••'+n.apiKey.slice(-4):'غير محدد'}</div>
+      </div>
+      <button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="removeWaNumber(${i})">&#128465;&#65039;</button>
+    </div>`).join('');
+}
+
+function addWaNumber(){
+  openModal('➕ Add WhatsApp Number',`
+    <div style="font-size:13px;background:var(--sand);padding:12px;border-radius:10px;margin-bottom:14px">
+      أرسل <code>I allow callmebot to send me messages</code> إلى <strong>+34 644 82 98 80</strong> على WhatsApp أولاً للحصول على API Key
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="form-group"><label>الاسم / الوصف</label><input type="text" id="wa-label" placeholder="مثال: Admin Mohamed"></div>
+      <div class="form-group"><label>رقم WhatsApp (مع رمز الدولة)</label><input type="tel" id="wa-phone" placeholder="+97333067026"></div>
+      <div class="form-group"><label>API Key (من CallMeBot)</label><input type="text" id="wa-key" placeholder="123456"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveWaNumber()">&#128190; Save</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+function saveWaNumber(){
+  const label=document.getElementById('wa-label').value.trim();
+  const phone=document.getElementById('wa-phone').value.trim();
+  const apiKey=document.getElementById('wa-key').value.trim();
+  if(!phone||!apiKey){alert('رقم الهاتف والـ API Key مطلوبان');return;}
+  const numbers=notifGet('wa_numbers')||[];
+  numbers.push({label,phone,apiKey});
+  notifSet('wa_numbers',numbers);
+  closeModal();
+  renderWaNumbers();
+  logNotif('✅ تم إضافة رقم WhatsApp: '+phone);
+}
+
+function removeWaNumber(i){
+  const numbers=notifGet('wa_numbers')||[];
+  numbers.splice(i,1);
+  notifSet('wa_numbers',numbers);
+  renderWaNumbers();
+}
+
+async function sendWhatsApp(phone, apiKey, message){
+  const url=`https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${apiKey}`;
+  try{
+    await fetch(url,{mode:'no-cors'});
+    return true;
+  }catch(e){
+    console.log('WhatsApp error:',e);
+    return false;
+  }
+}
+
+async function testWhatsApp(){
+  const numbers=notifGet('wa_numbers')||[];
+  if(!numbers.length){alert('أضف رقم WhatsApp أولاً');return;}
+  const n=numbers[0];
+  const msg='🐴 *CCE Equestrian Center*\nTest notification — كل شيء يعمل! ✅\n'+new Date().toLocaleString('en-GB');
+  await sendWhatsApp(n.phone,n.apiKey,msg);
+  logNotif('📱 تم إرسال WhatsApp تجريبي إلى '+n.phone);
+  alert('تم الإرسال! تحقق من WhatsApp (قد يستغرق 30 ثانية)');
+}
+
+// ── Save Settings ──
+function saveNotifSettings(){
+  const time=document.getElementById('notifTime').value;
+  notifSet('time',time);
+  ['farrier','deworm','vaccine','teeth','overdue','bookings'].forEach(k=>{
+    const el=document.getElementById('notif-'+k);
+    if(el) notifSet('check_'+k,el.checked);
+  });
+  notifSet('bookings_instant',document.getElementById('notifBookings').value);
+  logNotif('✅ تم حفظ الإعدادات — الإشعارات اليومية الساعة '+time);
+  alert('✅ تم حفظ الإعدادات!');
+}
+
+// ── Build Notifications Messages ──
+function buildNotifMessages(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  function daysSince(d){if(!d)return null;const dt=new Date(d);dt.setHours(0,0,0,0);return Math.floor((today-dt)/86400000);}
+  const msgs=[];
+
+  // Health alerts
+  if(notifGet('check_farrier')!==false){
+    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+      const d=daysSince(h.farrier_date);
+      if(d!==null&&d>30) msgs.push('🔧 Farrier: '+h.horse_name+' ('+d+' days)');
+      if(!h.farrier_date) msgs.push('⚠️ No farrier date: '+h.horse_name);
+    });
+  }
+  if(notifGet('check_deworm')!==false){
+    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+      const d=daysSince(h.deworm_date);
+      if(d!==null&&d>90) msgs.push('🐛 Deworm: '+h.horse_name+' ('+d+' days)');
+    });
+  }
+  if(notifGet('check_vaccine')!==false){
+    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+      const d=daysSince(h.vaccine_date);
+      if(d!==null&&d>150) msgs.push('💉 Vaccine: '+h.horse_name+' ('+d+' days)');
+    });
+  }
+  if(notifGet('check_teeth')!==false){
+    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+      const d=daysSince(h.teeth_date);
+      if(d!==null&&d>180) msgs.push('🦷 Teeth: '+h.horse_name+' ('+d+' days)');
+    });
+  }
+
+  // Overdue payments
+  if(notifGet('check_overdue')!==false){
+    const overdueExp=expenses.filter(r=>r.status==='Pending'&&r.due_date);
+    const overdueInc=income.filter(r=>r.status==='Pending'&&r.due_date);
+    if(overdueExp.length) msgs.push('💰 Overdue expenses: '+overdueExp.length+' items');
+    if(overdueInc.length) msgs.push('💰 Overdue income: '+overdueInc.length+' items');
+  }
+
+  // Pending bookings
+  if(notifGet('check_bookings')!==false){
+    const bookings=income.filter(r=>{const n=r.notes||'';return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';});
+    if(bookings.length) msgs.push('📋 Pending bookings: '+bookings.length);
+  }
+
+  return msgs;
+}
+
+// ── Send All Notifications ──
+async function sendAllNotifications(){
+  const msgs=buildNotifMessages();
+  if(!msgs.length){
+    logNotif('✅ لا توجد تنبيهات حالياً — كل شيء على ما يرام!');
+    sendBrowserPush('CCE — All Clear ✅','لا توجد مواعيد متأخرة أو حجوزات معلقة 🐴');
+    return;
+  }
+
+  const summary='🐴 *CCE Daily Alert*\n'+new Date().toLocaleDateString('en-GB')+'\n\n'+msgs.join('\n');
+
+  // Browser Push
+  if(Notification.permission==='granted'){
+    msgs.slice(0,3).forEach((m,i)=>setTimeout(()=>sendBrowserPush('CCE Alert',m),i*500));
+    if(msgs.length>3) setTimeout(()=>sendBrowserPush('CCE Alert','...و '+(msgs.length-3)+' تنبيهات أخرى'),1500);
+  }
+
+  // WhatsApp
+  const numbers=notifGet('wa_numbers')||[];
+  for(const n of numbers){
+    await sendWhatsApp(n.phone,n.apiKey,summary);
+    logNotif('📱 WhatsApp → '+n.phone);
+  }
+
+  logNotif('🔔 تم إرسال '+msgs.length+' تنبيه — '+new Date().toLocaleTimeString('en-GB'));
+  notifSet('last_sent',new Date().toISOString());
+}
+
+// ── Auto-schedule: check if daily notification time has passed ──
+function checkScheduledNotifications(){
+  const savedTime=notifGet('time');
+  if(!savedTime) return;
+  const lastSent=notifGet('last_sent');
+  const now=new Date();
+  const today=now.toDateString();
+  if(lastSent&&new Date(lastSent).toDateString()===today) return; // already sent today
+
+  const [h,m]=savedTime.split(':').map(Number);
+  const scheduled=new Date(); scheduled.setHours(h,m,0,0);
+  if(now>=scheduled){
+    sendAllNotifications();
+  }
+}
+
+// ── Instant notification on new booking ──
+function notifyNewBooking(customerName, horseName, time){
+  if(notifGet('bookings_instant')==='0') return;
+  const msg='📋 *New Booking!*\n'+customerName+' — '+horseName+' @ '+time;
+  sendBrowserPush('CCE — New Booking! 📋',customerName+' — '+horseName+' @ '+time);
+  const numbers=notifGet('wa_numbers')||[];
+  numbers.forEach(n=>sendWhatsApp(n.phone,n.apiKey,msg));
+  logNotif('📋 Booking notification sent: '+customerName);
+}
+
+// ── Log ──
+function logNotif(msg){
+  const el=document.getElementById('notifLog');
+  if(!el) return;
+  const time=new Date().toLocaleTimeString('en-GB');
+  el.innerHTML='<div style="padding:3px 0;border-bottom:1px solid var(--border)">'+time+' — '+msg+'</div>'+el.innerHTML;
+}
+
+</script>
 </body>
 </html>
