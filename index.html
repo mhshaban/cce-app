@@ -81,6 +81,20 @@ tr:hover td{background:#fafaf8}
 .page-btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
 .page-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 .overdue-banner{background:linear-gradient(135deg,#C0392B,#96281B);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.alert-bell{position:relative;cursor:pointer;font-size:22px;flex-shrink:0}
+.alert-bell-badge{position:absolute;top:-6px;right:-6px;background:#C0392B;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.alerts-panel{position:fixed;top:64px;right:12px;width:320px;max-width:95vw;background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:999;overflow:hidden;display:none}
+.alerts-panel.open{display:block}
+.alerts-panel-header{background:var(--navy);color:#fff;padding:12px 16px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.alert-item{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.alert-item:last-child{border-bottom:none}
+.alert-item.alert-red{border-left:3px solid var(--red)}
+.alert-item.alert-amber{border-left:3px solid var(--amber)}
+.alert-item.alert-blue{border-left:3px solid #3B82F6}
+.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.alert-text{flex:1}
+.alert-title{font-weight:700;color:var(--navy);margin-bottom:2px}
+.alert-desc{color:var(--muted);font-size:12px}
 .money-green{color:var(--green);font-weight:700}.money-red{color:var(--red);font-weight:700}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .hidden{display:none!important}
@@ -280,7 +294,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
     <button class="sync-btn hidden" id="logoutAdminBtn" style="background:#C0392B" onclick="logoutAdmin()">&#128275; Logout</button>
     <button class="sync-btn hidden" id="logoutOwnerBtn" style="background:#C0392B" onclick="logoutOwner()">&#128275; Logout</button>
     <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)">&#9888;&#65039; <span id="overdueCount">0</span></span>
+    <div class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()">&#128276;<div class="alert-bell-badge" id="alertBellCount">0</div></div>
   </div>
+</div>
+
+<!-- ALERTS PANEL -->
+<div class="alerts-panel" id="alertsPanel">
+  <div class="alerts-panel-header">
+    <span>&#128276; Alerts</span>
+    <span style="cursor:pointer;font-size:18px" onclick="toggleAlertsPanel()">&#10005;</span>
+  </div>
+  <div id="alertsList" style="max-height:60vh;overflow-y:auto"></div>
 </div>
 
 <!-- ════════════════════════════════ HOME PAGE ════════════════════════════ -->
@@ -544,7 +568,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
             <div class="form-group"><label>Color</label><input type="text" id="h-color"></div>
             <div class="form-group"><label>Breed</label><input type="text" id="h-breed"></div>
             <div class="form-group"><label>Livery BD/month</label><input type="number" step="0.001" id="h-livery" value="0"></div>
-            <div class="form-group"><label>Status</label><select id="h-status"><option>Available</option><option>Occupied</option><option>Away</option></select></div>
+            <div class="form-group"><label>Status</label><select id="h-status"><option>Available</option><option>Out</option><option>Sold</option><option>Dead</option></select></div>
             <div class="form-group"><label>Start Date</label><input type="date" id="h-start"></div>
           </div>
           <button class="btn btn-amber" id="horseSaveBtn" onclick="addHorse()">&#128052; Save to Database</button>
@@ -552,7 +576,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
       </div>
       <div class="search-bar">
         <input type="text" id="horseSearch" placeholder="&#128269; Search..." oninput="renderHorses()">
-        <select id="horseStFilter" onchange="renderHorses()"><option value="">All Status</option><option>Available</option><option>Occupied</option><option>Away</option></select>
+        <select id="horseStFilter" onchange="renderHorses()"><option value="">All Status</option><option>Available</option><option>Out</option><option>Sold</option><option>Dead</option></select>
       </div>
       <div class="horse-grid" id="horsesGrid"></div>
     </div>
@@ -626,7 +650,7 @@ function navigate(page) {
   const overdueBadge  = document.getElementById('overdueBadge');
 
   // Hide all first
-  [backBtn,syncStatus,refreshBtn,backupBtn,logoutAdmin,logoutOwner,overdueBadge].forEach(el=>el&&el.classList.add('hidden'));
+  [backBtn,syncStatus,refreshBtn,backupBtn,logoutAdmin,logoutOwner,overdueBadge,document.getElementById('alertBell')].forEach(el=>el&&el.classList.add('hidden'));
 
   const labels = {home:'مركز تعليم ركوب الخيل',booking:'Book a Horse Ride',training:'Training Packages',owner:'Owner Portal',admin:'Staff Login',dashboard:'Dashboard'};
   document.getElementById('headerSub').textContent = labels[page]||page;
@@ -639,6 +663,7 @@ function navigate(page) {
     backupBtn.classList.remove('hidden');
     logoutAdmin.classList.remove('hidden');
     overdueBadge.classList.remove('hidden');
+    document.getElementById('alertBell').classList.remove('hidden');
   }
   if(page==='owner' && sessionStorage.getItem('owner_phone')) {
     logoutOwner.classList.remove('hidden');
@@ -741,8 +766,8 @@ async function downloadBackup(){
       'Livery BD':r.livery_bd, 'AC Livery BD':r.ac_livery_bd,
       Payment:r.payment, Microchip:r.microchip, Passport:r.passport,
       'Birth Date':r.birth_date, Sex:r.sex, Color:r.color, Breed:r.breed,
-      'Farrier Date':r.farrier_date, 'Worm Date':r.worm_date,
-      'Vaccine Date':r.vaccine_date, Medicant:r.medicant, 'Med Date':r.med_date,
+      'Farrier Name':r.farrier_name, 'Farrier Date':r.farrier_date, 'Worm Date':r.worm_date,
+      'Vaccine Dr':r.vaccine_dr, 'Vaccine Date':r.vaccine_date, Medicant:r.medicant, 'Med Date':r.med_date,
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(horData), 'Horses');
 
@@ -838,7 +863,7 @@ async function loadAll(){
     setMsg('Done!',breeding.length+' breeding records loaded');
 
     document.getElementById('syncStatus').textContent='\u2713 '+new Date().toLocaleTimeString('en-GB');
-    buildDash();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();
+    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();
     ov.style.display='none';
 
   }catch(e){
@@ -1037,11 +1062,8 @@ function renderHorses(){
   document.getElementById('horsesGrid').innerHTML=data.map(h=>{
     const hid=h.id;
     const st=h.status||'';
-    const stBadge=st==='Available'?'badge-green':st==='Occupied'?'badge-red':'badge-amber';
-    const toggleBg=st==='Available'?'#FEF3E2':'#E8F5EE';
-    const toggleColor=st==='Available'?'var(--amber)':'var(--green)';
-    const toggleLabel=st==='Available'?'&#128308; Occupy':'&#128994; Available';
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${h.horse_name}</div><div class="horse-meta">${h.owner||'&#8212;'} &middot; #${h.stable_no||'&#8212;'}</div><span class="badge ${stBadge}" style="margin-top:3px;display:inline-block">${st||'&#8212;'}</span></div><div style="display:flex;gap:5px;flex-shrink:0;align-items:center"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Owner Password" onclick="editOwnerPwd(${hid})">&#128273;</button><button class="action-btn" style="background:${toggleBg};color:${toggleColor};padding:8px 10px;font-size:15px" title="${st==='Available'?'Mark Occupied':'Mark Available'}" onclick="toggleHorse(${hid},'${st}')">${st==='Available'?'&#128308;':'&#128994;'}</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div>`;
+    const stBadge=st==='Available'?'badge-green':st==='Out'?'badge-amber':st==='Sold'?'badge-navy':'badge-red';
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${h.horse_name}</div><div class="horse-meta">${h.owner||'&#8212;'} &middot; #${h.stable_no||'&#8212;'}</div><span class="badge ${stBadge}" style="margin-top:3px;display:inline-block;cursor:pointer" title="Click to change status" onclick="toggleHorse(${hid},'${st}')">${st||'&#8212;'}</span></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Owner Password" onclick="editOwnerPwd(${hid})">&#128273;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
@@ -1058,16 +1080,123 @@ async function addHorse(){
   finally{btn.disabled=false;btn.textContent='Save to Database';}
 }
 async function toggleHorse(id,cur){
-  const ns=cur==='Available'?'Occupied':'Available';
+  const opts=['Available','Out','Sold','Dead'];
+  const idx=opts.indexOf(cur);
+  const ns=opts[(idx+1)%opts.length];
   if(!confirm('Change status to "'+ns+'"?'))return;
   await sbPatch('horses',id,{status:ns});await loadAll();
 }
+function buildAlerts(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const alerts=[];
+
+  // 1. Pending bookings (income with BOOKING REQUEST or TRAINING REQUEST in notes)
+  const pendingBooks=income.filter(r=>{
+    const n=r.notes||'';
+    return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
+  });
+  if(pendingBooks.length){
+    alerts.push({
+      type:'blue',icon:'&#128203;',
+      title:`${pendingBooks.length} Pending Booking${pendingBooks.length>1?'s':''}`,
+      desc:pendingBooks.map(r=>(r.customer_name||'Unknown')+' — '+(r.horse_name||'?')+' ('+(r.start_time||fmt(r.date))+')').join('\n'),
+      action:()=>showDashPage('bookings',null)
+    });
+  }
+
+  // 2. Horse health alerts
+  horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+    const name=h.horse_name||'Unknown';
+
+    // Farrier > 30 days
+    if(h.farrier_date){
+      const d=new Date(h.farrier_date); d.setHours(0,0,0,0);
+      const days=Math.floor((today-d)/(1000*60*60*24));
+      if(days>30) alerts.push({
+        type:'red',icon:'&#128295;',
+        title:`Farrier overdue — ${name}`,
+        desc:`Last: ${fmt(h.farrier_date)} (${days} days ago)${h.farrier_name?' · '+h.farrier_name:''}`,
+        action:()=>{showDashPage('horses',null);}
+      });
+    }
+
+    // Worm > 90 days (3 months)
+    if(h.worm_date){
+      const d=new Date(h.worm_date); d.setHours(0,0,0,0);
+      const days=Math.floor((today-d)/(1000*60*60*24));
+      if(days>90) alerts.push({
+        type:'amber',icon:'&#128027;',
+        title:`Worming overdue — ${name}`,
+        desc:`Last: ${fmt(h.worm_date)} (${days} days ago)`,
+        action:()=>{showDashPage('horses',null);}
+      });
+    }
+
+    // Vaccine > 150 days (5 months)
+    if(h.vaccine_date){
+      const d=new Date(h.vaccine_date); d.setHours(0,0,0,0);
+      const days=Math.floor((today-d)/(1000*60*60*24));
+      if(days>150) alerts.push({
+        type:'red',icon:'&#128137;',
+        title:`Vaccine overdue — ${name}`,
+        desc:`Last: ${fmt(h.vaccine_date)} (${days} days ago)${h.vaccine_dr?' · Dr. '+h.vaccine_dr:''}`,
+        action:()=>{showDashPage('horses',null);}
+      });
+    }
+  });
+
+  // Update bell badge
+  const bell=document.getElementById('alertBell');
+  const count=document.getElementById('alertBellCount');
+  const list=document.getElementById('alertsList');
+  count.textContent=alerts.length;
+  bell.style.color=alerts.length>0?'var(--red)':'var(--muted)';
+
+  if(!alerts.length){
+    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">&#10003; All clear — no alerts!</div>';
+    return;
+  }
+
+  list.innerHTML=alerts.map((a,i)=>`
+    <div class="alert-item alert-${a.type}" style="cursor:pointer" onclick="handleAlertClick(${i})">
+      <div class="alert-icon">${a.icon}</div>
+      <div class="alert-text">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc" style="white-space:pre-line">${a.desc}</div>
+      </div>
+    </div>`).join('');
+
+  // Store actions for click handler
+  window._alertActions=alerts.map(a=>a.action);
+}
+
+function handleAlertClick(i){
+  toggleAlertsPanel();
+  if(window._alertActions&&window._alertActions[i]) window._alertActions[i]();
+}
+
+function toggleAlertsPanel(){
+  const panel=document.getElementById('alertsPanel');
+  panel.classList.toggle('open');
+  // Close when clicking outside
+  if(panel.classList.contains('open')){
+    setTimeout(()=>{
+      document.addEventListener('click',function handler(e){
+        if(!panel.contains(e.target)&&e.target.id!=='alertBell'){
+          panel.classList.remove('open');
+          document.removeEventListener('click',handler);
+        }
+      });
+    },100);
+  }
+}
+
 function renderBreeding(){
   const q=(document.getElementById('breedSearch').value||'').toLowerCase();
   const data=breeding.filter(r=>!q||(r.mare_name||'').toLowerCase().includes(q)||(r.owner||'').toLowerCase().includes(q));
   document.getElementById('breedList').innerHTML=data.map(r=>{
     const days=['day1','day2','day3','day4','day5','day6','day7','day8','day9'].filter(d=>r[d]).map(d=>'<div class="breed-day">&#128197; '+fmt(r[d])+'</div>').join('');
-    return '<div class="breed-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">&#128014; '+r.mare_name+'</div><div style="font-size:12px;color:var(--muted)">'+(r.owner||'')+' &middot; '+(r.mobile||'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-navy">'+(r.count||0)+' visits</span><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editBreeding('+r.id+')">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;breeding&apos;,'+r.id+')">&#128465;&#65039;</button></div></div><div class="breed-days">'+(days||'<span style="color:var(--muted);font-size:13px">No dates</span>')+'</div></div>';
+    return '<div class="breed-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:700;font-size:15px">&#128014; '+r.mare_name+'</div><div style="font-size:12px;color:var(--muted)">'+(r.owner||'')+' &middot; '+((r.mobile||'').toString().replace(/\.0$/,''))+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-navy">'+(r.count||0)+' visits</span><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editBreeding('+r.id+')">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;breeding&apos;,'+r.id+')">&#128465;&#65039;</button></div></div><div class="breed-days">'+(days||'<span style="color:var(--muted);font-size:13px">No dates</span>')+'</div></div>';
   }).join('')||'<p style="color:var(--muted);padding:12px">No records</p>';
 }
 async function addBreeding(){
@@ -1235,20 +1364,22 @@ function editHorse(id){
     <div class="form-group"><label>AC Livery BD</label><input type="number" step="0.001" id="eh-aclivery" value="${h.ac_livery_bd||0}"></div>
     <div class="form-group"><label>Livery Type</label><input type="text" id="eh-lvtype" value="${h.livery_type||''}"></div>
     <div class="form-group"><label>Payment</label><input type="text" id="eh-payment" value="${h.payment||''}"></div>
-    <div class="form-group"><label>Status</label><select id="eh-status">${['Available','Occupied','Away'].map(s=>'<option '+(h.status===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Status</label><select id="eh-status">${['Available','Out','Sold','Dead'].map(s=>'<option '+(h.status===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
     <div class="form-group"><label>Start Date</label><input type="date" id="eh-start" value="${h.start_date||''}"></div>
     <div class="form-group"><label>Birth Date</label><input type="date" id="eh-birth" value="${h.birth_date||''}"></div>
     <div class="form-group"><label>Microchip</label><input type="text" id="eh-micro" value="${h.microchip||''}"></div>
     <div class="form-group"><label>Passport</label><input type="text" id="eh-passport" value="${h.passport||''}"></div>
+    <div class="form-group"><label>Farrier Name</label><input type="text" id="eh-farrier-name" value="${h.farrier_name||''}"></div>
     <div class="form-group"><label>Farrier Date</label><input type="date" id="eh-farrier" value="${h.farrier_date||''}"></div>
     <div class="form-group"><label>Worm Date</label><input type="date" id="eh-worm" value="${h.worm_date||''}"></div>
+    <div class="form-group"><label>Vaccine Dr</label><input type="text" id="eh-vaccine-dr" value="${h.vaccine_dr||''}"></div>
     <div class="form-group"><label>Vaccine Date</label><input type="date" id="eh-vaccine" value="${h.vaccine_date||''}"></div>
     <div class="form-group"><label>Medicant</label><input type="text" id="eh-medicant" value="${h.medicant||''}"></div>
     <div class="form-group"><label>Med Date</label><input type="date" id="eh-meddate" value="${h.med_date||''}"></div>
   </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveHorse(id){
-  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_date:document.getElementById('eh-farrier').value||null,worm_date:document.getElementById('eh-worm').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,worm_date:document.getElementById('eh-worm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editBreeding(id){
   const r=breeding.find(x=>x.id===id);if(!r)return;
@@ -1458,7 +1589,9 @@ function renderOwnerHorses(){
         <div class="info-item"><div class="info-label">Birth Date</div><div class="info-value">${fmt(h.birth_date)}</div></div>
         <div class="info-item"><div class="info-label">Microchip</div><div class="info-value">${h.microchip||'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Passport</div><div class="info-value">${h.passport||'&#8212;'}</div></div>
+        <div class="info-item"><div class="info-label">Farrier</div><div class="info-value">${h.farrier_name||'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Farrier Date</div><div class="info-value">${fmt(h.farrier_date)}</div></div>
+        <div class="info-item"><div class="info-label">Vaccine Dr</div><div class="info-value">${h.vaccine_dr||'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Vaccine Date</div><div class="info-value">${fmt(h.vaccine_date)}</div></div>
         <div class="info-item"><div class="info-label">Worm Date</div><div class="info-value">${fmt(h.worm_date)}</div></div>
         <div class="info-item"><div class="info-label">Medicant</div><div class="info-value">${h.medicant||'&#8212;'}</div></div>
