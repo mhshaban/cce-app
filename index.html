@@ -76,6 +76,8 @@ tr:hover td{background:#fafaf8}
 .breed-days{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .breed-day{background:var(--sand);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
 .action-btn{border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;white-space:nowrap}
+.pin-btn{border:none;border-radius:10px;padding:14px;font-size:20px;font-weight:700;cursor:pointer;background:var(--sand);color:var(--navy);transition:all .15s;font-family:inherit}
+.pin-btn:active{transform:scale(.92);background:var(--amber);color:#fff}
 .action-btn:hover{opacity:.85}
 .pagination{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .page-btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
@@ -328,6 +330,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
         <div class="hc-title">Horse Owner Portal</div>
         <div class="hc-desc">بوابة ملاك الخيول — اطلع على بيانات حصانك وحدّثها</div>
         <div class="hc-btn">Owner Login</div>
+      </div>
+      <div class="home-card" onclick="navigate('instructor')" style="border:2px solid var(--green)">
+        <div class="hc-icon">&#127919;</div>
+        <div class="hc-title">Instructor Portal</div>
+        <div class="hc-desc">بوابة المدربين — جدول الحصص والإحصائيات</div>
+        <div class="hc-btn" style="background:var(--green)">Instructor Login</div>
       </div>
       <div class="home-card" onclick="navigate('admin')" style="border:2px solid #1A2744">
         <div class="hc-icon">&#128202;</div>
@@ -749,6 +757,9 @@ function navigate(page) {
 
   if(page==='home') return;
   if(page!=='dashboard') backBtn.classList.remove('hidden');
+  if(page==='instructor') {
+    loadInstructorNames();
+  }
   if(page==='dashboard') {
     syncStatus.classList.remove('hidden');
     refreshBtn.classList.remove('hidden');
@@ -2339,6 +2350,250 @@ async function delSchedule(id){
   await sbDel('schedule',id);
   closeModal();await loadAll();
 }
+
+
+// ══════════════════════════════════════════════════════════
+// INSTRUCTOR PORTAL
+// ══════════════════════════════════════════════════════════
+
+let currentInstructor = null;
+let instrView = 'day';
+let instrDate = new Date(); instrDate.setHours(0,0,0,0);
+let instrPin = '';
+let instrList = [];
+
+const MONTHS_AR=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_AR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── Load instructor names into select ──
+async function loadInstructorNames(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/instructors?select=id,name,active&active=eq.true&order=name.asc`,{headers:HDR});
+    instrList=await r.json();
+    const sel=document.getElementById('instrName');
+    if(!sel) return;
+    sel.innerHTML='<option value="">— Select your name —</option>'+
+      instrList.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+    // Restore session
+    const saved=sessionStorage.getItem('cce_instr');
+    if(saved){
+      currentInstructor=JSON.parse(saved);
+      showInstrPortal();
+    }
+  }catch(e){console.log('instr load error',e);}
+}
+
+// ── PIN pad ──
+function pinTap(n){
+  if(!n) return;
+  if(instrPin.length>=4) return;
+  instrPin+=n;
+  updatePinDisplay();
+  if(instrPin.length===4) setTimeout(doInstrLogin,200);
+}
+function pinBack(){
+  instrPin=instrPin.slice(0,-1);
+  updatePinDisplay();
+}
+function updatePinDisplay(){
+  const el=document.getElementById('pinDisplay');
+  if(el) el.textContent='●'.repeat(instrPin.length)+'○'.repeat(4-instrPin.length);
+}
+
+// ── Login ──
+async function doInstrLogin(){
+  const selId=document.getElementById('instrName').value;
+  if(!selId){alert('الرجاء اختيار اسمك');return;}
+  if(instrPin.length!==4){alert('الرجاء إدخال PIN من 4 أرقام');return;}
+  const errEl=document.getElementById('instrErr');
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/instructors?id=eq.${selId}&pin=eq.${instrPin}&active=eq.true`,{headers:HDR});
+    const list=await r.json();
+    if(!list||!list.length){
+      if(errEl) errEl.style.display='block';
+      instrPin=''; updatePinDisplay(); return;
+    }
+    currentInstructor=list[0];
+    sessionStorage.setItem('cce_instr',JSON.stringify(currentInstructor));
+    instrPin=''; updatePinDisplay();
+    if(errEl) errEl.style.display='none';
+    showInstrPortal();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function showInstrPortal(){
+  document.getElementById('instrLoginWrap').style.display='none';
+  document.getElementById('instrPortal').style.display='block';
+  document.getElementById('instrLogoutBtn').classList.remove('hidden');
+  document.getElementById('instrHeaderSub').textContent=currentInstructor.name+' — Instructor';
+  document.getElementById('instrWelcome').textContent='Welcome, '+currentInstructor.name+'! 👋';
+  instrDate=new Date(); instrDate.setHours(0,0,0,0);
+  loadInstrData();
+}
+
+function logoutInstructor(){
+  sessionStorage.removeItem('cce_instr');
+  currentInstructor=null;
+  document.getElementById('instrLoginWrap').style.display='block';
+  document.getElementById('instrPortal').style.display='none';
+  document.getElementById('instrLogoutBtn').classList.add('hidden');
+  document.getElementById('instrHeaderSub').textContent='Instructor Portal';
+  document.getElementById('instrName').value='';
+  instrPin=''; updatePinDisplay();
+}
+
+// ── Load instructor's sessions ──
+async function loadInstrData(){
+  if(!currentInstructor) return;
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/schedule?instructor=eq.${encodeURIComponent(currentInstructor.name)}&order=date.asc,start_time.asc&limit=500`,{headers:HDR});
+    const sessions=await r.json()||[];
+
+    // Stats
+    const today=new Date(); today.setHours(0,0,0,0);
+    const todayKey=fmtDateKey(today);
+    const nowMonth=today.getMonth(); const nowYear=today.getFullYear();
+    const todaySess=sessions.filter(s=>s.date===todayKey);
+    const monthSess=sessions.filter(s=>{
+      const d=new Date(s.date);
+      return d.getMonth()===nowMonth&&d.getFullYear()===nowYear;
+    });
+    document.getElementById('instrTodayCount').textContent=todaySess.length;
+    document.getElementById('instrMonthCount').textContent=monthSess.length;
+    document.getElementById('instrMonthStats').textContent=
+      MONTHS_AR[nowMonth]+' '+nowYear+' — '+monthSess.length+' sessions total';
+
+    // Render
+    window._instrSessions=sessions;
+    renderInstrSchedule();
+  }catch(e){console.log('instr data error',e);}
+}
+
+function setInstrView(v){
+  instrView=v;
+  document.getElementById('instrViewDay').style.background=v==='day'?'var(--green)':'#f0f0f0';
+  document.getElementById('instrViewDay').style.color=v==='day'?'#fff':'var(--navy)';
+  document.getElementById('instrViewWeek').style.background=v==='week'?'var(--green)':'#f0f0f0';
+  document.getElementById('instrViewWeek').style.color=v==='week'?'#fff':'var(--navy)';
+  renderInstrSchedule();
+}
+
+function instrNav(dir){
+  if(instrView==='day') instrDate.setDate(instrDate.getDate()+dir);
+  else instrDate.setDate(instrDate.getDate()+(dir*7));
+  renderInstrSchedule();
+}
+function instrGoToday(){ instrDate=new Date(); instrDate.setHours(0,0,0,0); renderInstrSchedule(); }
+
+function renderInstrSchedule(){
+  const el=document.getElementById('instrSessions');
+  if(!el||!currentInstructor) return;
+  const sessions=window._instrSessions||[];
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  if(instrView==='day'){
+    const key=fmtDateKey(instrDate);
+    const isToday=key===fmtDateKey(today);
+    document.getElementById('instrDateLabel').textContent=
+      DAYS_AR[instrDate.getDay()]+', '+instrDate.getDate()+' '+MONTHS_AR[instrDate.getMonth()]+' '+instrDate.getFullYear();
+    const daySess=sessions.filter(s=>s.date===key);
+    if(!daySess.length){
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">&#128197; No sessions '+(isToday?'today':'on this day')+'</div>';
+      return;
+    }
+    el.innerHTML=daySess.map(s=>instrSessionCard(s)).join('');
+  } else {
+    const weekDays=getWeekDays(instrDate);
+    const s0=weekDays[0]; const s6=weekDays[6];
+    document.getElementById('instrDateLabel').textContent=
+      s0.getDate()+' '+MONTHS_AR[s0.getMonth()]+' — '+s6.getDate()+' '+MONTHS_AR[s6.getMonth()]+' '+s6.getFullYear();
+    let html='';
+    weekDays.forEach(d=>{
+      const key=fmtDateKey(d);
+      const isToday=key===fmtDateKey(today);
+      const daySess=sessions.filter(s=>s.date===key);
+      html+=`<div style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:13px;color:${isToday?'var(--green)':'var(--muted)'};margin-bottom:6px;padding:4px 0;border-bottom:2px solid ${isToday?'var(--green)':'var(--border)'}">
+          ${isToday?'🟢 ':''} ${DAYS_AR[d.getDay()]} ${d.getDate()} ${MONTHS_AR[d.getMonth()]}
+        </div>
+        ${daySess.length?daySess.map(s=>instrSessionCard(s)).join(''):'<div style="padding:10px;color:var(--muted);font-size:12px">No sessions</div>'}
+      </div>`;
+    });
+    el.innerHTML=html;
+  }
+}
+
+function instrSessionCard(s){
+  const statusColor=s.status==='Done'?'var(--green)':s.status==='Cancelled'?'var(--red)':'var(--amber)';
+  const statusBg=s.status==='Done'?'#E8F5EE':s.status==='Cancelled'?'#FDECEA':'#FEF3E2';
+  return `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid ${actColor(s.activity)}">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="font-size:28px">🐴</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-weight:700;font-size:15px;color:var(--navy)">${s.start_time||''} ${s.activity||''}</span>
+          <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${s.status}</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+          ${s.horse_name?`<span>🐴 ${s.horse_name}</span>`:''}
+          ${s.customer_name?`<span>👤 ${s.customer_name}</span>`:''}
+          ${s.end_time?`<span>⏱ ${s.start_time} → ${s.end_time}</span>`:''}
+        </div>
+        ${s.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${s.notes}</div>`:''}
+        <!-- Horse Info -->
+        ${instrHorseInfo(s.horse_name)}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${s.status!=='Done'&&s.status!=='Cancelled'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px;font-size:13px" onclick="instrMarkDone(${s.id})">✅</button>`:''}
+        <button class="action-btn" style="background:#EEF2FF;color:var(--navy);padding:8px 12px;font-size:13px" onclick="instrAddNote(${s.id},'${(s.notes||'').replace(/'/g,"\\'")}')">📝</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function instrHorseInfo(horseName){
+  if(!horseName||typeof horses==='undefined') return '';
+  const h=horses.find(x=>x.horse_name===horseName);
+  if(!h) return '';
+  return `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+    ${h.sex?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.sex}</span>`:''}
+    ${h.color?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.color}</span>`:''}
+    ${h.breed?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.breed}</span>`:''}
+    ${h.farrier_date?`<span style="font-size:11px;background:#FEF3E2;color:var(--amber);border-radius:5px;padding:2px 7px">🔧 ${fmt(h.farrier_date)}</span>`:''}
+  </div>`;
+}
+
+async function instrMarkDone(id){
+  if(!confirm('Mark this session as Done?')) return;
+  try{
+    await sbPatch('schedule',id,{status:'Done'});
+    await loadInstrData();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function instrAddNote(id, currentNote){
+  openModal('📝 Add Note',`
+    <div class="form-group">
+      <label>Note</label>
+      <textarea id="instr-note" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:inherit;min-height:100px;resize:vertical">${currentNote}</textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveInstrNote(${id})">💾 Save Note</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function saveInstrNote(id){
+  const note=document.getElementById('instr-note').value.trim();
+  try{
+    await sbPatch('schedule',id,{notes:note||null});
+    closeModal();
+    await loadInstrData();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── Manage instructors from Admin Dashboard ──
+// (Add to horses page or a settings area)
 
 </script>
 </body>
