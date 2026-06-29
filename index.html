@@ -451,8 +451,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
       <div class="login-title">Owner Portal</div>
       <div class="login-sub">Login with your registered phone number</div>
       <input class="inp" type="tel" id="ownerPhone" placeholder="Enter phone number" onkeydown="if(event.key==='Enter')doOwnerLogin()">
+      <input class="inp" type="password" id="ownerPwd" placeholder="Password (if set)" style="margin-top:10px" onkeydown="if(event.key==='Enter')doOwnerLogin()">
       <button class="login-btn" onclick="doOwnerLogin()">&#128272; Login</button>
-      <div class="err" id="ownerErr" style="display:none">&#10060; Phone not found. Contact CCE staff.</div>
+      <div class="err" id="ownerErr" style="display:none">&#10060; Phone not found or incorrect password.</div>
     </div>
   </div>
   <div id="ownerPortal" style="display:none;padding:20px;max-width:700px;margin:0 auto">
@@ -1154,6 +1155,33 @@ function buildAlerts(){
         action:()=>{showDashPage('horses',null);}
       });
     }
+
+    // Teeth > 180 days (6 months)
+    if(h.teeth_date){
+      const d=new Date(h.teeth_date); d.setHours(0,0,0,0);
+      const days=Math.floor((today-d)/(1000*60*60*24));
+      if(days>180) alerts.push({
+        type:'amber',icon:'&#129463;',
+        title:`Teeth check overdue — ${name}`,
+        desc:`Last: ${fmt(h.teeth_date)} (${days} days ago)`,
+        action:()=>{showDashPage('horses',null);}
+      });
+    }
+
+    // Missing health dates — only for Available horses
+    if(h.status==='Available'){
+      const missing=[];
+      if(!h.farrier_date)  missing.push('🔧 Farrier');
+      if(!h.deworm_date)   missing.push('🐛 Deworm');
+      if(!h.vaccine_date)  missing.push('💉 Vaccine');
+      if(!h.teeth_date)    missing.push('🦷 Teeth');
+      if(missing.length) alerts.push({
+        type:'amber',icon:'&#9888;&#65039;',
+        title:`Missing health dates — ${name}`,
+        desc:missing.join('  ·  '),
+        action:()=>{showDashPage('horses',null);}
+      });
+    }
   });
 
   // Update bell badge
@@ -1548,14 +1576,21 @@ function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').tri
 
 async function doOwnerLogin(){
   const phone=document.getElementById('ownerPhone').value.trim();
+  const pwd=document.getElementById('ownerPwd').value.trim();
   if(!phone){alert('Please enter your phone number');return;}
   const btn=document.querySelector('#ownerLoginWrap .login-btn');
-  btn.textContent='&#9203; Checking...';btn.disabled=true;
+  btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
     const list=await r.json();
     const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(phone)&&h.horse_name);
     if(!matched.length){
+      document.getElementById('ownerErr').style.display='block';
+      btn.textContent='&#128272; Login';btn.disabled=false;return;
+    }
+    // Check password if set on any of the matched horses
+    const pwdRequired=matched[0].owner_pwd;
+    if(pwdRequired&&pwd!==pwdRequired){
       document.getElementById('ownerErr').style.display='block';
       btn.textContent='&#128272; Login';btn.disabled=false;return;
     }
