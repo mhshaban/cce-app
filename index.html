@@ -590,51 +590,40 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
           <div id="pushStatus" style="font-size:13px;color:var(--muted)">&#9679; Status: Checking...</div>
           <button class="btn btn-amber" id="pushEnableBtn" style="width:auto;padding:8px 20px" onclick="enablePush()">&#128276; Enable Notifications</button>
-          <button class="btn" id="pushTestBtn" style="width:auto;padding:8px 20px;background:#f0f0f0;color:var(--navy)" onclick="testPush()">&#128200; Test Notification</button>
+          <button class="btn" id="pushTestBtn" style="width:auto;padding:8px 20px;background:#f0f0f0;color:var(--navy)" onclick="testPush()">&#9654; Test Notification</button>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:10px">&#9432; يجب السماح بالإشعارات في المتصفح. تعمل حتى لو التطبيق في الخلفية.</div>
-      </div>
-
-      <!-- WhatsApp Settings Card -->
-      <div class="card">
-        <div class="card-title">&#128242; WhatsApp Notifications (CallMeBot)</div>
-        <div style="background:var(--sand);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px">
-          <strong>خطوات تفعيل CallMeBot:</strong><br>
-          1. أرسل <code style="background:#fff;padding:2px 6px;border-radius:4px">I allow callmebot to send me messages</code> إلى <strong>+34 644 82 98 80</strong> على WhatsApp<br>
-          2. ستصلك رسالة فيها <strong>API Key</strong><br>
-          3. أدخل رقمك والـ API Key أدناه
+        <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.8">
+          &#9432; <strong>كيف تعمل:</strong> اضغط Enable وسمح للمتصفح بالإشعارات — ستصلك تنبيهات مباشرة على شاشتك حتى لو التطبيق في الخلفية.<br>
+          &#9888;&#65039; تعمل على Chrome وEdge وFirefox وSafari (iOS 16.4+)
         </div>
-        <div id="waNumbers" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
-        <button class="btn btn-green" style="width:auto;padding:8px 20px" onclick="addWaNumber()">&#10133; Add WhatsApp Number</button>
-        <button class="btn btn-amber" style="width:auto;padding:8px 20px;margin-left:8px" onclick="testWhatsApp()">&#128200; Test WhatsApp</button>
       </div>
 
       <!-- Notification Schedule Card -->
       <div class="card">
-        <div class="card-title">&#9201; جدول الإشعارات التلقائية</div>
+        <div class="card-title">&#9201; جدول الإشعارات اليومية</div>
         <div class="form-grid" style="margin-top:10px">
           <div class="form-group">
-            <label>إرسال يومي في الساعة</label>
+            <label>إرسال يومي عند فتح التطبيق بعد الساعة</label>
             <input type="time" id="notifTime" value="08:00">
           </div>
           <div class="form-group">
-            <label>إرسال إشعارات الحجوزات</label>
-            <select id="notifBookings"><option value="1">فوري عند الحجز</option><option value="0">يدوي فقط</option></select>
+            <label>إشعار الحجوزات الجديدة</label>
+            <select id="notifBookings"><option value="1">فوري عند الحجز &#9889;</option><option value="0">يدوي فقط</option></select>
           </div>
         </div>
-        <div style="margin:14px 0;font-size:13px;font-weight:700;color:var(--navy)">أنواع الإشعارات المفعّلة:</div>
+        <div style="margin:14px 0;font-size:13px;font-weight:700;color:var(--navy)">أنواع التنبيهات:</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="notif-farrier" checked> &#128295; Farrier (تجاوز 30 يوم)
+            <input type="checkbox" id="notif-farrier" checked> &#128295; Farrier (30+ يوم)
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="notif-deworm" checked> &#128027; Deworm (تجاوز 90 يوم)
+            <input type="checkbox" id="notif-deworm" checked> &#128027; Deworm (90+ يوم)
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="notif-vaccine" checked> &#128137; Vaccine (تجاوز 150 يوم)
+            <input type="checkbox" id="notif-vaccine" checked> &#128137; Vaccine (150+ يوم)
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="notif-teeth" checked> &#129463; Teeth (تجاوز 180 يوم)
+            <input type="checkbox" id="notif-teeth" checked> &#129463; Teeth (180+ يوم)
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
             <input type="checkbox" id="notif-overdue" checked> &#128176; Overdue Payments
@@ -647,7 +636,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
           <button class="btn btn-green" style="width:auto;padding:8px 20px" onclick="saveNotifSettings()">&#128190; Save Settings</button>
           <button class="btn btn-amber" style="width:auto;padding:8px 20px" onclick="sendAllNotifications()">&#128276; Send Now</button>
         </div>
-        <div id="notifLog" style="margin-top:12px;font-size:12px;color:var(--muted);max-height:120px;overflow-y:auto"></div>
+        <div id="notifLog" style="margin-top:12px;font-size:12px;color:var(--muted);max-height:150px;overflow-y:auto;border-top:1px solid var(--border);padding-top:8px"></div>
       </div>
     </div>
 
@@ -1832,9 +1821,6 @@ function initNotifications(){
     if(el&&saved!==null) el.checked=saved;
   });
 
-  // Render WhatsApp numbers
-  renderWaNumbers();
-
   // Check browser push status
   checkPushStatus();
 }
@@ -1877,82 +1863,6 @@ function testPush(){
   if(Notification.permission!=='granted'){alert('يجب تفعيل الإشعارات أولاً');return;}
   sendBrowserPush('CCE — Test Notification','🐴 هذا اختبار للإشعارات — كل شيء يعمل!');
   logNotif('✅ تم إرسال Browser Push تجريبي');
-}
-
-// ── WhatsApp (CallMeBot) ──
-function renderWaNumbers(){
-  const numbers=notifGet('wa_numbers')||[];
-  const container=document.getElementById('waNumbers');
-  if(!container) return;
-  if(!numbers.length){
-    container.innerHTML='<div style="font-size:13px;color:var(--muted)">لا توجد أرقام مضافة بعد</div>';
-    return;
-  }
-  container.innerHTML=numbers.map((n,i)=>`
-    <div style="display:flex;gap:8px;align-items:center;background:var(--sand);padding:10px 14px;border-radius:10px">
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:13px">&#128242; ${n.label||'رقم '+(i+1)}</div>
-        <div style="font-size:12px;color:var(--muted)">${n.phone} · API Key: ${n.apiKey?'••••'+n.apiKey.slice(-4):'غير محدد'}</div>
-      </div>
-      <button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="removeWaNumber(${i})">&#128465;&#65039;</button>
-    </div>`).join('');
-}
-
-function addWaNumber(){
-  openModal('➕ Add WhatsApp Number',`
-    <div style="font-size:13px;background:var(--sand);padding:12px;border-radius:10px;margin-bottom:14px">
-      أرسل <code>I allow callmebot to send me messages</code> إلى <strong>+34 644 82 98 80</strong> على WhatsApp أولاً للحصول على API Key
-    </div>
-    <div class="form-grid" style="grid-template-columns:1fr">
-      <div class="form-group"><label>الاسم / الوصف</label><input type="text" id="wa-label" placeholder="مثال: Admin Mohamed"></div>
-      <div class="form-group"><label>رقم WhatsApp (مع رمز الدولة)</label><input type="tel" id="wa-phone" placeholder="+97333067026"></div>
-      <div class="form-group"><label>API Key (من CallMeBot)</label><input type="text" id="wa-key" placeholder="123456"></div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-green" onclick="saveWaNumber()">&#128190; Save</button>
-      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
-    </div>`);
-}
-
-function saveWaNumber(){
-  const label=document.getElementById('wa-label').value.trim();
-  const phone=document.getElementById('wa-phone').value.trim();
-  const apiKey=document.getElementById('wa-key').value.trim();
-  if(!phone||!apiKey){alert('رقم الهاتف والـ API Key مطلوبان');return;}
-  const numbers=notifGet('wa_numbers')||[];
-  numbers.push({label,phone,apiKey});
-  notifSet('wa_numbers',numbers);
-  closeModal();
-  renderWaNumbers();
-  logNotif('✅ تم إضافة رقم WhatsApp: '+phone);
-}
-
-function removeWaNumber(i){
-  const numbers=notifGet('wa_numbers')||[];
-  numbers.splice(i,1);
-  notifSet('wa_numbers',numbers);
-  renderWaNumbers();
-}
-
-async function sendWhatsApp(phone, apiKey, message){
-  const url=`https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${apiKey}`;
-  try{
-    await fetch(url,{mode:'no-cors'});
-    return true;
-  }catch(e){
-    console.log('WhatsApp error:',e);
-    return false;
-  }
-}
-
-async function testWhatsApp(){
-  const numbers=notifGet('wa_numbers')||[];
-  if(!numbers.length){alert('أضف رقم WhatsApp أولاً');return;}
-  const n=numbers[0];
-  const msg='🐴 *CCE Equestrian Center*\nTest notification — كل شيء يعمل! ✅\n'+new Date().toLocaleString('en-GB');
-  await sendWhatsApp(n.phone,n.apiKey,msg);
-  logNotif('📱 تم إرسال WhatsApp تجريبي إلى '+n.phone);
-  alert('تم الإرسال! تحقق من WhatsApp (قد يستغرق 30 ثانية)');
 }
 
 // ── Save Settings ──
@@ -2035,13 +1945,6 @@ async function sendAllNotifications(){
     if(msgs.length>3) setTimeout(()=>sendBrowserPush('CCE Alert','...و '+(msgs.length-3)+' تنبيهات أخرى'),1500);
   }
 
-  // WhatsApp
-  const numbers=notifGet('wa_numbers')||[];
-  for(const n of numbers){
-    await sendWhatsApp(n.phone,n.apiKey,summary);
-    logNotif('📱 WhatsApp → '+n.phone);
-  }
-
   logNotif('🔔 تم إرسال '+msgs.length+' تنبيه — '+new Date().toLocaleTimeString('en-GB'));
   notifSet('last_sent',new Date().toISOString());
 }
@@ -2067,8 +1970,6 @@ function notifyNewBooking(customerName, horseName, time){
   if(notifGet('bookings_instant')==='0') return;
   const msg='📋 *New Booking!*\n'+customerName+' — '+horseName+' @ '+time;
   sendBrowserPush('CCE — New Booking! 📋',customerName+' — '+horseName+' @ '+time);
-  const numbers=notifGet('wa_numbers')||[];
-  numbers.forEach(n=>sendWhatsApp(n.phone,n.apiKey,msg));
   logNotif('📋 Booking notification sent: '+customerName);
 }
 
