@@ -474,6 +474,81 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
 </div>
 
 <!-- ════════════════════════════ ADMIN LOGIN ════════════════════════════ -->
+
+<!-- ════════════════════════════ INSTRUCTOR PAGE ════════════════════════════ -->
+<div class="app-page" id="page-instructor">
+  <div class="header">
+    <div class="header-logo">&#127919;</div>
+    <div><div class="header-title">CCE Equestrian Center</div><div class="header-sub" id="instrHeaderSub">Instructor Portal</div></div>
+    <div class="header-right">
+      <button class="sync-btn hidden" id="instrLogoutBtn" style="background:var(--red)" onclick="logoutInstructor()">&#128275; Logout</button>
+      <button class="sync-btn" onclick="navigate('home')" style="background:#444">&#8592; Home</button>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="instrLoginWrap" style="max-width:400px;margin:60px auto;padding:20px">
+    <div style="background:#fff;border-radius:16px;padding:30px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center">
+      <div style="font-size:52px;margin-bottom:12px">&#127919;</div>
+      <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px">Instructor Portal</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px">بوابة المدربين</div>
+      <select id="instrName" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;margin-bottom:20px;font-family:inherit">
+        <option value="">— Select your name —</option>
+      </select>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Enter your 4-digit PIN:</div>
+      <div id="pinDisplay" style="letter-spacing:16px;font-size:28px;font-weight:700;color:var(--navy);margin-bottom:16px;min-height:40px;background:var(--sand);border-radius:10px;padding:8px">&#9675;&#9675;&#9675;&#9675;</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <button class="pin-btn" onclick="pinTap('1')">1</button>
+        <button class="pin-btn" onclick="pinTap('2')">2</button>
+        <button class="pin-btn" onclick="pinTap('3')">3</button>
+        <button class="pin-btn" onclick="pinTap('4')">4</button>
+        <button class="pin-btn" onclick="pinTap('5')">5</button>
+        <button class="pin-btn" onclick="pinTap('6')">6</button>
+        <button class="pin-btn" onclick="pinTap('7')">7</button>
+        <button class="pin-btn" onclick="pinTap('8')">8</button>
+        <button class="pin-btn" onclick="pinTap('9')">9</button>
+        <button class="pin-btn" onclick="pinClear()" style="background:#f0f0f0;color:var(--muted);font-size:13px">CLR</button>
+        <button class="pin-btn" onclick="pinTap('0')">0</button>
+        <button class="pin-btn" onclick="pinBack()" style="background:#FDECEA;color:var(--red)">&#9003;</button>
+      </div>
+      <button class="btn btn-green" onclick="doInstrLogin()">&#128272; Login</button>
+      <div class="err" id="instrErr" style="display:none;margin-top:12px">&#10060; اسم أو PIN غير صحيح</div>
+    </div>
+  </div>
+
+  <!-- PORTAL -->
+  <div id="instrPortal" style="display:none;padding:16px;max-width:900px;margin:0 auto">
+    <div style="background:linear-gradient(135deg,var(--green),#0f5a35);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="font-size:44px">&#127919;</div>
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:700" id="instrWelcome">Welcome!</div>
+        <div style="font-size:13px;opacity:.85" id="instrMonthStats">Loading stats...</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px">
+          <div style="font-size:22px;font-weight:700" id="instrTodayCount">0</div>
+          <div style="font-size:11px;opacity:.8">Today</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px">
+          <div style="font-size:22px;font-weight:700" id="instrMonthCount">0</div>
+          <div style="font-size:11px;opacity:.8">This Month</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <button id="instrViewDay" onclick="setInstrView('day')" style="padding:7px 16px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Today</button>
+        <button id="instrViewWeek" onclick="setInstrView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128198; Week</button>
+      </div>
+      <button onclick="instrNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">&#8249;</button>
+      <span id="instrDateLabel" style="font-weight:700;font-size:14px;color:var(--navy);flex:1;text-align:center"></span>
+      <button onclick="instrNav(1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">&#8250;</button>
+      <button onclick="instrGoToday()" style="padding:7px 14px;border:1px solid var(--green);border-radius:8px;background:#fff;color:var(--green);font-weight:700;font-size:13px;cursor:pointer">Today</button>
+    </div>
+    <div id="instrSessions"></div>
+  </div>
+</div>
+
 <div class="app-page" id="page-admin">
   <div class="login-wrap">
     <div class="login-box">
@@ -972,7 +1047,13 @@ async function loadAll(){
     setMsg('Step 5: Loading breeding...',horses.length+' horses loaded');
     
     breeding = await sbGet('breeding','select=*&limit=200');
-    setMsg('Done!',breeding.length+' breeding records loaded');
+    setMsg('Step 6: Loading schedule...',breeding.length+' breeding records loaded');
+
+    schedule_data = await sbGet('schedule','select=*&order=date.asc,start_time.asc&limit=1000');
+    setMsg('Step 7: Loading instructors...',schedule_data.length+' schedule records loaded');
+
+    instructors_data = await sbGet('instructors','select=*&order=name.asc');
+    setMsg('Done!',instructors_data.length+' instructors loaded');
 
     document.getElementById('syncStatus').textContent='\u2713 '+new Date().toLocaleTimeString('en-GB');
     buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();populateLists();initNotifications();checkScheduledNotifications();
@@ -2400,6 +2481,7 @@ function pinTap(n){
   updatePinDisplay();
   if(instrPin.length===4) setTimeout(doInstrLogin,200);
 }
+function pinClear(){ instrPin=""; updatePinDisplay(); }
 function pinBack(){
   instrPin=instrPin.slice(0,-1);
   updatePinDisplay();
