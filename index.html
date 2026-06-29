@@ -499,6 +499,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
     <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
     <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
     <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
+    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127919; Instructors</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -621,6 +622,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
         <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#7A8399;border-radius:3px;display:inline-block"></span> Other</span>
         <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#e0e0e0;border-radius:3px;display:inline-block;border:1px solid #ccc"></span> From Income</span>
       </div>
+    </div>
+
+    <div class="section" id="page-instructors">
+      <div class="card">
+        <div class="card-title">&#127919; Instructors Management</div>
+        <button class="btn btn-green" style="width:auto;padding:8px 20px;margin-top:8px" onclick="openAddInstructor()">&#10133; Add Instructor</button>
+      </div>
+      <div id="instructorsGrid"></div>
     </div>
 
     <div class="section" id="page-notifications">
@@ -813,7 +822,7 @@ function showDashPage(id, btn) {
 // ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
-let income=[],expenses=[],horses=[],breeding=[],schedule_data=[];
+let income=[],expenses=[],horses=[],breeding=[],schedule_data=[],instructors_data=[];
 let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
@@ -966,7 +975,7 @@ async function loadAll(){
     setMsg('Done!',breeding.length+' breeding records loaded');
 
     document.getElementById('syncStatus').textContent='\u2713 '+new Date().toLocaleTimeString('en-GB');
-    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();populateLists();initNotifications();checkScheduledNotifications();
+    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();populateLists();initNotifications();checkScheduledNotifications();
     ov.style.display='none';
 
   }catch(e){
@@ -983,7 +992,7 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
-  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings',notifications:'Notifications',schedule:'Schedule'};
+  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings',notifications:'Notifications',schedule:'Schedule',instructors:'Instructors'};
   document.getElementById('headerSub').textContent=L[id]||id;
 }
 function buildDash(){
@@ -2594,6 +2603,148 @@ async function saveInstrNote(id){
 
 // ── Manage instructors from Admin Dashboard ──
 // (Add to horses page or a settings area)
+
+
+// ══════════════════════════════════════════════════════════
+// INSTRUCTORS MANAGEMENT (Admin Dashboard)
+// ══════════════════════════════════════════════════════════
+
+function renderInstructors(){
+  const el=document.getElementById('instructorsGrid');
+  if(!el) return;
+
+  if(!instructors_data.length){
+    el.innerHTML='<div class="card" style="text-align:center;color:var(--muted);padding:30px">No instructors added yet</div>';
+    return;
+  }
+
+  el.innerHTML=instructors_data.map(instr=>{
+    // Count this month sessions
+    const now=new Date();
+    const monthSess=schedule_data.filter(s=>{
+      if(s.instructor!==instr.name) return false;
+      const d=new Date(s.date);
+      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    });
+    const doneSess=monthSess.filter(s=>s.status==='Done');
+
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="width:46px;height:46px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0">&#127919;</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:15px;color:var(--navy)">${instr.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${instr.phone||'No phone'}</div>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+          <span style="font-size:11px;background:#E8F5EE;color:var(--green);border-radius:6px;padding:2px 8px;font-weight:600">&#128197; ${monthSess.length} sessions this month</span>
+          <span style="font-size:11px;background:#EEF2FF;color:var(--navy);border-radius:6px;padding:2px 8px;font-weight:600">&#9989; ${doneSess.length} done</span>
+          <span style="font-size:11px;background:${instr.active?'#E8F5EE':'#FDECEA'};color:${instr.active?'var(--green)':'var(--red)'};border-radius:6px;padding:2px 8px;font-weight:600">${instr.active?'Active':'Inactive'}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editInstructor(${instr.id})">&#9999;&#65039;</button>
+        <button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Reset PIN" onclick="resetInstrPIN(${instr.id},'${instr.name}')">&#128273;</button>
+        <button class="action-btn" style="background:${instr.active?'#FDECEA':'#E8F5EE'};color:${instr.active?'var(--red)':'var(--green)'};padding:8px 10px;font-size:15px" title="${instr.active?'Deactivate':'Activate'}" onclick="toggleInstructor(${instr.id},${instr.active})">${instr.active?'&#128683;':'&#9989;'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddInstructor(){
+  openModal('&#10133; Add Instructor',`
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="instr-name" placeholder="Instructor name..."></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="instr-phone" placeholder="+973 XXXXXXXX"></div>
+      <div class="form-group">
+        <label>PIN (4 digits) *</label>
+        <input type="number" id="instr-pin" placeholder="e.g. 1234" maxlength="4" min="1000" max="9999"
+          style="letter-spacing:8px;font-size:18px;font-weight:700">
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:var(--sand);padding:10px;border-radius:8px">
+        &#9432; الـ PIN يجب أن يكون 4 أرقام. أعطِه للمدرب سراً — لا يمكن لأحد رؤيته بعد الحفظ.
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveInstructor()">&#128190; Add Instructor</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function saveInstructor(){
+  const name=document.getElementById('instr-name').value.trim();
+  const pin=document.getElementById('instr-pin').value.trim();
+  const phone=document.getElementById('instr-phone').value.trim();
+  if(!name){alert('Name is required');return;}
+  if(!pin||pin.length!==4||isNaN(pin)){alert('PIN must be exactly 4 digits');return;}
+  try{
+    await sbPost('instructors',{name,pin,phone:phone||null,active:true});
+    closeModal();
+    await loadAll();
+    alert('✅ Instructor added successfully!');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function editInstructor(id){
+  const instr=instructors_data.find(x=>x.id===id);
+  if(!instr) return;
+  openModal('&#9999;&#65039; Edit Instructor — '+instr.name,`
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="instr-name" value="${instr.name}"></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="instr-phone" value="${instr.phone||''}"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-amber" onclick="updateInstructor(${id})">&#128190; Save Changes</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function updateInstructor(id){
+  const name=document.getElementById('instr-name').value.trim();
+  const phone=document.getElementById('instr-phone').value.trim();
+  if(!name){alert('Name is required');return;}
+  try{
+    await sbPatch('instructors',id,{name,phone:phone||null});
+    closeModal();await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function resetInstrPIN(id,name){
+  openModal('&#128273; Reset PIN — '+name,`
+    <div class="form-group">
+      <label>New PIN (4 digits) *</label>
+      <input type="number" id="new-pin" placeholder="e.g. 5678" maxlength="4" min="1000" max="9999"
+        style="letter-spacing:8px;font-size:18px;font-weight:700;width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
+    </div>
+    <div class="form-group">
+      <label>Confirm PIN</label>
+      <input type="number" id="confirm-pin" placeholder="Repeat PIN"
+        style="letter-spacing:8px;font-size:18px;font-weight:700;width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-amber" onclick="saveInstrPIN(${id})">&#128190; Save PIN</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function saveInstrPIN(id){
+  const np=document.getElementById('new-pin').value.trim();
+  const cp=document.getElementById('confirm-pin').value.trim();
+  if(!np||np.length!==4||isNaN(np)){alert('PIN must be exactly 4 digits');return;}
+  if(np!==cp){alert('PINs do not match');return;}
+  try{
+    await sbPatch('instructors',id,{pin:np});
+    closeModal();
+    alert('✅ PIN updated successfully!');
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function toggleInstructor(id,isActive){
+  const action=isActive?'deactivate':'activate';
+  if(!confirm(`Are you sure you want to ${action} this instructor?`)) return;
+  try{
+    await sbPatch('instructors',id,{active:!isActive});
+    await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+}
 
 </script>
 </body>
