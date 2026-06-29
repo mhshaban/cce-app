@@ -766,8 +766,8 @@ async function downloadBackup(){
       'Livery BD':r.livery_bd, 'AC Livery BD':r.ac_livery_bd,
       Payment:r.payment, Microchip:r.microchip, Passport:r.passport,
       'Birth Date':r.birth_date, Sex:r.sex, Color:r.color, Breed:r.breed,
-      'Farrier Name':r.farrier_name, 'Farrier Date':r.farrier_date, 'Worm Date':r.worm_date,
-      'Vaccine Dr':r.vaccine_dr, 'Vaccine Date':r.vaccine_date, Medicant:r.medicant, 'Med Date':r.med_date,
+      'Farrier Name':r.farrier_name, 'Farrier Date':r.farrier_date, 'Deworm Date':r.deworm_date,
+      'Vaccine Dr':r.vaccine_dr, 'Vaccine Date':r.vaccine_date, 'Teeth Date':r.teeth_date, Medicant:r.medicant, 'Med Date':r.med_date,
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(horData), 'Horses');
 
@@ -1065,13 +1065,13 @@ function renderHorses(){
     const stBadge=st==='Available'?'badge-green':st==='Out'?'badge-amber':st==='Sold'?'badge-navy':'badge-red';
     const today=new Date(); today.setHours(0,0,0,0);
     function daysSince(d){if(!d)return null;const dt=new Date(d);dt.setHours(0,0,0,0);return Math.floor((today-dt)/(86400000));}
-    const fDays=daysSince(h.farrier_date); const wDays=daysSince(h.worm_date); const vDays=daysSince(h.vaccine_date);
+    const fDays=daysSince(h.farrier_date); const wDays=daysSince(h.deworm_date); const vDays=daysSince(h.vaccine_date);
     const fOver=fDays!==null&&fDays>30; const wOver=wDays!==null&&wDays>90; const vOver=vDays!==null&&vDays>150;
     const chips=[
       parseFloat(h.livery_bd)>0?'<span style="font-size:11px;background:#EEF2FF;color:#1A2744;border-radius:6px;padding:2px 7px;font-weight:600">&#127968; '+BD(h.livery_bd)+'</span>':'',
       parseFloat(h.ac_livery_bd)>0?'<span style="font-size:11px;background:#EEF2FF;color:#1A2744;border-radius:6px;padding:2px 7px;font-weight:600">&#10052; '+BD(h.ac_livery_bd)+'</span>':'',
       h.farrier_date?'<span style="font-size:11px;background:'+(fOver?'#FDECEA':'#F0F4F0')+';color:'+(fOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128295; '+fmt(h.farrier_date)+(fOver?' &#9888;':'')+'</span>':'',
-      h.worm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.worm_date)+(wOver?' &#9888;':'')+'</span>':'',
+      h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
     return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${h.horse_name}</div><div class="horse-meta">${h.owner||'&#8212;'} &middot; #${h.stable_no||'&#8212;'}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Click to change status" onclick="toggleHorse(${hid},'${st}')">${st||'&#8212;'}</span>${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Owner Password" onclick="editOwnerPwd(${hid})">&#128273;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
@@ -1132,13 +1132,13 @@ function buildAlerts(){
     }
 
     // Worm > 90 days (3 months)
-    if(h.worm_date){
-      const d=new Date(h.worm_date); d.setHours(0,0,0,0);
+    if(h.deworm_date){
+      const d=new Date(h.deworm_date); d.setHours(0,0,0,0);
       const days=Math.floor((today-d)/(1000*60*60*24));
       if(days>90) alerts.push({
         type:'amber',icon:'&#128027;',
         title:`Worming overdue — ${name}`,
-        desc:`Last: ${fmt(h.worm_date)} (${days} days ago)`,
+        desc:`Last: ${fmt(h.deworm_date)} (${days} days ago)`,
         action:()=>{showDashPage('horses',null);}
       });
     }
@@ -1382,15 +1382,16 @@ function editHorse(id){
     <div class="form-group"><label>Passport</label><input type="text" id="eh-passport" value="${h.passport||''}"></div>
     <div class="form-group"><label>Farrier Name</label><input type="text" id="eh-farrier-name" value="${h.farrier_name||''}"></div>
     <div class="form-group"><label>Farrier Date</label><input type="date" id="eh-farrier" value="${h.farrier_date||''}"></div>
-    <div class="form-group"><label>Worm Date</label><input type="date" id="eh-worm" value="${h.worm_date||''}"></div>
+    <div class="form-group"><label>Deworm Date</label><input type="date" id="eh-deworm" value="${h.deworm_date||''}"></div>
     <div class="form-group"><label>Vaccine Dr</label><input type="text" id="eh-vaccine-dr" value="${h.vaccine_dr||''}"></div>
     <div class="form-group"><label>Vaccine Date</label><input type="date" id="eh-vaccine" value="${h.vaccine_date||''}"></div>
+    <div class="form-group"><label>Teeth Date</label><input type="date" id="eh-teeth" value="${h.teeth_date||''}"></div>
     <div class="form-group"><label>Medicant</label><input type="text" id="eh-medicant" value="${h.medicant||''}"></div>
     <div class="form-group"><label>Med Date</label><input type="date" id="eh-meddate" value="${h.med_date||''}"></div>
   </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveHorse(id){
-  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_date:document.getElementById('eh-farrier').value||null,worm_date:document.getElementById('eh-worm').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editBreeding(id){
   const r=breeding.find(x=>x.id===id);if(!r)return;
@@ -1604,7 +1605,8 @@ function renderOwnerHorses(){
         <div class="info-item"><div class="info-label">Farrier Date</div><div class="info-value">${fmt(h.farrier_date)}</div></div>
         <div class="info-item"><div class="info-label">Vaccine Dr</div><div class="info-value">${h.vaccine_dr||'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Vaccine Date</div><div class="info-value">${fmt(h.vaccine_date)}</div></div>
-        <div class="info-item"><div class="info-label">Worm Date</div><div class="info-value">${fmt(h.worm_date)}</div></div>
+        <div class="info-item"><div class="info-label">Teeth Date</div><div class="info-value">${fmt(h.teeth_date)}</div></div>
+        <div class="info-item"><div class="info-label">Deworm Date</div><div class="info-value">${fmt(h.deworm_date)}</div></div>
         <div class="info-item"><div class="info-label">Medicant</div><div class="info-value">${h.medicant||'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Contact</div><div class="info-value">${h.contact?String(h.contact).replace('.0',''):'&#8212;'}</div></div>
         <div class="info-item"><div class="info-label">Address</div><div class="info-value">${h.address||'&#8212;'}</div></div>
@@ -1623,7 +1625,7 @@ function renderOwnerHorses(){
           <div class="form-group"><label>Passport</label><input type="text" id="oe_passport_${i}" value="${h.passport||''}"></div>
           <div class="form-group"><label>Farrier Date</label><input type="date" id="oe_farrier_${i}" value="${h.farrier_date||''}"></div>
           <div class="form-group"><label>Vaccine Date</label><input type="date" id="oe_vaccine_${i}" value="${h.vaccine_date||''}"></div>
-          <div class="form-group"><label>Worm Date</label><input type="date" id="oe_worm_${i}" value="${h.worm_date||''}"></div>
+          <div class="form-group"><label>Deworm Date</label><input type="date" id="oe_deworm_${i}" value="${h.deworm_date||''}"></div>
           <div class="form-group"><label>Medicant</label><input type="text" id="oe_medicant_${i}" value="${h.medicant||''}"></div>
           <div class="form-group"><label>Med Date</label><input type="date" id="oe_meddate_${i}" value="${h.med_date||''}"></div>
         </div>
@@ -1658,7 +1660,7 @@ async function saveOwnerHorse(i,id){
       passport:document.getElementById('oe_passport_'+i).value||null,
       farrier_date:document.getElementById('oe_farrier_'+i).value||null,
       vaccine_date:document.getElementById('oe_vaccine_'+i).value||null,
-      worm_date:document.getElementById('oe_worm_'+i).value||null,
+      deworm_date:document.getElementById('oe_deworm_'+i).value||null,
       medicant:document.getElementById('oe_medicant_'+i).value||null,
       med_date:document.getElementById('oe_meddate_'+i).value||null,
     };
