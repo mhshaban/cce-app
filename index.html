@@ -490,6 +490,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
     <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
     <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
     <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
+    <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -581,6 +582,37 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#FDFAF4;color:#1A2744}
         <select id="horseStFilter" onchange="renderHorses()"><option value="">All Status</option><option>Available</option><option>Out</option><option>Sold</option><option>Dead</option></select>
       </div>
       <div class="horse-grid" id="horsesGrid"></div>
+    </div>
+
+    <div class="section" id="page-schedule">
+      <!-- View Toggle + Date Nav -->
+      <div class="card" style="padding:12px 18px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Day</button>
+            <button id="schedViewWeek" onclick="setSchedView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128198; Week</button>
+          </div>
+          <button onclick="schedNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">&#8249;</button>
+          <span id="schedDateLabel" style="font-weight:700;font-size:15px;color:var(--navy);min-width:180px;text-align:center"></span>
+          <button onclick="schedNav(1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">&#8250;</button>
+          <button onclick="schedGoToday()" style="padding:7px 14px;border:1px solid var(--amber);border-radius:8px;background:#fff;color:var(--amber);font-weight:700;font-size:13px;cursor:pointer">Today</button>
+          <button onclick="openAddSchedule()" style="padding:7px 16px;border:none;border-radius:8px;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer;margin-left:auto">&#10133; Add Session</button>
+        </div>
+      </div>
+
+      <!-- Calendar View -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="schedCalendar" style="min-height:400px"></div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;padding:6px 4px">
+        <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#C8923A;border-radius:3px;display:inline-block"></span> Hack</span>
+        <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#1E7D4E;border-radius:3px;display:inline-block"></span> Lesson</span>
+        <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#1A2744;border-radius:3px;display:inline-block"></span> Breeding</span>
+        <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#7A8399;border-radius:3px;display:inline-block"></span> Other</span>
+        <span style="font-size:12px;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#e0e0e0;border-radius:3px;display:inline-block;border:1px solid #ccc"></span> From Income</span>
+      </div>
     </div>
 
     <div class="section" id="page-notifications">
@@ -770,7 +802,7 @@ function showDashPage(id, btn) {
 // ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
-let income=[],expenses=[],horses=[],breeding=[];
+let income=[],expenses=[],horses=[],breeding=[],schedule_data=[];
 let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
@@ -923,7 +955,7 @@ async function loadAll(){
     setMsg('Done!',breeding.length+' breeding records loaded');
 
     document.getElementById('syncStatus').textContent='\u2713 '+new Date().toLocaleTimeString('en-GB');
-    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();populateLists();initNotifications();checkScheduledNotifications();
+    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();populateLists();initNotifications();checkScheduledNotifications();
     ov.style.display='none';
 
   }catch(e){
@@ -940,7 +972,7 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
-  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings',notifications:'Notifications'};
+  const L={dashboard:'Dashboard',income:'Income',expenses:'Expenses',overdue:'Overdue',horses:'Horses',breeding:'Breeding',bookings:'Bookings',notifications:'Notifications',schedule:'Schedule'};
   document.getElementById('headerSub').textContent=L[id]||id;
 }
 function buildDash(){
@@ -1979,6 +2011,333 @@ function logNotif(msg){
   if(!el) return;
   const time=new Date().toLocaleTimeString('en-GB');
   el.innerHTML='<div style="padding:3px 0;border-bottom:1px solid var(--border)">'+time+' — '+msg+'</div>'+el.innerHTML;
+}
+
+
+// ══════════════════════════════════════════════════════════
+// SCHEDULE / TIMETABLE
+// ══════════════════════════════════════════════════════════
+
+let schedView='day';
+let schedDate=new Date(); schedDate.setHours(0,0,0,0);
+
+const ACTIVITY_COLORS={
+  'Hack':'#C8923A','Lesson':'#1E7D4E','Breeding':'#1A2744',
+  'Shuwar':'#8B4513','Livery':'#5B6A8A','Others':'#7A8399'
+};
+
+function actColor(a){return ACTIVITY_COLORS[a]||'#7A8399';}
+
+function setSchedView(v){
+  schedView=v;
+  document.getElementById('schedViewDay').style.background=v==='day'?'var(--amber)':'#f0f0f0';
+  document.getElementById('schedViewDay').style.color=v==='day'?'#fff':'var(--navy)';
+  document.getElementById('schedViewWeek').style.background=v==='week'?'var(--amber)':'#f0f0f0';
+  document.getElementById('schedViewWeek').style.color=v==='week'?'#fff':'var(--navy)';
+  renderSchedule();
+}
+
+function schedNav(dir){
+  if(schedView==='day') schedDate.setDate(schedDate.getDate()+dir);
+  else schedDate.setDate(schedDate.getDate()+(dir*7));
+  renderSchedule();
+}
+
+function schedGoToday(){
+  schedDate=new Date(); schedDate.setHours(0,0,0,0);
+  renderSchedule();
+}
+
+function fmtDateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function getWeekDays(d){
+  const days=[];
+  const start=new Date(d);
+  const dow=start.getDay();
+  start.setDate(start.getDate()-dow); // Sunday
+  for(let i=0;i<7;i++){
+    const day=new Date(start);
+    day.setDate(start.getDate()+i);
+    days.push(day);
+  }
+  return days;
+}
+
+// Merge income records + schedule_data into unified events
+function getAllEvents(){
+  const events=[];
+
+  // From schedule table
+  schedule_data.forEach(r=>{
+    events.push({
+      id:'s_'+r.id,
+      dbId:r.id,
+      source:'schedule',
+      date:r.date,
+      start:r.start_time||'00:00',
+      end:r.end_time||'',
+      activity:r.activity||'Others',
+      horse:r.horse_name||'',
+      customer:r.customer_name||'',
+      instructor:r.instructor||'',
+      notes:r.notes||'',
+      status:r.status||'Scheduled',
+      color:actColor(r.activity)
+    });
+  });
+
+  // From income (only those with start_time)
+  income.filter(r=>r.start_time&&r.date).forEach(r=>{
+    events.push({
+      id:'i_'+r.id,
+      dbId:r.id,
+      source:'income',
+      date:r.date,
+      start:r.start_time,
+      end:r.end_time||'',
+      activity:r.activity||'Others',
+      horse:r.horse_name||'',
+      customer:r.customer_name||'',
+      instructor:'',
+      notes:r.notes||'',
+      status:r.status==='Paid'?'Done':'Scheduled',
+      color:actColor(r.activity)
+    });
+  });
+
+  return events.sort((a,b)=>a.start.localeCompare(b.start));
+}
+
+function renderSchedule(){
+  const el=document.getElementById('schedCalendar');
+  if(!el) return;
+
+  const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const allEvents=getAllEvents();
+
+  if(schedView==='day'){
+    const key=fmtDateKey(schedDate);
+    const dayEvents=allEvents.filter(e=>e.date===key);
+    const isToday=fmtDateKey(schedDate)===fmtDateKey(today);
+
+    document.getElementById('schedDateLabel').textContent=
+      DAY_NAMES[schedDate.getDay()]+', '+schedDate.getDate()+' '+MONTHS[schedDate.getMonth()]+' '+schedDate.getFullYear();
+
+    // Time slots 6:00 - 22:00
+    const slots=[];
+    for(let h=6;h<=22;h++) slots.push(h);
+
+    let html='<div style="display:flex;font-size:12px">';
+    // Time column
+    html+='<div style="width:54px;flex-shrink:0;border-right:1px solid var(--border)">';
+    slots.forEach(h=>{
+      html+=`<div style="height:60px;padding:4px 6px;color:var(--muted);border-bottom:1px solid #f0f0f0;font-size:11px">${String(h).padStart(2,'0')}:00</div>`;
+    });
+    html+='</div>';
+
+    // Events column
+    html+='<div style="flex:1;position:relative;min-height:'+(slots.length*60)+'px">';
+    // Grid lines
+    slots.forEach((h,i)=>{
+      html+=`<div style="position:absolute;top:${i*60}px;left:0;right:0;height:60px;border-bottom:1px solid #f0f0f0"></div>`;
+    });
+    // Now line
+    if(isToday){
+      const now=new Date();
+      const topPx=((now.getHours()-6)*60)+now.getMinutes();
+      if(topPx>=0&&topPx<=(slots.length*60)){
+        html+=`<div style="position:absolute;top:${topPx}px;left:0;right:0;height:2px;background:var(--red);z-index:3">
+          <div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;background:var(--red);border-radius:50%"></div>
+        </div>`;
+      }
+    }
+    // Events
+    dayEvents.forEach(ev=>{
+      const [sh,sm]=ev.start.split(':').map(Number);
+      const topPx=((sh-6)*60)+sm;
+      let heightPx=60;
+      if(ev.end){
+        const [eh,em]=ev.end.split(':').map(Number);
+        heightPx=Math.max(40,((eh-6)*60)+em-topPx);
+      }
+      const isDone=ev.status==='Done'||ev.status==='Paid';
+      html+=`<div onclick="viewEvent('${ev.id}')" style="position:absolute;top:${topPx}px;left:8px;right:8px;height:${heightPx}px;background:${ev.color};color:#fff;border-radius:8px;padding:5px 8px;cursor:pointer;opacity:${isDone?0.65:1};z-index:2;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.15)">
+        <div style="font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.start} ${ev.activity} ${ev.horse?'— '+ev.horse:''}</div>
+        ${ev.customer?`<div style="font-size:11px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.customer}</div>`:''}
+        ${ev.source==='income'?'<div style="font-size:10px;opacity:.7">● Income</div>':''}
+      </div>`;
+    });
+    if(!dayEvents.length){
+      html+=`<div style="position:absolute;top:80px;left:0;right:0;text-align:center;color:var(--muted);font-size:13px">No sessions scheduled</div>`;
+    }
+    html+='</div></div>';
+    el.innerHTML=html;
+
+  } else {
+    // WEEK VIEW
+    const weekDays=getWeekDays(schedDate);
+    const startStr=weekDays[0].getDate()+' '+MONTHS[weekDays[0].getMonth()];
+    const endStr=weekDays[6].getDate()+' '+MONTHS[weekDays[6].getMonth()]+' '+weekDays[6].getFullYear();
+    document.getElementById('schedDateLabel').textContent=startStr+' — '+endStr;
+
+    let html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:600px">';
+    // Header
+    html+='<thead><tr><th style="width:50px;padding:8px;border-bottom:2px solid var(--border);font-size:12px;color:var(--muted)">Time</th>';
+    weekDays.forEach(d=>{
+      const isToday=fmtDateKey(d)===fmtDateKey(today);
+      html+=`<th style="padding:8px;border-bottom:2px solid var(--border);border-left:1px solid var(--border);text-align:center;background:${isToday?'var(--sand)':'transparent'}">
+        <div style="font-size:11px;color:var(--muted)">${DAY_NAMES[d.getDay()]}</div>
+        <div style="font-size:18px;font-weight:700;color:${isToday?'var(--amber)':'var(--navy)'}">${d.getDate()}</div>
+      </th>`;
+    });
+    html+='</tr></thead><tbody>';
+
+    // Time rows 6:00 - 22:00
+    for(let h=6;h<=22;h++){
+      html+=`<tr><td style="padding:4px 6px;font-size:11px;color:var(--muted);border-bottom:1px solid #f5f5f5;white-space:nowrap;vertical-align:top">${String(h).padStart(2,'0')}:00</td>`;
+      weekDays.forEach(d=>{
+        const key=fmtDateKey(d);
+        const isToday=fmtDateKey(d)===fmtDateKey(today);
+        const slotEvents=allEvents.filter(e=>{
+          if(e.date!==key) return false;
+          const [eh]=e.start.split(':').map(Number);
+          return eh===h;
+        });
+        html+=`<td style="border-left:1px solid var(--border);border-bottom:1px solid #f5f5f5;padding:2px;vertical-align:top;min-height:40px;background:${isToday?'#fefaf4':'transparent'}">`;
+        slotEvents.forEach(ev=>{
+          html+=`<div onclick="viewEvent('${ev.id}')" style="background:${ev.color};color:#fff;border-radius:5px;padding:3px 6px;margin-bottom:2px;cursor:pointer;font-size:11px;opacity:${ev.status==='Done'?0.65:1}">
+            <strong>${ev.start}</strong> ${ev.activity}<br>${ev.horse||ev.customer||''}
+          </div>`;
+        });
+        html+='</td>';
+      });
+      html+='</tr>';
+    }
+    html+='</tbody></table></div>';
+    el.innerHTML=html;
+  }
+}
+
+function viewEvent(id){
+  const all=getAllEvents();
+  const ev=all.find(e=>e.id===id);
+  if(!ev) return;
+  const src=ev.source==='income'?'<span style="background:#e8f0ff;color:#1A2744;border-radius:6px;padding:2px 8px;font-size:11px">From Income</span>':'<span style="background:#e8f5ee;color:var(--green);border-radius:6px;padding:2px 8px;font-size:11px">Scheduled</span>';
+  openModal('&#128197; '+ev.activity+' — '+ev.date,`
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:8px;align-items:center">${src}
+        <span style="background:${ev.color};color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700">${ev.status}</span>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div><div style="font-size:11px;color:var(--muted)">Date</div><div style="font-weight:700">${fmt(ev.date)}</div></div>
+        <div><div style="font-size:11px;color:var(--muted)">Time</div><div style="font-weight:700">${ev.start}${ev.end?' → '+ev.end:''}</div></div>
+        <div><div style="font-size:11px;color:var(--muted)">Activity</div><div style="font-weight:700">${ev.activity}</div></div>
+        <div><div style="font-size:11px;color:var(--muted)">Horse</div><div style="font-weight:700">${ev.horse||'—'}</div></div>
+        <div><div style="font-size:11px;color:var(--muted)">Customer</div><div style="font-weight:700">${ev.customer||'—'}</div></div>
+        ${ev.instructor?`<div><div style="font-size:11px;color:var(--muted)">Instructor</div><div style="font-weight:700">${ev.instructor}</div></div>`:''}
+      </div>
+      ${ev.notes?`<div style="background:var(--sand);padding:10px;border-radius:8px;font-size:13px">${ev.notes}</div>`:''}
+      <div class="btn-row">
+        ${ev.source==='schedule'?`<button class="btn btn-amber" onclick="closeModal();openEditSchedule('${ev.dbId}')">&#9999;&#65039; Edit</button>`:''}
+        ${ev.source==='schedule'&&ev.status!=='Done'?`<button class="btn btn-green" style="width:auto;padding:8px 16px" onclick="markSchedDone(${ev.dbId})">&#9989; Mark Done</button>`:''}
+        ${ev.source==='schedule'?`<button class="btn" style="background:#FDECEA;color:var(--red);width:auto;padding:8px 16px" onclick="delSchedule(${ev.dbId})">&#128465;&#65039;</button>`:''}
+        <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Close</button>
+      </div>
+    </div>`);
+}
+
+function openAddSchedule(prefillDate){
+  const d=prefillDate||fmtDateKey(schedDate);
+  openModal('&#10133; Add Session',`
+    <div class="form-grid">
+      <div class="form-group"><label>Date *</label><input type="date" id="sc-date" value="${d}"></div>
+      <div class="form-group"><label>Activity *</label><select id="sc-activity"><option>Hack</option><option>Lesson</option><option>Breeding</option><option>Shuwar</option><option>Livery</option><option>Others</option></select></div>
+      <div class="form-group"><label>Start Time *</label><input type="time" id="sc-start" value="08:00"></div>
+      <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="09:00"></div>
+      <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option>${h.horse_name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Customer</label><input type="text" id="sc-customer" list="cList" placeholder="Name..."></div>
+      <div class="form-group"><label>Instructor</label><input type="text" id="sc-instructor" placeholder="Instructor name..."></div>
+      <div class="form-group"><label>Status</label><select id="sc-status"><option>Scheduled</option><option>Done</option><option>Cancelled</option></select></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Notes</label><input type="text" id="sc-notes" placeholder="Optional notes..."></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveSchedule()">&#128190; Save Session</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function saveSchedule(){
+  const date=document.getElementById('sc-date').value;
+  const start=document.getElementById('sc-start').value;
+  if(!date||!start){alert('Date and Start Time are required');return;}
+  try{
+    await sbPost('schedule',{
+      date,start_time:start,
+      end_time:document.getElementById('sc-end').value||null,
+      activity:document.getElementById('sc-activity').value,
+      horse_name:document.getElementById('sc-horse').value||null,
+      customer_name:document.getElementById('sc-customer').value||null,
+      instructor:document.getElementById('sc-instructor').value||null,
+      status:document.getElementById('sc-status').value,
+      notes:document.getElementById('sc-notes').value||null,
+      color:actColor(document.getElementById('sc-activity').value)
+    });
+    closeModal();await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function openEditSchedule(id){
+  const r=schedule_data.find(x=>x.id===id);if(!r)return;
+  openModal('&#9999;&#65039; Edit Session',`
+    <div class="form-grid">
+      <div class="form-group"><label>Date</label><input type="date" id="sc-date" value="${r.date||''}"></div>
+      <div class="form-group"><label>Activity</label><select id="sc-activity"><option ${r.activity==='Hack'?'selected':''}>Hack</option><option ${r.activity==='Lesson'?'selected':''}>Lesson</option><option ${r.activity==='Breeding'?'selected':''}>Breeding</option><option ${r.activity==='Shuwar'?'selected':''}>Shuwar</option><option ${r.activity==='Livery'?'selected':''}>Livery</option><option ${r.activity==='Others'?'selected':''}>Others</option></select></div>
+      <div class="form-group"><label>Start Time</label><input type="time" id="sc-start" value="${r.start_time||''}"></div>
+      <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="${r.end_time||''}"></div>
+      <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option ${h.horse_name===r.horse_name?'selected':''}>${h.horse_name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Customer</label><input type="text" id="sc-customer" value="${r.customer_name||''}"></div>
+      <div class="form-group"><label>Instructor</label><input type="text" id="sc-instructor" value="${r.instructor||''}"></div>
+      <div class="form-group"><label>Status</label><select id="sc-status"><option ${r.status==='Scheduled'?'selected':''}>Scheduled</option><option ${r.status==='Done'?'selected':''}>Done</option><option ${r.status==='Cancelled'?'selected':''}>Cancelled</option></select></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Notes</label><input type="text" id="sc-notes" value="${r.notes||''}"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-amber" onclick="updateSchedule(${id})">&#128190; Save Changes</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function updateSchedule(id){
+  try{
+    await sbPatch('schedule',id,{
+      date:document.getElementById('sc-date').value,
+      start_time:document.getElementById('sc-start').value,
+      end_time:document.getElementById('sc-end').value||null,
+      activity:document.getElementById('sc-activity').value,
+      horse_name:document.getElementById('sc-horse').value||null,
+      customer_name:document.getElementById('sc-customer').value||null,
+      instructor:document.getElementById('sc-instructor').value||null,
+      status:document.getElementById('sc-status').value,
+      notes:document.getElementById('sc-notes').value||null,
+      color:actColor(document.getElementById('sc-activity').value)
+    });
+    closeModal();await loadAll();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function markSchedDone(id){
+  if(!confirm('Mark this session as Done?'))return;
+  await sbPatch('schedule',id,{status:'Done'});
+  closeModal();await loadAll();
+}
+
+async function delSchedule(id){
+  if(!confirm('Delete this session?'))return;
+  await sbDel('schedule',id);
+  closeModal();await loadAll();
 }
 
 </script>
