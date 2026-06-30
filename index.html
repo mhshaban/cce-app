@@ -1425,8 +1425,9 @@ html[dir="rtl"] .pie-legend-item {
       <div class="card" style="padding:12px 18px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-            <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Day</button>
+            <button id="schedViewActive" onclick="setSchedView('active')" style="padding:7px 16px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Active</button>
             <button id="schedViewWeek" onclick="setSchedView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128198; Week</button>
+            <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128197; Day</button>
           </div>
           <button onclick="schedNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">&#8249;</button>
           <span id="schedDateLabel" style="font-weight:700;font-size:15px;color:var(--navy);min-width:180px;text-align:center"></span>
@@ -3087,7 +3088,7 @@ function logNotif(msg){
 // SCHEDULE / TIMETABLE
 // ══════════════════════════════════════════════════════════
 
-let schedView='day';
+let schedView='active';
 let schedDate=new Date(); schedDate.setHours(0,0,0,0);
 
 const ACTIVITY_COLORS={
@@ -3099,14 +3100,17 @@ function actColor(a){return ACTIVITY_COLORS[a]||'#7A8399';}
 
 function setSchedView(v){
   schedView=v;
-  document.getElementById('schedViewDay').style.background=v==='day'?'var(--amber)':'#f0f0f0';
-  document.getElementById('schedViewDay').style.color=v==='day'?'#fff':'var(--navy)';
-  document.getElementById('schedViewWeek').style.background=v==='week'?'var(--amber)':'#f0f0f0';
-  document.getElementById('schedViewWeek').style.color=v==='week'?'#fff':'var(--navy)';
+  const activeBtn=document.getElementById('schedViewActive');
+  const dayBtn=document.getElementById('schedViewDay');
+  const weekBtn=document.getElementById('schedViewWeek');
+  if(activeBtn){activeBtn.style.background=v==='active'?'var(--green)':'#f0f0f0';activeBtn.style.color=v==='active'?'#fff':'var(--navy)';}
+  if(dayBtn){dayBtn.style.background=v==='day'?'var(--green)':'#f0f0f0';dayBtn.style.color=v==='day'?'#fff':'var(--navy)';}
+  if(weekBtn){weekBtn.style.background=v==='week'?'var(--green)':'#f0f0f0';weekBtn.style.color=v==='week'?'#fff':'var(--navy)';}
   renderSchedule();
 }
 
 function schedNav(dir){
+  if(schedView==='active') return; // Active Sessions view doesn't navigate
   if(schedView==='day') schedDate.setDate(schedDate.getDate()+dir);
   else schedDate.setDate(schedDate.getDate()+(dir*7));
   renderSchedule();
@@ -3188,7 +3192,22 @@ function renderSchedule(){
   const today=new Date(); today.setHours(0,0,0,0);
   const allEvents=getAllEvents();
 
-  if(schedView==='day'){
+  if(schedView==='active'){
+    // Default dashboard schedule view: show all not-yet-completed sessions as cards, like the Instructor Portal
+    const activeEvents=allEvents.filter(e=>e.status!=='Done'&&e.status!=='Cancelled'&&e.status!=='Paid');
+    document.getElementById('schedDateLabel').textContent='🟢 Active Sessions';
+    if(!activeEvents.length){
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions</div>';
+      return;
+    }
+    activeEvents.sort((a,b)=>{
+      const dateCmp=String(a.date||'').localeCompare(String(b.date||''));
+      if(dateCmp!==0) return dateCmp;
+      return String(a.start||'00:00').localeCompare(String(b.start||'00:00'));
+    });
+    el.innerHTML='<div style="padding:12px">'+activeEvents.map(ev=>schedSessionCard(ev)).join('')+'</div>';
+
+  } else if(schedView==='day'){
     const key=fmtDateKey(schedDate);
     const dayEvents=allEvents.filter(e=>e.date===key);
     const isToday=fmtDateKey(schedDate)===fmtDateKey(today);
@@ -3289,6 +3308,54 @@ function renderSchedule(){
     html+='</tbody></table></div>';
     el.innerHTML=html;
   }
+}
+
+function schedSessionCard(ev){
+  const statusColor=ev.status==='Done'?'var(--green)':ev.status==='Cancelled'?'var(--red)':'var(--amber)';
+  const statusBg=ev.status==='Done'?'#E8F5EE':ev.status==='Cancelled'?'#FDECEA':'#FEF3E2';
+  const eid=String(ev.id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const sid=String(ev.dbId||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const sourceChip=ev.source==='income'
+    ? '<span style="background:#e8f0ff;color:#1A2744;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">From Income</span>'
+    : '<span style="background:#e8f5ee;color:var(--green);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">Scheduled</span>';
+  return `<div onclick="viewEvent('${eid}')" style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid ${ev.color};cursor:pointer">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="font-size:28px">🐴</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-weight:700;font-size:15px;color:var(--navy)">${ev.start||''} ${ev.activity||''}</span>
+          <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${ev.status||'Scheduled'}</span>
+          ${sourceChip}
+        </div>
+        <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+          <span>📅 ${fmt(ev.date)}</span>
+          ${ev.end?`<span>⏱ ${ev.start} → ${ev.end}</span>`:''}
+          ${ev.horse?`<span>🐴 ${ev.horse}</span>`:''}
+          ${ev.customer?`<span>👤 ${ev.customer}</span>`:''}
+          ${ev.instructor?`<span>👨‍🏫 ${ev.instructor}</span>`:''}
+        </div>
+        ${ev.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${ev.notes}</div>`:''}
+        ${schedHorseInfo(ev.horse)}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${ev.source==='schedule'&&ev.status!=='Done'&&ev.status!=='Cancelled'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px;font-size:13px" onclick="event.stopPropagation();markSchedDone('${sid}')">✅</button>`:''}
+        ${ev.source==='schedule'?`<button class="action-btn" style="background:#EEF2FF;color:var(--navy);padding:8px 12px;font-size:13px" onclick="event.stopPropagation();openEditSchedule('${sid}')">✏️</button>`:''}
+        ${ev.source==='schedule'?`<button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 12px;font-size:13px" onclick="event.stopPropagation();delSchedule('${sid}')">🗑️</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function schedHorseInfo(horseName){
+  if(!horseName||typeof horses==='undefined') return '';
+  const h=horses.find(x=>x.horse_name===horseName);
+  if(!h) return '';
+  return `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+    ${h.sex?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.sex}</span>`:''}
+    ${h.color?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.color}</span>`:''}
+    ${h.breed?`<span style="font-size:11px;background:#f0f0f0;border-radius:5px;padding:2px 7px">${h.breed}</span>`:''}
+    ${h.farrier_date?`<span style="font-size:11px;background:#FEF3E2;color:var(--amber);border-radius:5px;padding:2px 7px">🔧 ${fmt(h.farrier_date)}</span>`:''}
+  </div>`;
 }
 
 function viewEvent(id){
