@@ -347,14 +347,11 @@ html[dir="rtl"] .alert-bell-badge{right:auto;left:-6px}
 html[dir="rtl"] .alert-item.alert-red{border-left:0;border-right:3px solid var(--red)}
 html[dir="rtl"] .alert-item.alert-amber{border-left:0;border-right:3px solid var(--amber)}
 html[dir="rtl"] .alert-item.alert-blue{border-left:0;border-right:3px solid #3B82F6}
-.lang-toggle{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
-.lang-toggle:hover{background:var(--amber);border-color:var(--amber)}
 [lang="ar"], .arabic-text{direction:rtl;unicode-bidi:isolate;text-align:inherit}
 [lang="en"], .english-text{direction:ltr;unicode-bidi:isolate}
 input, textarea{unicode-bidi:plaintext}
 html[dir="rtl"] .home-grid, html[dir="rtl"] .form-grid, html[dir="rtl"] .stats-grid{direction:rtl}
 html[dir="ltr"] .home-grid, html[dir="ltr"] .form-grid, html[dir="ltr"] .stats-grid{direction:ltr}
-@media(max-width:640px){.lang-toggle{padding:6px 10px;font-size:11px}}
 
 
 /* ══════════════════════════════════════════════════════════
@@ -465,7 +462,6 @@ html[dir="rtl"] .pie-legend-item {
     <div class="header-sub" id="headerSub">Bahrain · نادي الريف للفروسية</div>
   </div>
   <div class="header-right">
-    <button class="lang-toggle" id="langToggle" onclick="toggleLanguage()" type="button" aria-label="Switch language">العربية</button>
     <button class="back-btn hidden" id="backBtn" onclick="goHome()" data-i18n="backHome">&#8592; Home</button>
     <span class="sync-status hidden" id="syncStatus"></span>
     <button class="sync-btn hidden" id="refreshBtn" onclick="loadAll()" data-i18n="refresh">&#128260; Refresh</button>
@@ -688,7 +684,7 @@ html[dir="rtl"] .pie-legend-item {
         <div class="step"><strong>٤</strong>الدفع والتأكيد</div>
       </div>
       <div class="card">
-        <div class="card-title">&#128203; بياناتك</div>
+        <div class="card-title">&#128203; Your Information</div>
         <div class="form-group"><label>Full Name — الاسم الكامل *</label><input type="text" id="b-name" placeholder="اكتب الاسم الكامل"></div>
         <div class="form-group"><label>Phone Number — رقم الهاتف *</label><input type="tel" id="b-phone" placeholder="مثال: 39001234"></div>
         <div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input type="tel" id="b-emergency" placeholder="رقم للتواصل في حالات الطوارئ"></div>
@@ -697,7 +693,7 @@ html[dir="rtl"] .pie-legend-item {
         <div class="form-group"><label>Preferred Time *</label><input type="time" id="b-time"></div>
       </div>
       <div class="card">
-        <div class="card-title">&#127943; اختر نوع الجولة</div>
+        <div class="card-title">&#127943; Select Ride Type</div>
         <div class="ride-options" id="rideOptions">
           <div class="ride-card" onclick="selectRideService(this,'Half Hour Ride',5)"><div class="ride-name">نصف ساعة</div><div class="ride-desc">Half Hour Ride</div><div class="ride-price">5 BD</div></div>
           <div class="ride-card" onclick="selectRideService(this,'1 Hour Hack Ride',7)"><div class="ride-name">ساعة كاملة</div><div class="ride-desc">1 Hour Hack Ride</div><div class="ride-price">7 BD</div></div>
@@ -705,12 +701,12 @@ html[dir="rtl"] .pie-legend-item {
           <div class="ride-card" onclick="selectRideService(this,'Family Package',22)"><div class="ride-name">باقة عائلية</div><div class="ride-desc">Family Package</div><div class="ride-price">22 BD</div></div>
         </div>
         <input type="hidden" id="b-service"><input type="hidden" id="b-price">
-        <div class="required-hint">اختر الخدمة المطلوبة قبل إرسال الحجز.</div>
+        <div class="required-hint">Please select a service before submitting your booking.</div>
       </div>
       
       <!-- Rider Level Assessment -->
       <div class="card">
-        <div class="card-title">🎖️ تقييم مستواك في الفروسية — Your Riding Level</div>
+        <div class="card-title">🎖️ Your Riding Level Assessment</div>
         <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:4px">
           <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--sand);border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s" onclick="selectRiderLevel(this,'never')">
             <input type="radio" name="rider-level" value="never" style="width:18px;height:18px;cursor:pointer">
@@ -749,7 +745,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Personal ID -->
       <div class="card">
-        <div class="card-title">🆔 الرقم الشخصي — Personal ID</div>
+        <div class="card-title">🆔 Personal ID</div>
         <div class="form-group"><label>رقم الهوية / ID Number *</label><input type="text" id="b-personal-id" placeholder="أدخل رقم الهوية أو جواز السفر"></div>
       </div>
       <div class="note-box">
@@ -794,7 +790,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Booking Terms -->
       <div class="card" style="border:1px solid var(--amber)">
-        <div class="card-title">&#128220; Horse Renting Agreement — اتفاقية تأجير ركوب الخيل</div>
+        <div class="card-title">&#128220; Horse Renting Agreement</div>
         <div style="max-height:220px;overflow-y:auto;font-size:12px;line-height:1.9;color:#333;padding:4px 2px">
           <div style="direction:rtl;text-align:right;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;margin-bottom:10px">
             ١. يلتزم المستأجر بارتداء الملابس المناسبة (خوذة واقية وحذاء مع كعب صغير لتجنب الانزلاق)<br>
@@ -881,7 +877,7 @@ html[dir="rtl"] .pie-legend-item {
         <div class="pkg-value" id="selectedPkgLabel">—</div>
       </div>
       <div class="card">
-        <div class="card-title">&#128203; بياناتك</div>
+        <div class="card-title">&#128203; Your Information</div>
         <div class="form-group"><label>Full Name — الاسم الكامل *</label><input type="text" id="t-name" placeholder="اكتب الاسم الكامل"></div>
         <div class="form-group"><label>Phone Number — رقم الهاتف *</label><input type="tel" id="t-phone" placeholder="مثال: 39001234"></div>
         <div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input type="tel" id="t-emergency" placeholder="رقم للتواصل في حالات الطوارئ"></div>
@@ -891,7 +887,7 @@ html[dir="rtl"] .pie-legend-item {
       <!-- Dynamic session slots -->
       <div id="sessionSlotsWrap" style="display:none">
         <div class="card">
-          <div class="card-title">&#128197; اختر مواعيد حصصك</div>
+          <div class="card-title">&#128197; Select Your Session Times</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:14px;background:var(--sand);padding:10px;border-radius:8px;direction:rtl;text-align:right">
             &#9201; الأوقات المتاحة: صباحاً ٨:٠٠ — ١٢:٠٠ &nbsp;|&nbsp; مساءً ٤:٠٠ — ٨:٠٠ &nbsp;|&nbsp; مدة الحصة: ٤٥ دقيقة
           </div>
@@ -939,7 +935,7 @@ html[dir="rtl"] .pie-legend-item {
       
       <!-- Training Terms & Conditions -->
       <div class="card" style="border:1px solid var(--amber)">
-        <div class="card-title">&#128220; Terms & Conditions — الشروط والأحكام</div>
+        <div class="card-title">&#128220; Terms & Conditions</div>
         <div style="max-height:260px;overflow-y:auto;font-size:12px;line-height:1.9;color:#333;padding:4px 2px">
 
           <div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:13px">شروط وأحكام التدريب — Training Agreement</div>
@@ -1018,7 +1014,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Horse Info -->
       <div class="card">
-        <div class="card-title">&#128052; معلومات الحصان</div>
+        <div class="card-title">&#128052; Horse Information</div>
         <div class="form-group"><label>Horse Name — اسم الحصان *</label><input type="text" id="lv-horse" placeholder="اكتب اسم الحصان..."></div>
         <div class="form-group"><label>Horse Breed — نوع الحصان *</label><input type="text" id="lv-breed" placeholder="مثال: عربي، ثوروبريد..."></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1031,7 +1027,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Owner Info -->
       <div class="card">
-        <div class="card-title">&#128100; معلومات المالك</div>
+        <div class="card-title">&#128100; Owner Information</div>
         <div class="form-group"><label>Full Name — الاسم الكامل *</label><input type="text" id="lv-name" placeholder="اكتب الاسم الكامل..."></div>
         <div class="form-group"><label>Phone — رقم التواصل *</label><input type="tel" id="lv-phone" placeholder="مثال: 39001234"></div>
         <div class="form-group"><label>Preferred Start Date — تاريخ البداية</label><input type="date" id="lv-date"></div>
@@ -1039,7 +1035,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Livery Type -->
       <div class="card">
-        <div class="card-title">&#127968; نوع الإيواء</div>
+        <div class="card-title">&#127968; Livery Type</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
           <div id="lv-type-full" onclick="selectLiveryType('full')" style="border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s">
             <div style="font-size:22px;margin-bottom:4px">&#127968;</div>
@@ -1129,7 +1125,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Notes -->
       <div class="card">
-        <div class="card-title">&#128203; Notes — ملاحظات</div>
+        <div class="card-title">&#128203; Notes</div>
         <textarea id="lv-notes" placeholder="أي ملاحظات إضافية..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;min-height:80px;resize:vertical;outline:none"></textarea>
       </div>
 
@@ -1141,7 +1137,7 @@ html[dir="rtl"] .pie-legend-item {
       
       <!-- Livery Terms & Conditions -->
       <div class="card" style="border:1px solid var(--amber)">
-        <div class="card-title">&#128220; Terms & Conditions — الشروط والأحكام</div>
+        <div class="card-title">&#128220; Terms & Conditions</div>
         <div style="max-height:260px;overflow-y:auto;font-size:12px;line-height:1.9;color:#333;padding:4px 2px">
 
           <div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:13px">الشروط والأحكام — Livery Agreement</div>
@@ -1330,7 +1326,7 @@ html[dir="rtl"] .pie-legend-item {
     <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
     <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
     <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
-    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127919; المدربون</button>
+    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)" data-i18n="dash_instructors">👨‍🏫 Instructors</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -1457,8 +1453,8 @@ html[dir="rtl"] .pie-legend-item {
 
     <div class="section" id="page-instructors">
       <div class="card">
-        <div class="card-title">&#127919; إدارة المدربين</div>
-        <button class="btn btn-green" style="width:auto;padding:8px 20px;margin-top:8px" onclick="openAddInstructor()">&#10133; إضافة مدرب</button>
+        <div class="card-title">&#127919; Manage Instructors</div>
+        <button class="btn btn-green" style="width:auto;padding:8px 20px;margin-top:8px" onclick="openAddInstructor()">&#10133; Add Instructor</button>
       </div>
       <div id="instructorsGrid"></div>
     </div>
@@ -1480,7 +1476,7 @@ html[dir="rtl"] .pie-legend-item {
 
       <!-- Notification Schedule Card -->
       <div class="card">
-        <div class="card-title">&#9201; جدول الإشعارات اليومية</div>
+        <div class="card-title">&#9201; Daily Notification Schedule</div>
         <div class="form-grid" style="margin-top:10px">
           <div class="form-group">
             <label>إرسال يومي عند فتح التطبيق بعد الساعة</label>
@@ -1585,7 +1581,6 @@ const CCE_DEFAULT_LANG='en';
 let currentLang = localStorage.getItem('cce_lang') || CCE_DEFAULT_LANG;
 const CCE_I18N={
   en:{
-    switchLang:'العربية',languageToggleLabel:'Switch to Arabic',
     backHome:'← Home',refresh:'🔄 Refresh',backup:'💾 Backup',logout:'🔓 Logout',alerts:'🔔 Alerts',
     page_home:'Bahrain · نادي الريف للفروسية',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_admin:'Staff Login',page_dashboard:'Dashboard',
     dash_dashboard:'Dashboard',dash_income:'Income',dash_expenses:'Expenses',dash_overdue:'Overdue',dash_horses:'Horses',dash_breeding:'Breeding',dash_bookings:'Bookings',dash_notifications:'Notifications',dash_schedule:'Schedule',dash_instructors:'Instructors',
@@ -1595,7 +1590,6 @@ const CCE_I18N={
     bookingHeroTitle:'Book a Horse Ride',trainingHeroTitle:'Training Packages',liveryHeroTitle:'Book Livery',sendBooking:'🐴 Send Booking Request',sendTraining:'🎯 Send Registration Request'
   },
   ar:{
-    switchLang:'English',languageToggleLabel:'التبديل إلى الإنجليزية',
     backHome:'الرئيسية ←',refresh:'🔄 تحديث',backup:'💾 نسخة احتياطية',logout:'🔓 خروج',alerts:'🔔 التنبيهات',
     page_home:'نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة الملاك',page_instructor:'بوابة المدربين',page_admin:'دخول الإدارة',page_dashboard:'لوحة الإدارة',
     dash_dashboard:'لوحة التحكم',dash_income:'الإيرادات',dash_expenses:'المصروفات',dash_overdue:'المتأخرات',dash_horses:'الخيل',dash_breeding:'التناسل',dash_bookings:'الحجوزات',dash_notifications:'التنبيهات',dash_schedule:'الجدول',dash_instructors:'المدربون',
@@ -1619,12 +1613,9 @@ function applyLanguage(lang){
   localStorage.setItem('cce_lang',currentLang);
   document.querySelectorAll('[data-i18n]').forEach(el=>{el.innerHTML=t(el.dataset.i18n);});
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.dataset.i18nPlaceholder);});
-  const btn=document.getElementById('langToggle');
-  if(btn){btn.textContent=t('switchLang');btn.setAttribute('aria-label',t('languageToggleLabel'));btn.title=t('languageToggleLabel');}
   updateHeaderLanguage();
   tagArabicLeafText();
 }
-function toggleLanguage(){applyLanguage(currentLang==='ar'?'en':'ar');}
 function updateHeaderLanguage(){
   const headerSub=document.getElementById('headerSub');
   if(headerSub && typeof currentPage!=='undefined') headerSub.textContent=t('page_'+currentPage);
@@ -1632,7 +1623,6 @@ function updateHeaderLanguage(){
 function tagArabicLeafText(){
   const arabic=/[\u0600-\u06FF]/;
   document.querySelectorAll('body *:not(script):not(style):not(svg)').forEach(el=>{
-    if(el.id==='langToggle') return;
     const txt=(el.textContent||'').trim();
     if(!txt || el.children.length>0) return;
     if(el.hasAttribute('data-i18n')){
@@ -2162,6 +2152,12 @@ async function toggleHorse(id,cur){
   await sbPatch('horses',id,{status:ns});await loadAll();
 }
 function buildAlerts(){
+  // Don't show admin alerts on home page
+  if(currentPage==='home'){
+    document.getElementById('alertsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">&#10003; All clear — no alerts!</div>';
+    return;
+  }
+  
   const today=new Date(); today.setHours(0,0,0,0);
   const alerts=[];
 
