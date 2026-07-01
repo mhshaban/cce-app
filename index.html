@@ -468,7 +468,7 @@ html[dir="rtl"] .pie-legend-item {
     <button class="sync-btn hidden" id="backupBtn" style="background:#1E7D4E" onclick="downloadBackup()" data-i18n="backup">&#128190; Backup</button>
     <button class="sync-btn hidden" id="logoutAdminBtn" style="background:#C0392B" onclick="logoutAdmin()" data-i18n="logout">&#128275; Logout</button>
     <button class="sync-btn hidden" id="logoutOwnerBtn" style="background:#C0392B" onclick="logoutOwner()" data-i18n="logout">&#128275; Logout</button>
-    <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)">&#9888;&#65039; <span id="overdueCount">0</span></span>
+    <span class="overdue-badge hidden" id="overdueBadge" style="display:none !important;" onclick="showDashPage('overdue',null)">&#9888;&#65039; <span id="overdueCount">0</span></span>
     <div class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()">&#128276;<div class="alert-bell-badge" id="alertBellCount">0</div></div>
   </div>
 </div>
@@ -501,35 +501,34 @@ html[dir="rtl"] .pie-legend-item {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="font-size:32px">&#127919;</div>
         <div>
-          <div style="font-size:17px;font-weight:700;color:var(--navy)" data-i18n="homeTrainingTitle">Horse Riding Training</div>
-          <div style="font-size:12px;color:var(--muted)" data-i18n="homeTrainingSub">Private and group sessions for beginners and advanced riders</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">Horse Riding Training — تدريب ركوب الخيل</div>
+          <div style="font-size:12px;color:var(--muted)">Private and group sessions for beginners and advanced riders</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px">
-        <div style="border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;position:relative">
-          <div style="font-size:20px;margin-bottom:4px">&#127919;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:13px">Single Session — حصة واحدة</div>
-          <div style="font-size:11px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber)">10 BD</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--sand);border-radius:12px;padding:14px">
+          <div style="font-size:18px;margin-bottom:4px">&#127919;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Single Session</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">10 BD</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">حصة واحدة</div>
         </div>
-        <div style="border:2px solid var(--amber);border-radius:12px;padding:14px;text-align:center;position:relative;background:#fffbf5">
-          <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--amber);color:#fff;font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px">POPULAR</div>
-          <div style="font-size:20px;margin-bottom:4px">&#128197;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:13px">Starter Pack — 4 حصص / شهر</div>
-          <div style="font-size:11px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber)">35 BD</div>
+        <div style="background:var(--sand);border-radius:12px;padding:14px;border:2px solid var(--amber)">
+          <div style="font-size:18px;margin-bottom:4px">&#128197;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Starter Pack</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">35 BD<span style="font-size:11px;color:var(--muted);font-weight:400"> / month</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">4 حصص / شهر</div>
         </div>
-        <div style="border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center">
-          <div style="font-size:20px;margin-bottom:4px">&#11088;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:13px">Advanced Pack — 8 حصص / شهر</div>
-          <div style="font-size:11px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber)">70 BD</div>
+        <div style="background:var(--sand);border-radius:12px;padding:14px">
+          <div style="font-size:18px;margin-bottom:4px">&#11088;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Advanced Pack</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">70 BD<span style="font-size:11px;color:var(--muted);font-weight:400"> / month</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">8 حصص / شهر</div>
         </div>
-        <div style="border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center">
-          <div style="font-size:20px;margin-bottom:4px">&#127942;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:13px">Pro Pack — 12 حصة / شهر</div>
-          <div style="font-size:11px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber)">100 BD</div>
+        <div style="background:var(--sand);border-radius:12px;padding:14px">
+          <div style="font-size:18px;margin-bottom:4px">&#127942;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Pro Pack</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">100 BD<span style="font-size:11px;color:var(--muted);font-weight:400"> / month</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">12 حصة / شهر</div>
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted);background:var(--sand);padding:10px 14px;border-radius:8px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif">
@@ -544,28 +543,28 @@ html[dir="rtl"] .pie-legend-item {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="font-size:32px">&#128052;</div>
         <div>
-          <div style="font-size:17px;font-weight:700;color:var(--navy)" data-i18n="homeRidesTitle">Hack Rides</div>
-          <div style="font-size:12px;color:var(--muted)" data-i18n="homeRidesSub">Enjoyable rides on our beautiful horses</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">Hack Rides — الجولات</div>
+          <div style="font-size:12px;color:var(--muted)">Enjoyable rides on our beautiful horses</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px">
-        <div style="background:var(--sand);border-radius:12px;padding:16px;text-align:center">
-          <div style="font-size:22px;margin-bottom:6px">&#9201;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:14px">1 Hour Hack Ride — جولة ساعة كاملة</div>
-          <div style="font-size:12px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber);margin-top:8px">7 BD</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--sand);border-radius:12px;padding:14px">
+          <div style="font-size:18px;margin-bottom:4px">&#9201;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">1 Hour Hack Ride</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">7 BD</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">جولة ساعة كاملة</div>
         </div>
-        <div style="background:var(--sand);border-radius:12px;padding:16px;text-align:center">
-          <div style="font-size:22px;margin-bottom:6px">&#128247;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:14px">Photo Session + Ride — جلسة تصوير</div>
-          <div style="font-size:12px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber);margin-top:8px">10 BD</div>
+        <div style="background:var(--sand);border-radius:12px;padding:14px;border:2px solid var(--amber)">
+          <div style="font-size:18px;margin-bottom:4px">&#128247;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Photo Session + Ride</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">10 BD</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">جلسة تصوير</div>
         </div>
-        <div style="background:var(--sand);border-radius:12px;padding:16px;text-align:center">
-          <div style="font-size:22px;margin-bottom:6px">&#128106;</div>
-          <div style="font-weight:700;color:var(--navy);font-size:14px">Family Package (4 rides) — عائلي</div>
-          <div style="font-size:12px;color:var(--muted);margin:4px 0"></div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber);margin-top:8px">22 BD</div>
+        <div style="background:var(--sand);border-radius:12px;padding:14px;grid-column:1/3">
+          <div style="font-size:18px;margin-bottom:4px">&#128106;</div>
+          <div style="font-weight:700;color:var(--navy);font-size:14px">Family Package (4 rides)</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);margin:6px 0">22 BD</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8">عائلي</div>
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted);background:var(--sand);padding:10px 14px;border-radius:8px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif">
@@ -580,7 +579,7 @@ html[dir="rtl"] .pie-legend-item {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="font-size:32px">&#127968;</div>
         <div style="flex:1">
-          <div style="font-size:17px;font-weight:700;color:var(--navy)">خدمات الإيواء — Livery Services</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">Livery Services — خدمات الإيواء</div>
           <div style="font-size:12px;color:var(--muted);font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif">رعاية كاملة لحصانك في أفضل البيئات</div>
         </div>
       </div>
@@ -618,7 +617,7 @@ html[dir="rtl"] .pie-legend-item {
         </div>
         <div style="background:#f8f8f8;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px">🌳 Outdoor Leading</span>
-          <span style="font-weight:700;color:var(--amber);font-size:12px">3.000 BD/day</span>
+          <span style="font-weight:700;color:var(--amber);font-size:12px">3.000 BD <span style="color:var(--muted);font-weight:400">/ day</span></span>
         </div>
         <div style="background:#f8f8f8;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px">&#127919; Training</span>
@@ -631,15 +630,15 @@ html[dir="rtl"] .pie-legend-item {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
         <div style="background:#f8f8f8;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px">Teben</span>
-          <span style="font-weight:700;color:var(--amber);font-size:12px">3.000 BD<span style="font-size:10px;color:var(--muted)"> /bundle</span></span>
+          <span style="font-weight:700;color:var(--amber);font-size:12px">3.000 BD <span style="color:var(--muted);font-weight:400">/ bundle</span></span>
         </div>
         <div style="background:#f8f8f8;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px">Hay</span>
-          <span style="font-weight:700;color:var(--amber);font-size:12px">11.000 BD/bundle</span>
+          <span style="font-weight:700;color:var(--amber);font-size:12px">11.000 BD <span style="color:var(--muted);font-weight:400">/ bundle</span></span>
         </div>
         <div style="background:#f8f8f8;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px">Wood Dust</span>
-          <span style="font-weight:700;color:var(--amber);font-size:12px">10.000 BD<span style="font-size:10px;color:var(--muted)"> /16 bags</span></span>
+          <span style="font-weight:700;color:var(--amber);font-size:12px">10.000 BD <span style="color:var(--muted);font-weight:400">/ 16 bags</span></span>
         </div>
       </div>
 
@@ -1189,11 +1188,11 @@ html[dir="rtl"] .pie-legend-item {
         </label>
       </div>
 
-      <button class="btn" id="liveryBtn" onclick="submitLivery()">&#127968; إرسال طلب الإيواء</button>
+      <button class="btn" id="liveryBtn" onclick="submitLivery()">🏠 Send Livery Request</button>
     </div>
     <div class="success-box" id="liverySuccess" style="display:none">
       <div class="success-icon">&#9989;</div>
-      <div class="success-title">تم إرسال طلب الإيواء بنجاح!</div>
+      <div class="success-title">Livery request sent successfully!</div>
       <div class="success-text" id="liverySuccessText"></div>
       <button class="btn" style="margin-top:16px" onclick="resetLivery()">&#127968; طلب جديد</button>
     </div>
@@ -1205,11 +1204,11 @@ html[dir="rtl"] .pie-legend-item {
   <div class="login-wrap" id="ownerLoginWrap">
     <div class="login-box">
       <div class="login-icon">&#128052;</div>
-      <div class="login-title">بوابة الملاك</div>
-      <div class="login-sub">بوابة ملاك الخيول — أدخل كلمة المرور للدخول</div>
-      <input class="inp" type="password" id="ownerPwd" placeholder="أدخل كلمة المرور..." onkeydown="if(event.key==='Enter')doOwnerLogin()">
-      <button class="login-btn" onclick="doOwnerLogin()">&#128272; دخول</button>
-      <div class="err" id="ownerErr" style="display:none">&#10060; كلمة المرور غير صحيحة. تواصل مع الإدارة.</div>
+      <div class="login-title">Owner Portal</div>
+      <div class="login-sub">Owner Portal — Enter password to login</div>
+      <input class="inp" type="password" id="ownerPwd" placeholder="Enter password..." onkeydown="if(event.key==='Enter')doOwnerLogin()">
+      <button class="login-btn" onclick="doOwnerLogin()">🔐 Login</button>
+      <div class="err" id="ownerErr" style="display:none">❌ Incorrect password. Contact admin.</div>
     </div>
   </div>
   <div id="ownerPortal" style="display:none;padding:20px;max-width:700px;margin:0 auto">
@@ -1259,8 +1258,8 @@ html[dir="rtl"] .pie-legend-item {
         <button class="pin-btn" onclick="pinTap('0')">0</button>
         <button class="pin-btn" onclick="pinBack()" style="background:#FDECEA;color:var(--red)">&#9003;</button>
       </div>
-      <button class="btn btn-green" onclick="doInstrLogin()">&#128272; دخول</button>
-      <div class="err" id="instrErr" style="display:none;margin-top:12px">&#10060; اسم أو PIN غير صحيح</div>
+      <button class="btn btn-green" onclick="doInstrLogin()">🔐 Login</button>
+      <div class="err" id="instrErr" style="display:none;margin-top:12px">❌ Invalid name or PIN</div>
     </div>
   </div>
 
@@ -1303,10 +1302,10 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <div class="security-note"><strong>تنبيه أمني:</strong> هذه نسخة واجهة محسّنة. للنشر الرسمي يفضّل نقل تسجيل دخول الإدارة إلى Supabase Auth وتفعيل Row Level Security.</div>
-      <input class="inp" type="password" id="adminPwd" placeholder="أدخل كلمة المرور" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      <button class="login-btn" onclick="doAdminLogin()">&#128272; دخول</button>
-      <div class="err" id="adminErr" style="display:none">&#10060; Incorrect password</div>
+      <div class="security-note"><strong>Security Note:</strong> This is an enhanced interface version. For official deployment, it's recommended to migrate admin login to Supabase Auth and enable Row Level Security.</div>
+      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <button class="login-btn" onclick="doAdminLogin()">🔐 Login</button>
+      <div class="err" id="adminErr" style="display:none">❌ Incorrect password</div>
     </div>
   </div>
 </div>
