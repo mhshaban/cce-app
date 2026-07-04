@@ -455,7 +455,7 @@ html[dir="rtl"] .pie-legend-item {
 </div>
 
 <!-- Header -->
-<div class="header">
+<div class="header" id="globalHeader">
   <div class="header-logo">&#127943;</div>
   <div>
     <div class="header-title">Country Club Equestrian</div>
@@ -1236,7 +1236,7 @@ html[dir="rtl"] .pie-legend-item {
   </div>
 
   <!-- LOGIN -->
-  <div id="instrLoginWrap" style="max-width:400px;margin:60px auto;padding:20px;display:none">
+  <div id="instrLoginWrap" style="max-width:400px;margin:60px auto;padding:20px">
     <div style="background:#fff;border-radius:16px;padding:30px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center">
       <div style="font-size:52px;margin-bottom:12px">&#127919;</div>
       <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px">Instructor Portal</div>
@@ -1680,6 +1680,10 @@ function navigate(page) {
   [backBtn,syncStatus,refreshBtn,backupBtn,logoutAdmin,logoutOwner,overdueBadge,document.getElementById('alertBell')].forEach(el=>el&&el.classList.add('hidden'));
 
   document.getElementById('headerSub').textContent = t('page_'+page)||page;
+
+  // Hide global header on pages that have their own internal header (avoid duplicates)
+  const globalHeader=document.getElementById('globalHeader');
+  if(globalHeader) globalHeader.style.display=(page==='instructor'||page==='livery')?'none':'';
 
   if(page==='home') return;
   if(page!=='dashboard') backBtn.classList.remove('hidden');
@@ -3212,9 +3216,11 @@ function getWeekDays(d){
 // Merge income records + schedule_data into unified events
 function getAllEvents(){
   const events=[];
+  // Schedule shows ONLY rides & training sessions (Hack / Lesson)
+  const isSession=a=>/hack|lesson|ride|training/i.test(a||'');
 
   // From schedule table
-  schedule_data.forEach(r=>{
+  schedule_data.filter(r=>isSession(r.activity)).forEach(r=>{
     events.push({
       id:'s_'+r.id,
       dbId:r.id,
@@ -3232,8 +3238,8 @@ function getAllEvents(){
     });
   });
 
-  // From income (only those with start_time)
-  income.filter(r=>r.start_time&&r.date).forEach(r=>{
+  // From income (only rides & lessons that have a start_time)
+  income.filter(r=>r.start_time&&r.date&&isSession(r.activity)).forEach(r=>{
     events.push({
       id:'i_'+r.id,
       dbId:r.id,
