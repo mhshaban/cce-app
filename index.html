@@ -1423,7 +1423,8 @@ html[dir="rtl"] .pie-legend-item {
       <div class="card" style="padding:12px 18px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-            <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Day</button>
+            <button id="schedViewActive" onclick="setSchedView('active')" style="padding:7px 16px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:13px;cursor:pointer">🟢 Active</button>
+            <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128197; Day</button>
             <button id="schedViewWeek" onclick="setSchedView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128198; Week</button>
           </div>
           <button onclick="schedNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">&#8249;</button>
@@ -3166,7 +3167,7 @@ function logNotif(msg){
 // SCHEDULE / TIMETABLE
 // ══════════════════════════════════════════════════════════
 
-let schedView='day';
+let schedView='active';
 let schedDate=new Date(); schedDate.setHours(0,0,0,0);
 
 const ACTIVITY_COLORS={
@@ -3178,14 +3179,16 @@ function actColor(a){return ACTIVITY_COLORS[a]||'#7A8399';}
 
 function setSchedView(v){
   schedView=v;
-  document.getElementById('schedViewDay').style.background=v==='day'?'var(--amber)':'#f0f0f0';
-  document.getElementById('schedViewDay').style.color=v==='day'?'#fff':'var(--navy)';
-  document.getElementById('schedViewWeek').style.background=v==='week'?'var(--amber)':'#f0f0f0';
-  document.getElementById('schedViewWeek').style.color=v==='week'?'#fff':'var(--navy)';
+  const btns={active:'schedViewActive',day:'schedViewDay',week:'schedViewWeek'};
+  Object.keys(btns).forEach(k=>{
+    const b=document.getElementById(btns[k]);
+    if(b){b.style.background=v===k?'var(--amber)':'#f0f0f0';b.style.color=v===k?'#fff':'var(--navy)';}
+  });
   renderSchedule();
 }
 
 function schedNav(dir){
+  if(schedView==='active'){setSchedView('day');return;}
   if(schedView==='day') schedDate.setDate(schedDate.getDate()+dir);
   else schedDate.setDate(schedDate.getDate()+(dir*7));
   renderSchedule();
@@ -3294,7 +3297,35 @@ function renderSchedule(){
   const today=new Date(); today.setHours(0,0,0,0);
   const allEvents=getAllEvents();
 
-  if(schedView==='day'){
+  if(schedView==='active'){
+    // ALL active (not Done/Cancelled) lessons & hacks — same as Instructor Portal default
+    const activeEvents=allEvents.filter(e=>e.status!=='Done'&&e.status!=='Cancelled'&&e.status!=='Paid');
+    document.getElementById('schedDateLabel').textContent='🟢 Active Sessions';
+    if(!activeEvents.length){
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions</div>';
+      return;
+    }
+    // Sort by date then time
+    activeEvents.sort((a,b)=>{
+      if(a.date!==b.date) return a.date<b.date?-1:1;
+      return (a.start||'').localeCompare(b.start||'');
+    });
+    // Group by date with day headers
+    let html='';let lastDate='';
+    activeEvents.forEach(ev=>{
+      if(ev.date!==lastDate){
+        lastDate=ev.date;
+        const d=new Date(ev.date+'T00:00:00');
+        const isToday=ev.date===fmtDateKey(today);
+        html+=`<div style="font-weight:700;font-size:13px;color:${isToday?'var(--green)':'var(--muted)'};margin:14px 0 6px;padding:4px 0;border-bottom:2px solid ${isToday?'var(--green)':'var(--border)'}">
+          ${isToday?'🟢 ':''}${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}
+        </div>`;
+      }
+      html+=adminSessionCard(ev);
+    });
+    el.innerHTML=html;
+
+  } else if(schedView==='day'){
     const key=fmtDateKey(schedDate);
     const dayEvents=allEvents.filter(e=>e.date===key);
     const isToday=fmtDateKey(schedDate)===fmtDateKey(today);
