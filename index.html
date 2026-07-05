@@ -1341,7 +1341,7 @@ html[dir="rtl"] .pie-legend-item {
             <div class="form-group"><label>Due Date</label><input type="date" id="inc-due"></div>
             <div class="form-group"><label>Customer Name *</label><input type="text" id="inc-customer" list="cList" placeholder="Name..."><datalist id="cList"></datalist></div>
             <div class="form-group"><label>Horse Name *</label><select id="inc-horse"><option value="">&#8212; Select &#8212;</option></select></div>
-            <div class="form-group"><label>Activity *</label><select id="inc-activity"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select></div>
+            <div class="form-group"><label>Category *</label><select id="inc-activity"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select></div>
             <div class="form-group"><label>Qty</label><input type="number" id="inc-qty" value="1" min="1" oninput="calcTotal('inc')"></div>
             <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="inc-amount" placeholder="0.000" oninput="calcTotal('inc')"></div>
             <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="inc-total" readonly></div>
@@ -1355,7 +1355,7 @@ html[dir="rtl"] .pie-legend-item {
       </div>
       <div class="search-bar">
         <input type="text" id="incSearch" placeholder="&#128269; Search..." oninput="renderIncome()">
-        <select id="incActFilter" onchange="renderIncome()"><option value="">All Activities</option><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Others</option></select>
+        <select id="incActFilter" onchange="renderIncome()"><option value="">All Categories</option><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select>
         <select id="incStFilter" onchange="renderIncome()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
       </div>
       <div class="card"><div class="card-title">&#128176; Income &#8212; <span id="incCount">0</span> records <span id="incTotalAmt" style="margin-left:auto;color:var(--green);font-size:14px"></span></div><div class="tbl-wrap" id="incTable"></div><div class="pagination" id="incPag"></div></div>
@@ -1366,7 +1366,7 @@ html[dir="rtl"] .pie-legend-item {
           <div class="form-grid">
             <div class="form-group"><label>Date *</label><input type="date" id="exp-date"></div>
             <div class="form-group"><label>Due Date (if pending)</label><input type="date" id="exp-due"></div>
-            <div class="form-group"><label>Category *</label><select id="exp-cat"><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select></div>
+            <div class="form-group"><label>Category *</label><select id="exp-cat"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select></div>
             <div class="form-group"><label>Supplier *</label><input type="text" id="exp-supplier" placeholder="Name..."></div>
             <div class="form-group"><label>Qty</label><input type="number" id="exp-qty" value="1" min="1" oninput="calcTotal('exp')"></div>
             <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="exp-amount" placeholder="0.000" oninput="calcTotal('exp')"></div>
@@ -1380,7 +1380,7 @@ html[dir="rtl"] .pie-legend-item {
       </div>
       <div class="search-bar">
         <input type="text" id="expSearch" placeholder="&#128269; Search..." oninput="renderExpenses()">
-        <select id="expCatFilter" onchange="renderExpenses()"><option value="">All Categories</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Shuwar</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select>
+        <select id="expCatFilter" onchange="renderExpenses()"><option value="">All Categories</option><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Qeshbar</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Others</option></select>
         <select id="expStFilter" onchange="renderExpenses()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
       </div>
       <div class="card"><div class="card-title">&#128184; Expenses &#8212; <span id="expCount">0</span> records <span id="expTotalAmt" style="margin-left:auto;color:var(--red);font-size:14px"></span></div><div class="tbl-wrap" id="expTable"></div><div class="pagination" id="expPag"></div></div>
@@ -1738,6 +1738,7 @@ function showDashPage(id, btn) {
 // STATE
 // ══════════════════════════════════════════════════════════
 let income=[],expenses=[],horses=[],breeding=[],schedule_data=[],instructors_data=[];
+const CCE_CATEGORIES=['Hack','Lesson','Livery','Breeding','Shuwar','Salary','Qeshbar','Hay','Maintenance','Farrier','Medicant','Trash Container','Leading','Others'];
 let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
@@ -2044,7 +2045,7 @@ function buildDash(){
 }
 function incTblHTML(data){
   if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
-  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Activity</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Category</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
     data.map(function(r){
       return '<tr>'+
         '<td>'+fmt(r.date)+'</td>'+
@@ -2165,12 +2166,12 @@ function waPhone(raw){
   return d;
 }
 function findContactForIncome(r){
-  // 1) Horse owner's contact from horses table
+  // 1. Horse owner contact from horses table
   if(r.horse_name){
     const h=horses.find(x=>x.horse_name===r.horse_name);
     if(h&&h.contact){const p=waPhone(h.contact);if(p)return p;}
   }
-  // 2) Phone embedded in customer_name ("Name | 39001234")
+  // 2. Phone embedded in customer_name ("Name | 39001234")
   const src=(r.customer_name||'')+' '+(r.notes||'');
   const m=src.match(/(?:\+?973[\s-]?)?(3\d{7}|6\d{7}|7\d{7})/);
   if(m) return waPhone(m[1]);
@@ -2213,7 +2214,7 @@ function renderOverdue(){
     if(incData.length){
       html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128176; Overdue Income</div>';
       html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Total: '+BD(totalInc)+'</span></div>';
-      html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Activity</th><th>Amount</th><th>Action</th></tr></thead><tbody>'+
+      html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Amount</th><th>Action</th></tr></thead><tbody>'+
         incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
         '</tbody></table></div>';
     }
@@ -2527,7 +2528,7 @@ function editIncome(id){
     <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${r.due_date||''}"></div>
     <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${r.customer_name||''}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+c+'">').join('')}</datalist></div>
     <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
-    <div class="form-group"><label>Activity</label><select id="ei-act">${['Hack','Lesson','Livery','Breeding','Shuwar','Others'].map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Category</label><select id="ei-act">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
     <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
     <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ei-amt" value="${apu.toFixed(3)}" oninput="cET('inc')"></div>
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ei-total" value="${r.amount_bd}" readonly></div>
@@ -2549,7 +2550,7 @@ function editExpense(id){
   openModal('Edit Expense',`<div class="form-grid">
     <div class="form-group"><label>Date</label><input type="date" id="ee-date" value="${r.date||''}"></div>
     <div class="form-group"><label>Due Date</label><input type="date" id="ee-due" value="${r.due_date||''}"></div>
-    <div class="form-group"><label>Category</label><select id="ee-cat">${['Salary','Qeshbar','Hay','Maintenance','Farrier','Shuwar','Medicant','Trash Container','Leading','Others'].map(c=>'<option '+(r.category===c?'selected':'')+'>'+c+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Category</label><select id="ee-cat">${CCE_CATEGORIES.map(c=>'<option '+(r.category===c?'selected':'')+'>'+c+'</option>').join('')}</select></div>
     <div class="form-group"><label>Supplier</label><input type="text" id="ee-sup" value="${r.supplier||''}"></div>
     <div class="form-group"><label>Qty</label><input type="number" id="ee-qty" value="${qty}" min="1" oninput="cET('exp')"></div>
     <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ee-amt" value="${apu.toFixed(3)}" oninput="cET('exp')"></div>
