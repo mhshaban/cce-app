@@ -2203,18 +2203,95 @@ function sendWhatsAppReminder(id){
     if(!phone){alert('Invalid phone number');return;}
   }
   const name=(r.customer_name||'Customer').split('|')[0].trim();
-  const amount=BD(r.amount_bd);
+  const total=parseFloat(r.amount_bd)||0;
+  const paid=parseFloat(r.paid_bd)||0;
+  const remaining=Math.max(0,total-paid);
   const due=fmt(r.due_date);
   const horse=r.horse_name?(' — '+r.horse_name):'';
   const msg=
 '🐴 *Country Club Equestrian*\n'+
 '──────────────\n'+
 'Dear '+name+',\n'+
-'This is a kind reminder that a payment of *'+amount+'* ('+(r.activity||'')+horse+') was due on *'+due+'*.\n\n'+
+'This is a kind reminder regarding your payment ('+(r.activity||'')+horse+') due on *'+due+'*:\n\n'+
+'💰 Total — الاجمالي: *'+BD(total)+'*\n'+
+'✅ Paid — المدفوع: *'+BD(paid)+'*\n'+
+'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
 'عزيزي '+name+'،\n'+
-'نذكّركم بلطف بدفعة مستحقة بقيمة *'+amount+'* ('+(r.activity||'')+horse+') بتاريخ *'+due+'*.\n\n'+
+'نذكّركم بلطف بالدفعة المستحقة ('+(r.activity||'')+horse+') بتاريخ *'+due+'*.\n\n'+
 'Thank you — شكراً لكم 🙏';
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ── Broadcast: one grouped message per customer, sent one-by-one ──
+function buildWaGroups(){
+  const ov=income.filter(r=>r.status==='Pending'&&r.due_date&&((parseFloat(r.amount_bd)||0)-(parseFloat(r.paid_bd)||0))>0);
+  const groups={};
+  ov.forEach(r=>{
+    const name=(r.customer_name||'Customer').split('|')[0].trim();
+    if(!groups[name])groups[name]={name,phone:null,items:[],total:0,paid:0};
+    const g=groups[name];
+    if(!g.phone)g.phone=findContactForIncome(r);
+    g.items.push(r);
+    g.total+=parseFloat(r.amount_bd)||0;
+    g.paid+=parseFloat(r.paid_bd)||0;
+  });
+  return Object.values(groups);
+}
+function waGroupMessage(g){
+  const remaining=Math.max(0,g.total-g.paid);
+  let lines=g.items.map(r=>{
+    const rem=Math.max(0,(parseFloat(r.amount_bd)||0)-(parseFloat(r.paid_bd)||0));
+    return '• '+(r.activity||'')+(r.horse_name?' — '+r.horse_name:'')+' ('+fmt(r.due_date)+'): *'+BD(rem)+'*';
+  }).join('\n');
+  return '🐴 *Country Club Equestrian*\n'+
+'──────────────\n'+
+'Dear '+g.name+',\n'+
+'This is a kind reminder of your outstanding payments:\n'+
+'عزيزي '+g.name+'، نذكّركم بلطف بالدفعات المستحقة:\n\n'+
+lines+'\n'+
+'──────────────\n'+
+'💰 Total — الاجمالي: *'+BD(g.total)+'*\n'+
+'✅ Paid — المدفوع: *'+BD(g.paid)+'*\n'+
+'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
+'Thank you — شكراً لكم 🙏';
+}
+function startWaBroadcast(){
+  const groups=buildWaGroups();
+  if(!groups.length){alert('✅ No pending overdue payments!');return;}
+  const rows=groups.map((g,i)=>{
+    const remaining=Math.max(0,g.total-g.paid);
+    const phoneBadge=g.phone?'':'<span style="font-size:10px;background:#FDECEA;color:var(--red);border-radius:6px;padding:2px 6px">no phone</span>';
+    return `<div id="wa-row-${i}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px;color:var(--navy)">${g.name} ${phoneBadge}</div>
+        <div style="font-size:11px;color:var(--muted)">${g.items.length} payment(s) — remaining <b style="color:var(--red)">${BD(remaining)}</b></div>
+      </div>
+      <button class="action-btn" style="background:#25D366;color:#fff;padding:8px 14px;flex-shrink:0" onclick="waSendGroup(${i})">&#128172; Send</button>
+    </div>`;
+  }).join('');
+  window._waGroups=groups;
+  openModal('&#128172; Send to All — '+groups.length+' customer(s)',`
+    <div style="font-size:12px;color:var(--muted);background:var(--sand);border-radius:8px;padding:10px;margin-bottom:12px">
+      ℹ️ WhatsApp opens one chat at a time. Tap <b>Send</b> for each customer — one combined message covers all their payments.
+    </div>
+    <div style="max-height:50vh;overflow-y:auto">${rows}</div>
+    <div class="btn-row" style="margin-top:10px"><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Done</button></div>`);
+}
+function waSendGroup(i){
+  const g=window._waGroups&&window._waGroups[i];
+  if(!g)return;
+  let phone=g.phone;
+  if(!phone){
+    const entered=prompt('Enter WhatsApp number for '+g.name+' (e.g. 39001234):');
+    if(!entered)return;
+    phone=waPhone(entered);
+    if(!phone){alert('Invalid phone number');return;}
+    g.phone=phone;
+  }
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(waGroupMessage(g)),'_blank');
+  const row=document.getElementById('wa-row-'+i);
+  if(row){row.style.background='#E8F5EE';row.style.borderColor='var(--green)';
+    const btn=row.querySelector('button');if(btn){btn.textContent='✓ Sent';btn.style.background='var(--green)';}}
 }
 
 function renderOverdue(){
@@ -2227,7 +2304,7 @@ function renderOverdue(){
     html='<p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p>';
   } else {
     if(incData.length){
-      html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128176; Overdue Income</div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div style="font-weight:700;color:var(--navy);font-size:14px">&#128176; Overdue Income</div><button class="action-btn" style="background:#25D366;color:#fff;padding:7px 16px;font-weight:700" onclick="startWaBroadcast()">&#128172; Send to All</button></div>';
       html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Total: '+BD(totalInc)+'</span></div>';
       html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Amount</th><th>Action</th></tr></thead><tbody>'+
         incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
@@ -2638,7 +2715,44 @@ async function saveBreeding(id){
 }
 async function markPaid(t,id,amt){
   if(!confirm('Mark as Paid ('+BD(amt)+')?'))return;
-  try{await sbPatch(t,id,{paid_bd:parseFloat(amt)||0,status:'Paid'});await loadAll();}catch(e){alert('Error: '+e.message);}
+  // Capture record BEFORE reload (for the thank-you message)
+  const rec=(t==='income')?income.find(x=>String(x.id)===String(id)):null;
+  try{
+    await sbPatch(t,id,{paid_bd:parseFloat(amt)||0,status:'Paid'});
+    await loadAll();
+    // Offer a thank-you WhatsApp message (income only)
+    if(rec&&confirm('✅ Marked as Paid!\n\nSend a thank-you WhatsApp message to '+(rec.customer_name||'the customer').split('|')[0].trim()+'?')){
+      sendWhatsAppThanks(rec,parseFloat(amt)||0);
+    }
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function sendWhatsAppThanks(r,amount){
+  let phone=findContactForIncome(r);
+  if(!phone){
+    const entered=prompt('Enter WhatsApp number (e.g. 39001234):');
+    if(!entered)return;
+    phone=waPhone(entered);
+    if(!phone){alert('Invalid phone number');return;}
+  }
+  const name=(r.customer_name||'Customer').split('|')[0].trim();
+  const horse=r.horse_name?(' — '+r.horse_name):'';
+  const total=parseFloat(r.amount_bd)||0;
+  const paid=amount;
+  const remaining=Math.max(0,total-paid);
+  const msg=
+'🐴 *Country Club Equestrian*\n'+
+'──────────────\n'+
+'Dear '+name+',\n'+
+'We have received your payment ('+(r.activity||'')+horse+'). ✅\n'+
+'عزيزي '+name+'،\n'+
+'تم استلام دفعتكم ('+(r.activity||'')+horse+'). ✅\n\n'+
+'💰 Total Due — المبلغ المستحق: *'+BD(total)+'*\n'+
+'✅ Paid — تم دفع: *'+BD(paid)+'*\n'+
+'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
+'Thank you for your prompt payment!\nشكراً لكم على التزامكم بالسداد!\n\n'+
+'We appreciate your business 🌟\nنقدّر تعاملكم معنا 🙏';
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
 }
 async function delRec(t,id){
   if(!confirm('Delete this record? Cannot be undone.'))return;
