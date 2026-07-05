@@ -2213,12 +2213,17 @@ function sendWhatsAppReminder(id){
 '──────────────\n'+
 'Dear '+name+',\n'+
 'This is a kind reminder regarding your payment ('+(r.activity||'')+horse+') due on *'+due+'*:\n\n'+
-'💰 Total — الاجمالي: *'+BD(total)+'*\n'+
-'✅ Paid — المدفوع: *'+BD(paid)+'*\n'+
-'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
+'💰 Total Due: *'+BD(total)+'*\n'+
+'✅ Paid: *'+BD(paid)+'*\n'+
+'⏳ Remaining: *'+BD(remaining)+'*\n\n'+
+'Thank you 🙏\n'+
+'──────────────\n'+
 'عزيزي '+name+'،\n'+
-'نذكّركم بلطف بالدفعة المستحقة ('+(r.activity||'')+horse+') بتاريخ *'+due+'*.\n\n'+
-'Thank you — شكراً لكم 🙏';
+'نذكّركم بلطف بالدفعة المستحقة ('+(r.activity||'')+horse+') بتاريخ *'+due+'*:\n\n'+
+'💰 المبلغ المستحق: *'+BD(total)+'*\n'+
+'✅ المدفوع: *'+BD(paid)+'*\n'+
+'⏳ المتبقي: *'+BD(remaining)+'*\n\n'+
+'شكراً لكم 🙏';
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
 }
 
@@ -2246,14 +2251,20 @@ function waGroupMessage(g){
   return '🐴 *Country Club Equestrian*\n'+
 '──────────────\n'+
 'Dear '+g.name+',\n'+
-'This is a kind reminder of your outstanding payments:\n'+
-'عزيزي '+g.name+'، نذكّركم بلطف بالدفعات المستحقة:\n\n'+
-lines+'\n'+
+'This is a kind reminder of your outstanding payments:\n\n'+
+lines+'\n\n'+
+'💰 Total Due: *'+BD(g.total)+'*\n'+
+'✅ Paid: *'+BD(g.paid)+'*\n'+
+'⏳ Remaining: *'+BD(remaining)+'*\n\n'+
+'Thank you 🙏\n'+
 '──────────────\n'+
-'💰 Total — الاجمالي: *'+BD(g.total)+'*\n'+
-'✅ Paid — المدفوع: *'+BD(g.paid)+'*\n'+
-'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
-'Thank you — شكراً لكم 🙏';
+'عزيزي '+g.name+'،\n'+
+'نذكّركم بلطف بالدفعات المستحقة:\n\n'+
+lines+'\n\n'+
+'💰 المبلغ المستحق: *'+BD(g.total)+'*\n'+
+'✅ المدفوع: *'+BD(g.paid)+'*\n'+
+'⏳ المتبقي: *'+BD(remaining)+'*\n\n'+
+'شكراً لكم 🙏';
 }
 function startWaBroadcast(){
   const groups=buildWaGroups();
@@ -2744,14 +2755,18 @@ function sendWhatsAppThanks(r,amount){
 '🐴 *Country Club Equestrian*\n'+
 '──────────────\n'+
 'Dear '+name+',\n'+
-'We have received your payment ('+(r.activity||'')+horse+'). ✅\n'+
+'We have received your payment ('+(r.activity||'')+horse+'). ✅\n\n'+
+'💰 Total Due: *'+BD(total)+'*\n'+
+'✅ Paid: *'+BD(paid)+'*\n'+
+'⏳ Remaining: *'+BD(remaining)+'*\n\n'+
+'Thank you for your prompt payment!\nWe appreciate your business 🌟\n'+
+'──────────────\n'+
 'عزيزي '+name+'،\n'+
 'تم استلام دفعتكم ('+(r.activity||'')+horse+'). ✅\n\n'+
-'💰 Total Due — المبلغ المستحق: *'+BD(total)+'*\n'+
-'✅ Paid — تم دفع: *'+BD(paid)+'*\n'+
-'⏳ Remaining — المتبقي: *'+BD(remaining)+'*\n\n'+
-'Thank you for your prompt payment!\nشكراً لكم على التزامكم بالسداد!\n\n'+
-'We appreciate your business 🌟\nنقدّر تعاملكم معنا 🙏';
+'💰 المبلغ المستحق: *'+BD(total)+'*\n'+
+'✅ تم دفع: *'+BD(paid)+'*\n'+
+'⏳ المتبقي: *'+BD(remaining)+'*\n\n'+
+'شكراً لكم على التزامكم بالسداد!\nنقدّر تعاملكم معنا 🙏';
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
 }
 async function delRec(t,id){
