@@ -771,13 +771,11 @@ html[dir="rtl"] .pie-legend-item {
         <div class="note-title">❌ Cancellation Policy — ملاحظة الإلغاء</div>
         <div class="note-text" style="font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif">
           <div style="direction:rtl;text-align:right;margin-bottom:12px">
-            <strong style="color:var(--navy)">الالغاء في اخر لحظة سيتم اعتبار انه تم حضور الحصة</strong><br>
-            الإلغاء في آخر لحظة قد يتسبب في خسائر مالية للنادي. يرجى الاتصال أو إرسال رسالة عبر واتساب لإبلاغنا عن إلغاء الحجز.
+            <strong style="color:var(--navy)">الالغاء في اخر لحظة سيتم اعتبار انه تم حضور الحصة</strong>
           </div>
           <div style="border-top:1px dashed var(--amber);margin:10px 0"></div>
           <div style="text-align:left">
-            <strong style="color:var(--navy)">Last-minute cancellations will be considered as attended sessions</strong><br>
-            Last-minute cancellations may result in financial losses to the club. Please contact us or send a message on WhatsApp to notify us of cancellation.
+            <strong style="color:var(--navy)">Last-minute cancellations will be considered as attended sessions</strong>
           </div>
         </div>
       </div>
@@ -788,7 +786,7 @@ html[dir="rtl"] .pie-legend-item {
           يتم تأكيد الحجز بعد الدفع. يرجى التحويل إلى:<br>
           <span class="iban">BH23BIBB00100002375646</span><br><br>
           بعد التحويل، أرسل إثبات الدفع عبر واتساب وسيتم التأكيد خلال 24 ساعة.
-          <button type="button" class="whatsapp-btn" onclick="openWhatsAppProof('booking')">&#128241; إرسال إثبات الدفع عبر واتساب</button>
+          <button type="button" class="whatsapp-btn" onclick="openWhatsAppProof('booking')">&#128241; Send Payment Proof via WhatsApp</button>
         </div>
       </div>
 
@@ -826,7 +824,7 @@ html[dir="rtl"] .pie-legend-item {
       <div class="success-icon">&#9989;</div>
       <div class="success-title">تم إرسال طلب الحجز بنجاح!</div>
       <div class="success-text">يرجى تحويل مبلغ الحجز إلى الآيبان:<br><strong class="iban">BH23BIBB00100002375646</strong><br><br>سيتم تأكيد الحجز بعد استلام إثبات الدفع.</div>
-      <button class="whatsapp-btn secondary" onclick="openWhatsAppProof('booking')">&#128241; إرسال إثبات الدفع عبر واتساب</button>
+      <button class="whatsapp-btn secondary" onclick="openWhatsAppProof('booking')">&#128241; Send Payment Proof via WhatsApp</button>
       <button class="btn" style="margin-top:16px" onclick="resetBooking()">&#128203; حجز جديد</button>
     </div>
   </div>
@@ -3002,7 +3000,7 @@ async function submitTraining(){
       'Sessions: <strong>'+selectedPkgSessions+' حصص</strong><br>'+
       'Amount: <strong>'+selectedPrice+' BD</strong><br><br>'+
       '<div style="font-size:12px;color:#666;margin-top:8px">'+slots.map((s,i)=>'&#128197; حصة '+(i+1)+': '+s.date+' @ '+s.time).join('<br>')+'</div>'+
-      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 إرسال إثبات الدفع عبر واتساب</button>';
+      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 Send Payment Proof via WhatsApp</button>';
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🎯 Send Registration Request';}
 }
 
@@ -3239,6 +3237,44 @@ async function enablePush(){
   checkPushStatus();
   if(perm==='granted') sendBrowserPush('CCE Notifications','✅ تم تفعيل الإشعارات بنجاح!','🐴');
 }
+
+// ══════════════════════════════════════════════════════════
+// SESSION REMINDERS — 1 day & 1 hour before every Lesson/Hack
+// Fires for EVERYONE with the app open (admin + all instructors)
+// ══════════════════════════════════════════════════════════
+async function checkSessionReminders(){
+  if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
+  try{
+    const now=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const todayStr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+    const tmw=new Date(now.getTime()+864e5);
+    const tmwStr=tmw.getFullYear()+'-'+pad(tmw.getMonth()+1)+'-'+pad(tmw.getDate());
+    // Fetch today's & tomorrow's sessions directly (works on ANY page/portal)
+    const rows=await sbGet('schedule',`date=gte.${todayStr}&date=lte.${tmwStr}&select=id,date,start_time,activity,horse,customer,instructor,status`);
+    rows.filter(r=>/hack|lesson|ride|training/i.test(r.activity||'')&&r.status!=='Done'&&r.status!=='Cancelled').forEach(r=>{
+      if(!r.start_time) return;
+      const evTime=new Date(r.date+'T'+r.start_time);
+      const diff=evTime-now;
+      if(diff<=0) return;
+      const who=(r.instructor?'🎓 '+r.instructor+' — ':'')+(r.activity||'Session')+(r.horse?' 🐴 '+r.horse:'')+(r.customer?' 👤 '+r.customer:'');
+      const timeTxt=r.start_time.slice(0,5);
+      // 1-day reminder (fires within the 24h→23h window, once)
+      if(diff<=864e5&&!localStorage.getItem('cce_rem24_'+r.id)){
+        localStorage.setItem('cce_rem24_'+r.id,'1');
+        sendBrowserPush('📅 Session Tomorrow — '+timeTxt, who,'🐴');
+      }
+      // 1-hour reminder
+      if(diff<=36e5&&!localStorage.getItem('cce_rem1_'+r.id)){
+        localStorage.setItem('cce_rem1_'+r.id,'1');
+        sendBrowserPush('⏰ Session in 1 Hour — '+timeTxt, who,'🐴');
+      }
+    });
+  }catch(e){console.log('session reminders skip');}
+}
+// Run on every page (admin, instructor portal, anywhere) + every minute
+setTimeout(checkSessionReminders,4000);
+setInterval(checkSessionReminders,60000);
 
 function sendBrowserPush(title, body, icon){
   if(Notification.permission!=='granted') return;
@@ -4132,7 +4168,7 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
       '🐴 Horse: <strong>'+horse+'</strong>'+(breed?' — '+breed:'')+
       (date?'<br>📅 Start Date: <strong>'+date+'</strong>':'')+
       '<br><br><div style="font-size:12px;text-align:left">'+services.map(s=>'✓ '+s).join('<br>')+'</div>'+
-      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'livery\')">📱 إرسال إثبات الدفع عبر واتساب</button>';
+      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'livery\')">📱 Send Payment Proof via WhatsApp</button>';
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🏠 Submit Livery Request';}
 }
 
