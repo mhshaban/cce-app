@@ -1303,10 +1303,11 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <div class="security-note"><strong>Security Update:</strong> Admin password is not stored as plain text in this file. For full production security, enable Supabase Auth and Row Level Security policies.</div>
-      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" autocomplete="current-password" inputmode="numeric" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <div class="security-note"><strong>Security Update:</strong> Admin login now uses Supabase Auth. Access is allowed only for users with role <strong>admin</strong> in <strong>app_profiles</strong>.</div>
+      <input class="inp" type="email" id="adminEmail" placeholder="Admin email" autocomplete="username" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <input class="inp" type="password" id="adminPwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()">
       <button class="login-btn" id="adminLoginBtn" onclick="doAdminLogin()">🔐 Login</button>
-      <div class="err" id="adminErr" style="display:none">❌ Incorrect password</div>
+      <div class="err" id="adminErr" style="display:none">❌ Login failed</div>
     </div>
   </div>
 </div>
@@ -1557,12 +1558,30 @@ html[dir="rtl"] .pie-legend-item {
 // ══════════════════════════════════════════════════════════
 const SB_URL='https://ipiarzkljcictghtkcri.supabase.co';
 const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
-const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
 
-async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPost(t,d){const data={...d};delete data.id;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPatch(t,id,d){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbDel(t,id){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});if(!r.ok)throw new Error(await r.text());}
+function getSupabaseAccessToken(){
+  try{
+    const s=JSON.parse(sessionStorage.getItem('cce_sb_session')||'{}');
+    if(s && s.access_token && Number(s.expires_at||0)>Date.now()) return s.access_token;
+  }catch(e){}
+  return '';
+}
+function getHeaders(prefer='return=representation'){
+  const token=getSupabaseAccessToken();
+  return {
+    'Content-Type':'application/json',
+    'apikey':SB_KEY,
+    'Authorization':'Bearer '+(token||SB_KEY),
+    'Prefer':prefer
+  };
+}
+let HDR=getHeaders();
+function refreshHeaders(){HDR=getHeaders();return HDR;}
+
+async function sbGet(t,q=''){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbPost(t,d){refreshHeaders();const data={...d};delete data.id;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbPatch(t,id,d){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbDel(t,id){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:getHeaders('return=minimal')});if(!r.ok)throw new Error(await r.text());}
 
 
 // ══════════════════════════════════════════════════════════
@@ -1716,19 +1735,13 @@ function goHome() {
 }
 
 // ══════════════════════════════════════════════════════════
-// ADMIN AUTH — hardened client-side gate
-// ملاحظة: هذه حماية واجهة فقط. الحماية الحقيقية للبيانات يجب أن تكون عبر Supabase Auth + RLS.
+// ADMIN AUTH — Supabase Auth + RLS gate
+// الحماية الحقيقية تتم عبر Supabase Auth + Row Level Security، وليس عبر كلمة مرور داخل ملف HTML.
 // ══════════════════════════════════════════════════════════
-const ADMIN_HASH='e7adc146e34cd7e3d41add75289ac26cba3fa50523e77699f9c94165540fb20f'; // sha256('cce-admin-v2:' + admin password)
-const ADMIN_SALT='cce-admin-v2:';
-const ADMIN_SESSION_MS=60*60*1000;      // 1 hour
+const ADMIN_SESSION_MS=60*60*1000;      // 1 hour local UI session cap
 const ADMIN_LOCK_MS=10*60*1000;         // 10 minutes
 const ADMIN_MAX_ATTEMPTS=5;
 
-async function sha256Hex(text){
-  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 function adminErr(msg){
   const el=document.getElementById('adminErr');
   if(el){el.textContent=msg;el.style.display='block';}
@@ -1736,17 +1749,38 @@ function adminErr(msg){
 function adminLockUntil(){return parseInt(localStorage.getItem('cce_admin_lock_until')||'0',10)||0;}
 function adminAttempts(){return parseInt(localStorage.getItem('cce_admin_attempts')||'0',10)||0;}
 function clearAdminFailures(){localStorage.removeItem('cce_admin_attempts');localStorage.removeItem('cce_admin_lock_until');}
-function clearAdminAuth(){sessionStorage.removeItem('cce_auth');}
-function setAdminAuth(){sessionStorage.setItem('cce_auth',JSON.stringify({ok:true,exp:Date.now()+ADMIN_SESSION_MS}));}
+function clearAdminAuth(){
+  sessionStorage.removeItem('cce_sb_session');
+  sessionStorage.removeItem('cce_auth');
+  refreshHeaders();
+}
+function saveSupabaseSession(session){
+  if(!session || !session.access_token)return;
+  const expiresAtMs=session.expires_at ? Number(session.expires_at)*1000 : Date.now()+ADMIN_SESSION_MS;
+  sessionStorage.setItem('cce_sb_session',JSON.stringify({
+    access_token:session.access_token,
+    refresh_token:session.refresh_token||'',
+    expires_at:Math.min(expiresAtMs,Date.now()+ADMIN_SESSION_MS),
+    user_id:session.user&&session.user.id?session.user.id:''
+  }));
+  refreshHeaders();
+}
 function getAdminAuth(){
-  try{return JSON.parse(sessionStorage.getItem('cce_auth')||'{}');}
-  catch(e){return {};}
+  try{return JSON.parse(sessionStorage.getItem('cce_sb_session')||'{}');}
+  catch(e){return {}; }
 }
 function isAdminAuthed(){
-  const a=getAdminAuth();
-  if(a && a.ok===true && Number(a.exp)>Date.now()) return true;
+  const s=getAdminAuth();
+  if(s && s.access_token && Number(s.expires_at)>Date.now()) return true;
   clearAdminAuth();
   return false;
+}
+async function requireAdminRole(userId){
+  refreshHeaders();
+  const r=await fetch(`${SB_URL}/rest/v1/app_profiles?select=role&id=eq.${encodeURIComponent(userId)}&limit=1`,{headers:HDR});
+  if(!r.ok)throw new Error(await r.text());
+  const rows=await r.json();
+  return !!(rows&&rows[0]&&rows[0].role==='admin');
 }
 function requireAdmin(){
   if(isAdminAuthed()) return true;
@@ -1755,49 +1789,73 @@ function requireAdmin(){
   navigate('admin');
   return false;
 }
-async function doAdminLogin() {
-  const input=document.getElementById('adminPwd');
+async function doAdminLogin(){
+  const emailInput=document.getElementById('adminEmail');
+  const pwdInput=document.getElementById('adminPwd');
   const btn=document.getElementById('adminLoginBtn');
-  const pwd=(input?.value||'').trim();
+  const email=(emailInput?.value||'').trim();
+  const password=(pwdInput?.value||'').trim();
   const now=Date.now();
   const lockedUntil=adminLockUntil();
+
   if(lockedUntil>now){
     const mins=Math.ceil((lockedUntil-now)/60000);
     adminErr('⛔ Too many attempts. Try again after '+mins+' minute(s).');
-    if(input)input.value='';
+    if(pwdInput)pwdInput.value='';
     return;
   }
-  if(!pwd){adminErr('❌ Enter password');return;}
-  if(btn){btn.disabled=true;btn.textContent='⏳ Checking...';}
+  if(!email||!password){adminErr('❌ Enter admin email and password');return;}
+  if(btn){btn.disabled=true;btn.textContent='⏳ Signing in...';}
+
   try{
-    const hash=await sha256Hex(ADMIN_SALT+pwd);
-    if(hash===ADMIN_HASH){
-      setAdminAuth();
-      clearAdminFailures();
-      const err=document.getElementById('adminErr');if(err)err.style.display='none';
-      if(input)input.value='';
-      navigate('dashboard');
-      if(income.length===0) await loadAll();
-    }else{
-      const attempts=adminAttempts()+1;
-      localStorage.setItem('cce_admin_attempts',String(attempts));
-      if(attempts>=ADMIN_MAX_ATTEMPTS){
-        localStorage.setItem('cce_admin_lock_until',String(now+ADMIN_LOCK_MS));
-        localStorage.setItem('cce_admin_attempts','0');
-        adminErr('⛔ Locked for 10 minutes after too many failed attempts.');
-      }else{
-        adminErr('❌ Incorrect password — attempts left: '+(ADMIN_MAX_ATTEMPTS-attempts));
-      }
-      if(input)input.value='';
+    const loginRes=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({email,password})
+    });
+    if(!loginRes.ok)throw new Error('Invalid login');
+    const session=await loginRes.json();
+    if(!session||!session.access_token||!session.user||!session.user.id)throw new Error('No session returned');
+
+    saveSupabaseSession(session);
+    const okAdmin=await requireAdminRole(session.user.id);
+    if(!okAdmin){
+      clearAdminAuth();
+      throw new Error('Not admin');
     }
+
+    clearAdminFailures();
+    const err=document.getElementById('adminErr');if(err)err.style.display='none';
+    if(pwdInput)pwdInput.value='';
+    navigate('dashboard');
+    if(income.length===0) await loadAll();
   }catch(e){
-    adminErr('❌ Security check failed. Please use a modern browser.');
+    clearAdminAuth();
+    const attempts=adminAttempts()+1;
+    localStorage.setItem('cce_admin_attempts',String(attempts));
+    if(attempts>=ADMIN_MAX_ATTEMPTS){
+      localStorage.setItem('cce_admin_lock_until',String(Date.now()+ADMIN_LOCK_MS));
+      localStorage.setItem('cce_admin_attempts','0');
+      adminErr('⛔ Locked for 10 minutes after too many failed attempts.');
+    }else{
+      adminErr('❌ Login failed or this user is not admin — attempts left: '+(ADMIN_MAX_ATTEMPTS-attempts));
+    }
+    if(pwdInput)pwdInput.value='';
   }finally{
     if(btn){btn.disabled=false;btn.textContent='🔐 Login';}
   }
 }
 
-function logoutAdmin() {
+async function logoutAdmin(){
+  try{
+    const token=getSupabaseAccessToken();
+    if(token){
+      await fetch(`${SB_URL}/auth/v1/logout`,{
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}
+      });
+    }
+  }catch(e){}
   clearAdminAuth();
   navigate('home');
 }
@@ -1926,6 +1984,7 @@ function skipLoad(){
 
 async function forceLoad(){
   if(!requireAdmin())return;
+  refreshHeaders();
   document.getElementById('retryBtn').style.display='none';
   document.getElementById('spinner').style.display='block';
   document.getElementById('debugInfo').textContent='';
@@ -2008,6 +2067,7 @@ async function seedHorseEndDates(){
 
 // ── One-time DB migration: rename legacy "Qeshbar" → "Wood Shavings" permanently ──
 async function migrateLegacyCategories(){
+  refreshHeaders();
   if(localStorage.getItem('cce_woodshavings_migrated')==='1')return;
   try{
     await fetch(`${SB_URL}/rest/v1/expenses?category=eq.Qeshbar`,{method:'PATCH',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify({category:'Wood Shavings'})});
@@ -2019,6 +2079,7 @@ async function migrateLegacyCategories(){
 
 async function loadAll(){
   if(!requireAdmin())return;
+  refreshHeaders();
   const ov=document.getElementById('loadingOverlay');
   const msg=document.getElementById('loadingMsg');
   ov.style.display='flex';
