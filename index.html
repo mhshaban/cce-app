@@ -1937,7 +1937,7 @@ const rowIsFullyPaid=r=>{
   return total>0 && paid+0.0004>=total;
 };
 // Treat legacy records as paid when Paid BD already equals Amount BD, even if old status still says Pending.
-const isPaidRow=r=>String((r&&r.status)||'Pending').toLowerCase()==='paid'||rowIsFullyPaid(r);
+const isPaidRow=r=>String((r&&r.status)||'Pending').trim().toLowerCase()==='paid'||rowIsFullyPaid(r);
 const isPendingRow=r=>!isPaidRow(r);
 function normalizeLoadedPaymentStatuses(rows){
   (rows||[]).forEach(r=>{
@@ -1951,11 +1951,21 @@ const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
 const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
 const isOverdueRow=r=>isPendingRow(r)&&!!r.due_date&&isPastDueDate(r.due_date)&&hasRemaining(r);
-// Net Profit uses paid expense records only.
-// Important legacy fix: some old expenses are marked Paid while paid_bd is blank/0.
-// For a Paid expense, deduct the full amount_bd from Net Profit; for fully-paid legacy rows, deduct amount_bd too.
-const calcPaidExpenseAmount=r=>isPaidRow(r)?moneyNum(r.amount_bd):0;
-const calcPaidExpenses=(rows)=>rows.filter(isPaidRow).reduce((s,r)=>s+calcPaidExpenseAmount(r),0);
+// Net Profit uses paid expense cash only.
+// Legacy-safe rule:
+// 1) If status is Paid and paid_bd has a value, use paid_bd.
+// 2) If status is Paid but paid_bd is blank/0, use amount_bd.
+// 3) If old status is Pending but paid_bd >= amount_bd, use paid_bd.
+// This prevents the dashboard from replacing legacy paid_bd totals with amount_bd totals.
+const rowStatus=r=>String((r&&r.status)||'Pending').trim().toLowerCase();
+const calcPaidExpenseAmount=r=>{
+  const total=moneyNum(r&&r.amount_bd);
+  const paid=moneyNum(r&&r.paid_bd);
+  if(rowStatus(r)==='paid') return paid>0.0004 ? paid : total;
+  if(rowIsFullyPaid(r)) return paid>0.0004 ? paid : total;
+  return 0;
+};
+const calcPaidExpenses=(rows)=>rows.reduce((s,r)=>s+calcPaidExpenseAmount(r),0);
 const calcPendingAmount=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
 const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
 const calcIncomePending=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
