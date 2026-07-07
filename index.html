@@ -1951,24 +1951,18 @@ const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
 const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
 const isOverdueRow=r=>isPendingRow(r)&&!!r.due_date&&isPastDueDate(r.due_date)&&hasRemaining(r);
-// Net Profit uses paid expense cash only.
-// Legacy-safe rule:
-// 1) If status is Paid and paid_bd has a value, use paid_bd.
-// 2) If status is Paid but paid_bd is blank/0, use amount_bd.
-// 3) If old status is Pending but paid_bd >= amount_bd, use paid_bd.
-// This prevents the dashboard from replacing legacy paid_bd totals with amount_bd totals.
+// Cash accounting rule requested:
+// Total Revenue = money actually received (sum income.paid_bd).
+// Total Expenses = money actually paid/spent (sum expenses.paid_bd), regardless of status.
+// Net Profit = Total Revenue - Total Expenses.
+// Pending/Unpaid are shown separately as remaining balances.
 const rowStatus=r=>String((r&&r.status)||'Pending').trim().toLowerCase();
-const calcPaidExpenseAmount=r=>{
-  const total=moneyNum(r&&r.amount_bd);
-  const paid=moneyNum(r&&r.paid_bd);
-  if(rowStatus(r)==='paid') return paid>0.0004 ? paid : total;
-  if(rowIsFullyPaid(r)) return paid>0.0004 ? paid : total;
-  return 0;
-};
+const calcPaidExpenseAmount=r=>moneyNum(r&&r.paid_bd);
 const calcPaidExpenses=(rows)=>rows.reduce((s,r)=>s+calcPaidExpenseAmount(r),0);
 const calcPendingAmount=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
 const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
 const calcIncomePending=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
+const calcNetOverdue=(incRows,expRows)=>calcIncomePending(incRows)-calcPendingAmount(expRows);
 function normalizePaidStatus(total,paid){return paid>=total&&total>0?'Paid':'Pending';}
 function validatePaymentInput(total,paid,label){
   if(paid<0){alert(label+' paid amount cannot be negative');return false;}
@@ -2156,16 +2150,14 @@ async function downloadBackup(){
     const totalExp=calcPaidExpenses(exp);
     const totalPending=calcPendingAmount(exp);
     const totalPendingIncome=calcIncomePending(inc);
-    const totalOverdueIncome=inc.filter(isOverdueRow).reduce((s,r)=>s+calcRemaining(r),0);
-    const totalOverdueExpenses=exp.filter(isOverdueRow).reduce((s,r)=>s+calcRemaining(r),0);
+    const netOverdue=calcNetOverdue(inc,exp);
     const sumData=[
       {Metric:'Total Revenue BD',Value:totalRev.toFixed(3)},
       {Metric:'Total Expenses BD',Value:totalExp.toFixed(3)},
       {Metric:'Net Profit BD',Value:(totalRev-totalExp).toFixed(3)},
       {Metric:'Pending Income BD',Value:totalPendingIncome.toFixed(3)},
       {Metric:'Unpaid Expenses BD',Value:totalPending.toFixed(3)},
-      {Metric:'Overdue Income BD',Value:totalOverdueIncome.toFixed(3)},
-      {Metric:'Overdue Expenses BD',Value:totalOverdueExpenses.toFixed(3)},
+      {Metric:'Net Overdue BD',Value:netOverdue.toFixed(3)},
       {Metric:'Total Horses',Value:hor.length},
       {Metric:'Total Sessions',Value:inc.length},
       {Metric:'Total Expense Records',Value:exp.length},
@@ -2368,18 +2360,16 @@ function buildDash(){
   // Total revenue = received income cash. Pending income shows remaining only.
   const rev=calcIncomeReceived(incRows);
 
-  // Total expenses / Net Profit = only fully-paid expense records.
-  // Pending or partially-paid expense rows stay in Unpaid/Overdue until marked Paid.
+  // Cash accounting: Total Expenses is actual paid/spent cash (sum paid_bd).
   const exp=calcPaidExpenses(expRows);
   const pend=calcPendingAmount(expRows);
   const profit=rev-exp;
   const pendInc=calcIncomePending(incRows);
+  const netOverdue=pendInc-pend;
 
-  // Banner always shows all genuinely overdue records, independent of the dashboard period filter.
-  const overdueIncAll=income.filter(isOverdueRow);
-  const overdueExpAll=expenses.filter(isOverdueRow);
-  const ov=[...overdueIncAll,...overdueExpAll];
-  const ovAmt=ov.reduce((s,r)=>s+calcRemaining(r),0);
+  // Dashboard no longer uses due-date Overdue totals. Net Overdue = Pending Income - Unpaid Expenses.
+  const ov=[];
+  const ovAmt=netOverdue;
 
   const actH=horses.filter(h=>h.status==='Available').length;
   const totL=incRows.filter(r=>r.activity==='Lesson').length;
@@ -2389,22 +2379,16 @@ function buildDash(){
     const label=hasPeriod?[(p.month?MN[parseInt(p.month,10)]:'All Months'),(p.year||'All Years')].join(' / '):'Showing all-time data';
     note.textContent=label+' — '+incRows.length+' income, '+expRows.length+' expense records';
   }
-  if(ov.length>0){
-    document.getElementById('overdueBanner').classList.remove('hidden');
-    document.getElementById('overdueText').textContent=ov.length+' overdue payment(s) — '+BD(ovAmt);
-    document.getElementById('overdueBadge').classList.remove('hidden');
-    document.getElementById('overdueCount').textContent=ov.length;
-  }else{
-    document.getElementById('overdueBanner').classList.add('hidden');
-    document.getElementById('overdueBadge').classList.add('hidden');
-  }
+  // Hide legacy Overdue alert on dashboard; use Net Overdue card instead.
+  document.getElementById('overdueBanner').classList.add('hidden');
+  document.getElementById('overdueBadge').classList.add('hidden');
   const stats=[
     {l:'Total Revenue',v:BD(rev),c:'var(--green)'},
     {l:'Total Expenses',v:BD(exp),c:'var(--red)'},
     {l:'Net Profit',v:BD(profit),c:profit>=0?'var(--green)':'var(--red)'},
     {l:'Pending Income',v:BD(pendInc),c:'var(--amber)'},
     {l:'Unpaid Expenses',v:BD(pend),c:'var(--amber)'},
-    {l:'Overdue',v:BD(ovAmt),c:'var(--red)'},
+    {l:'Net Overdue',v:BD(netOverdue),c:netOverdue>=0?'var(--green)':'var(--red)'},
     {l:'Horses (Active)',v:actH,c:'var(--navy)'},
     {l:'Total Lessons',v:totL,c:'var(--navy)'},
     {l:'Total Hack',v:totH,c:'var(--navy)'},
@@ -2414,13 +2398,13 @@ function buildDash(){
   const chartIncome=(p.year&&!p.month)?income.filter(r=>rowMonthKey(r).slice(0,4)===p.year):income;
   const chartExpenses=(p.year&&!p.month)?expenses.filter(r=>rowMonthKey(r).slice(0,4)===p.year):expenses;
   chartIncome.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=moneyNum(r.paid_bd);});
-  chartExpenses.filter(isPaidRow).forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=calcPaidExpenseAmount(r);});
+  chartExpenses.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=calcPaidExpenseAmount(r);});
   const months=Object.entries(mo).sort(([a],[b])=>a.localeCompare(b)).slice(-9);
   const mx=Math.max(...months.flatMap(([,v])=>[v.rev,v.exp]),1);
   document.getElementById('barChart').innerHTML=months.length?months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join(''):'<p style="color:var(--muted);padding:12px">No monthly data</p>';
   const aM={};incRows.forEach(r=>{const a=r.activity||'Other';aM[a]=(aM[a]||0)+moneyNum(r.paid_bd);});
   document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
-  const eM={};expRows.filter(isPaidRow).forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
+  const eM={};expRows.forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
   document.getElementById('recentInc').innerHTML=incTblHTML([...incRows].reverse().slice(0,10));
 }
@@ -3396,9 +3380,11 @@ async function doOwnerLogin(){
   btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=500`,{headers:HDR});
-    const list=await r.json();
+    const json=await r.json().catch(()=>[]);
+    if(!r.ok) throw new Error(json.message||json.error||('Supabase request failed: '+r.status));
+    const list=Array.isArray(json)?json:[];
     const matched=[];
-    for(const h of (list||[])){
+    for(const h of list){
       if(h.horse_name && await verifySecret(h.owner_pwd,pwd)) matched.push(h);
     }
     if(!matched.length){
@@ -3545,7 +3531,9 @@ window.navigate = function(page){
     // restore session
     (async()=>{
       const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=200`,{headers:HDR});
-      const list=await r.json();
+      const json=await r.json().catch(()=>[]);
+      if(!r.ok) throw new Error(json.message||json.error||('Supabase request failed: '+r.status));
+      const list=Array.isArray(json)?json:[];
       const matched=list.filter(h=>h.contact&&cleanPhone(h.contact)===cleanPhone(savedPhone)&&h.horse_name);
       if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
     })();
@@ -4136,9 +4124,11 @@ async function doInstrLogin(){
   try{
     // Username = instructor name (case-insensitive). Password supports legacy plain text and new SHA-256 hashes.
     const r=await fetch(`${SB_URL}/rest/v1/instructors?name=ilike.${encodeURIComponent(user)}&active=eq.true&select=*`,{headers:HDR});
-    const list=await r.json();
+    const json=await r.json().catch(()=>[]);
+    if(!r.ok) throw new Error(json.message||json.error||('Supabase request failed: '+r.status));
+    const list=Array.isArray(json)?json:[];
     let matched=null;
-    for(const instr of (list||[])){
+    for(const instr of list){
       if(await verifySecret(instr.pin,pwd)){matched=instr;break;}
     }
     if(!matched){
@@ -4605,8 +4595,8 @@ function renderAdvancedReports(){
   const cur=periodStatsForMonth(curK), prev=periodStatsForMonth(prevK);
   const topCustomers=topBy(income,r=>(r.customer_name||'').split('|')[0].trim(),r=>moneyNum(r.paid_bd),10);
   const topServices=topBy(income,r=>r.activity,r=>moneyNum(r.paid_bd),10);
-  const topExpenses=topBy(expenses.filter(isPaidRow),r=>r.category,r=>calcPaidExpenseAmount(r),10);
-  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=r.activity||'Other';m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>(x.category||'Other')===k&&isPaidRow(x)).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topExpenses=topBy(expenses,r=>r.category,r=>calcPaidExpenseAmount(r),10);
+  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=r.activity||'Other';m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>(x.category||'Other')===k).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
   el.innerHTML=`
     <div class="stats-grid" style="margin-bottom:14px">
       <div class="stat-card green"><div class="stat-label">This Month Cash Profit</div><div class="stat-value">${BD(cur.netCash)}</div><div class="stat-sub">vs last month ${pctDelta(cur.netCash,prev.netCash)}</div></div>
