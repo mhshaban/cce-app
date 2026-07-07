@@ -1522,7 +1522,7 @@ html[dir="rtl"] .pie-legend-item {
       <div class="card">
         <div class="card-title">&#129658; Horse Health & Care</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
-          Tracks farrier, deworming, vaccine, teeth and medication dates from the horse records. Items become overdue based on the built-in care intervals.
+          Tracks farrier, deworming, vaccine, teeth and medication dates for <strong>Available horses only</strong>. Unavailable horses such as Out, Sold, or Dead are hidden from this health view.
         </div>
         <div id="horseHealthDashboard"></div>
       </div>
@@ -4170,8 +4170,17 @@ function logoutInstructor(){
 async function loadInstrData(){
   if(!currentInstructor) return;
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/schedule?instructor=eq.${encodeURIComponent(currentInstructor.name)}&order=date.asc,start_time.asc&limit=500`,{headers:HDR});
-    const sessions=await r.json()||[];
+    // Load schedule rows then match instructor locally.
+    // This fixes old data where instructor name has different case/spaces (Efti / EfTi / Efti ).
+    const r=await fetch(`${SB_URL}/rest/v1/schedule?select=*&order=date.asc,start_time.asc&limit=1000`,{headers:HDR});
+    const json=await r.json().catch(()=>[]);
+    if(!r.ok){
+      const msg=json.message||json.error||('Supabase request failed: '+r.status);
+      throw new Error(msg);
+    }
+    const allSessions=Array.isArray(json)?json:[];
+    const instrName=normText(currentInstructor.name);
+    const sessions=allSessions.filter(s=>normText(s.instructor)===instrName);
 
     // Stats
     const today=new Date(); today.setHours(0,0,0,0);
@@ -4180,7 +4189,7 @@ async function loadInstrData(){
     const todaySess=sessions.filter(s=>s.date===todayKey);
     const monthSess=sessions.filter(s=>{
       const d=new Date(s.date);
-      return d.getMonth()===nowMonth&&d.getFullYear()===nowYear;
+      return !isNaN(d)&&d.getMonth()===nowMonth&&d.getFullYear()===nowYear;
     });
     document.getElementById('instrTodayCount').textContent=todaySess.length;
     document.getElementById('instrMonthCount').textContent=monthSess.length;
@@ -4190,7 +4199,14 @@ async function loadInstrData(){
     // Render
     window._instrSessions=sessions;
     renderInstrSchedule();
-  }catch(e){console.log('instr data error',e);}
+  }catch(e){
+    console.log('instr data error',e);
+    window._instrSessions=[];
+    renderInstrSchedule();
+    const st=document.getElementById('instrMonthStats');
+    if(st) st.textContent='Schedule loading error: '+e.message;
+    alert('Schedule Error: '+e.message);
+  }
 }
 
 function setInstrView(v){
@@ -4667,7 +4683,7 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'v4-all-modules',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
+function backupObject(){return {app:'Country Club Equestrian',version:'v12-instructor-schedule-fix',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
 function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
@@ -4737,12 +4753,12 @@ function daysBetween(d){if(!d)return null;const dt=dateOnly(d);if(!dt)return nul
 function healthStatus(days,limit){if(days===null)return ['Missing','badge-red']; if(days>limit)return ['Overdue','badge-red']; if(days>limit-14)return ['Due soon','badge-amber']; return ['OK','badge-green'];}
 function renderHorseHealth(){
   const el=document.getElementById('horseHealthDashboard'); if(!el)return;
-  const rows=horses.filter(h=>h.horse_name).map(h=>{
+  const rows=horses.filter(h=>h.horse_name && String(h.status||'Available').trim()==='Available').map(h=>{
     const far=daysBetween(h.farrier_date), dew=daysBetween(h.deworm_date), vac=daysBetween(h.vaccine_date), teeth=daysBetween(h.teeth_date), med=daysBetween(h.med_date);
     return {h, far, dew, vac, teeth, med};
   });
   const overdue=rows.filter(x=>healthStatus(x.far,45)[0]==='Overdue'||healthStatus(x.dew,120)[0]==='Overdue'||healthStatus(x.vac,365)[0]==='Overdue'||healthStatus(x.teeth,365)[0]==='Overdue').length;
-  el.innerHTML=`<div class="stats-grid" style="margin-bottom:14px"><div class="stat-card red"><div class="stat-label">Overdue Care</div><div class="stat-value">${overdue}</div><div class="stat-sub">horses need attention</div></div><div class="stat-card navy"><div class="stat-label">Total Horses</div><div class="stat-value">${rows.length}</div><div class="stat-sub">tracked records</div></div></div>`+
+  el.innerHTML=`<div class="stats-grid" style="margin-bottom:14px"><div class="stat-card red"><div class="stat-label">Overdue Care</div><div class="stat-value">${overdue}</div><div class="stat-sub">horses need attention</div></div><div class="stat-card navy"><div class="stat-label">Available Horses</div><div class="stat-value">${rows.length}</div><div class="stat-sub">tracked health records</div></div></div>`+
     '<div class="tbl-wrap"><table><thead><tr><th>Horse</th><th>Owner</th><th>Farrier</th><th>Deworm</th><th>Vaccine</th><th>Teeth</th><th>Medication</th><th>Action</th></tr></thead><tbody>'+rows.map(x=>{
       const h=x.h; const stF=healthStatus(x.far,45), stD=healthStatus(x.dew,120), stV=healthStatus(x.vac,365), stT=healthStatus(x.teeth,365), stM=healthStatus(x.med,180);
       const cell=(label,days,st)=>`<span class="badge ${st[1]}">${label}: ${st[0]}</span><br><small>${days===null?'no date':days+' days ago'}</small>`;
