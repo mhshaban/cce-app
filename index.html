@@ -1310,10 +1310,11 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <div class="security-note"><strong>Security Note:</strong> This is an enhanced interface version. For official deployment, it's recommended to migrate admin login to Supabase Auth and enable Row Level Security.</div>
-      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <div class="security-note"><strong>Security Note:</strong> Supabase Auth is now supported. Use email + password after you create users and enable RLS. The old admin password remains only as an emergency fallback until RLS is enabled.</div>
+      <input class="inp" type="email" id="adminEmail" placeholder="Admin email (optional before RLS)" autocomplete="username">
+      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()">
       <button class="login-btn" onclick="doAdminLogin()">🔐 Login</button>
-      <div class="err" id="adminErr" style="display:none">❌ Incorrect password</div>
+      <div class="err" id="adminErr" style="display:none">❌ Login failed</div>
     </div>
   </div>
 </div>
@@ -1332,6 +1333,10 @@ html[dir="rtl"] .pie-legend-item {
     <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
     <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
     <button class="nav-btn" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
+    <button class="nav-btn" id="nav-reports" onclick="showDashPage('reports',this)">&#128200; Reports</button>
+    <button class="nav-btn" id="nav-receipts" onclick="showDashPage('receipts',this)">&#129534; Receipts</button>
+    <button class="nav-btn" id="nav-health" onclick="showDashPage('health',this)">&#129658; Horse Health</button>
+    <button class="nav-btn" id="nav-tools" onclick="showDashPage('tools',this)">&#128736;&#65039; Tools</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -1489,6 +1494,47 @@ html[dir="rtl"] .pie-legend-item {
       </div>
     </div>
 
+
+
+    <div class="section" id="page-reports">
+      <div class="card">
+        <div class="card-title">&#128200; Advanced Financial Reports</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Uses the same accounting rules as Dashboard: revenue is received cash, paid expenses are deducted from cash profit, and pending amounts are shown separately.
+        </div>
+        <div id="advancedReports"></div>
+      </div>
+    </div>
+
+    <div class="section" id="page-receipts">
+      <div class="card">
+        <div class="card-title">&#129534; Receipts & Customer Statements</div>
+        <div class="search-bar">
+          <input type="text" id="receiptSearch" placeholder="&#128269; Search customer, horse, service..." oninput="renderReceipts()">
+          <select id="receiptStatusFilter" onchange="renderReceipts()"><option value="">All Status</option><option>Paid</option><option>Pending</option></select>
+          <button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:9px 14px" onclick="openCustomerStatement()">Customer Statement</button>
+        </div>
+        <div class="tbl-wrap" id="receiptsTable"></div>
+      </div>
+    </div>
+
+    <div class="section" id="page-health">
+      <div class="card">
+        <div class="card-title">&#129658; Horse Health & Care</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Tracks farrier, deworming, vaccine, teeth and medication dates from the horse records. Items become overdue based on the built-in care intervals.
+        </div>
+        <div id="horseHealthDashboard"></div>
+      </div>
+    </div>
+
+    <div class="section" id="page-tools">
+      <div class="card">
+        <div class="card-title">&#128736;&#65039; Backup / Restore / Security Tools</div>
+        <div id="toolsPanel"></div>
+      </div>
+    </div>
+
     <div class="section" id="page-notifications">
       <!-- Browser Push Card -->
       <div class="card">
@@ -1589,7 +1635,28 @@ html[dir="rtl"] .pie-legend-item {
 // ══════════════════════════════════════════════════════════
 const SB_URL='https://ipiarzkljcictghtkcri.supabase.co';
 const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
-const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+let SB_ACCESS_TOKEN=sessionStorage.getItem('cce_sb_access_token')||'';
+function buildHeaders(prefer='return=representation'){
+  return {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(SB_ACCESS_TOKEN||SB_KEY),'Prefer':prefer};
+}
+let HDR=buildHeaders();
+function setSupabaseSession(token,expiresIn){
+  SB_ACCESS_TOKEN=token||'';
+  if(SB_ACCESS_TOKEN){
+    sessionStorage.setItem('cce_sb_access_token',SB_ACCESS_TOKEN);
+    sessionStorage.setItem('cce_sb_token_until',String(Date.now()+((expiresIn||3600)-60)*1000));
+  }else{
+    sessionStorage.removeItem('cce_sb_access_token');
+    sessionStorage.removeItem('cce_sb_token_until');
+  }
+  HDR=buildHeaders();
+}
+function hasSupabaseSession(){
+  const until=parseInt(sessionStorage.getItem('cce_sb_token_until')||'0',10);
+  if(SB_ACCESS_TOKEN && (!until || until>Date.now())) return true;
+  if(until && until<=Date.now()) setSupabaseSession('',0);
+  return false;
+}
 
 // Security hardening for the static admin page.
 // IMPORTANT: client-side checks are only a UI gate; Supabase Row Level Security should still be enabled in production.
@@ -1603,6 +1670,11 @@ async function sha256Hex(str){
 function isAdminAuthed(){
   const until=parseInt(sessionStorage.getItem('cce_auth_until')||'0',10);
   if(sessionStorage.getItem('cce_auth')==='true' && until>Date.now()) return true;
+  if(hasSupabaseSession()){
+    sessionStorage.setItem('cce_auth','true');
+    sessionStorage.setItem('cce_auth_until',String(Date.now()+ADMIN_SESSION_MS));
+    return true;
+  }
   sessionStorage.removeItem('cce_auth');
   sessionStorage.removeItem('cce_auth_until');
   return false;
@@ -1628,7 +1700,7 @@ async function sbPatch(t,id,d,opts={}){
 }
 async function sbDel(t,id,opts={}){
   const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
-  const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});
+  const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:buildHeaders('return=minimal')});
   if(!r.ok)throw new Error(await r.text());
   if(!opts.skipAudit&&t!=='audit_logs')queueAudit('delete',t,id,before,null);
 }
@@ -1639,6 +1711,7 @@ async function sbDel(t,id,opts={}){
 // ══════════════════════════════════════════════════════════
 const CLUB_WHATSAPP='973332266061'; // مثال: 97339000000
 const CLUB_IBAN='BH23BIBB00100002375646';
+window.CCE_RLS_SQL="-- Country Club Equestrian \u2014 SAFE Supabase setup\n-- This version fixes common SQL Editor failures and avoids breaking the public website.\n-- Run this first. It creates Auth role mapping + Audit Log safely.\n-- After you create an Admin Auth user, insert the user's UUID into app_users.\n\nbegin;\n\ncreate table if not exists public.app_users (\n  id bigint generated by default as identity primary key,\n  user_id uuid references auth.users(id) on delete cascade,\n  email text unique,\n  role text not null check (role in ('admin','instructor','owner')),\n  display_name text,\n  instructor_name text,\n  owner_name text,\n  created_at timestamptz not null default now()\n);\n\ncreate table if not exists public.audit_logs (\n  id bigint generated by default as identity primary key,\n  ts timestamptz not null default now(),\n  actor text,\n  action text not null,\n  table_name text not null,\n  record_id text,\n  before_data jsonb,\n  after_data jsonb\n);\n\n-- Helper functions are SECURITY DEFINER to avoid recursive app_users RLS policy errors.\ncreate or replace function public.cce_role()\nreturns text\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select role from public.app_users where user_id = auth.uid() limit 1;\n$$;\n\ncreate or replace function public.cce_is_admin()\nreturns boolean\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select coalesce(public.cce_role() = 'admin', false);\n$$;\n\ncreate or replace function public.cce_instructor_name()\nreturns text\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select instructor_name from public.app_users where user_id = auth.uid() limit 1;\n$$;\n\ncreate or replace function public.cce_owner_name()\nreturns text\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select owner_name from public.app_users where user_id = auth.uid() limit 1;\n$$;\n\ngrant usage on schema public to anon, authenticated;\ngrant select on public.app_users to authenticated;\ngrant insert, select on public.audit_logs to authenticated;\ngrant usage, select on sequence public.audit_logs_id_seq to authenticated;\ngrant usage, select on sequence public.app_users_id_seq to authenticated;\n\nalter table public.app_users enable row level security;\nalter table public.audit_logs enable row level security;\n\ndrop policy if exists app_users_admin_all on public.app_users;\ncreate policy app_users_admin_all on public.app_users\nfor all to authenticated\nusing (public.cce_is_admin())\nwith check (public.cce_is_admin());\n\ndrop policy if exists app_users_self_read on public.app_users;\ncreate policy app_users_self_read on public.app_users\nfor select to authenticated\nusing (user_id = auth.uid());\n\ndrop policy if exists audit_insert_auth on public.audit_logs;\ncreate policy audit_insert_auth on public.audit_logs\nfor insert to authenticated\nwith check (true);\n\ndrop policy if exists audit_admin_read on public.audit_logs;\ncreate policy audit_admin_read on public.audit_logs\nfor select to authenticated\nusing (public.cce_is_admin());\n\ncommit;\n\n-- Add your first admin after creating the user in Supabase Authentication > Users:\n-- Replace AUTH_USER_UUID_HERE and admin@example.com, then run only this line:\n-- insert into public.app_users (user_id, email, role, display_name)\n-- values ('AUTH_USER_UUID_HERE', 'admin@example.com', 'admin', 'Main Admin')\n-- on conflict (email) do update set user_id = excluded.user_id, role = excluded.role, display_name = excluded.display_name;\n\n-- OPTIONAL RLS HARDENING FOR APP TABLES\n-- Do NOT run this optional block until:\n-- 1) You can log in successfully with the Admin email/password.\n-- 2) The dashboard loads after login.\n-- 3) You have a backup of the database.\n--\n-- If you are ready, change v_enable_app_rls below from false to true and run the DO block.\n\nDO $$\nDECLARE\n  v_enable_app_rls boolean := false;\n  t text;\nBEGIN\n  IF NOT v_enable_app_rls THEN\n    RAISE NOTICE 'App-table RLS was not enabled. Change v_enable_app_rls to true only after Admin login is confirmed.';\n    RETURN;\n  END IF;\n\n  FOREACH t IN ARRAY ARRAY['income','expenses','horses','breeding','schedule','instructors'] LOOP\n    IF to_regclass('public.' || t) IS NOT NULL THEN\n      EXECUTE format('alter table public.%I enable row level security', t);\n      EXECUTE format('drop policy if exists %I on public.%I', t || '_admin_all', t);\n      EXECUTE format('create policy %I on public.%I for all to authenticated using (public.cce_is_admin()) with check (public.cce_is_admin())', t || '_admin_all', t);\n    END IF;\n  END LOOP;\n\n  IF to_regclass('public.income') IS NOT NULL THEN\n    drop policy if exists income_public_request_insert on public.income;\n    create policy income_public_request_insert on public.income\n    for insert to anon\n    with check (\n      coalesce(status,'Pending') = 'Pending'\n      and coalesce(paid_bd,0) = 0\n      and (\n        coalesce(notes,'') ilike '%BOOKING REQUEST%'\n        or coalesce(notes,'') ilike '%TRAINING REQUEST%'\n        or coalesce(notes,'') ilike '%LIVERY REQUEST%'\n      )\n    );\n  END IF;\n\n  IF to_regclass('public.schedule') IS NOT NULL THEN\n    drop policy if exists schedule_instructor_select_own on public.schedule;\n    create policy schedule_instructor_select_own on public.schedule\n    for select to authenticated\n    using (public.cce_role()='instructor' and instructor = public.cce_instructor_name());\n\n    drop policy if exists schedule_instructor_update_own on public.schedule;\n    create policy schedule_instructor_update_own on public.schedule\n    for update to authenticated\n    using (public.cce_role()='instructor' and instructor = public.cce_instructor_name())\n    with check (public.cce_role()='instructor' and instructor = public.cce_instructor_name());\n  END IF;\n\n  IF to_regclass('public.horses') IS NOT NULL THEN\n    drop policy if exists horses_owner_select_own on public.horses;\n    create policy horses_owner_select_own on public.horses\n    for select to authenticated\n    using (public.cce_role()='owner' and owner = public.cce_owner_name());\n  END IF;\nEND $$;\n";
 
 
 // ══════════════════════════════════════════════════════════
@@ -1786,17 +1859,40 @@ function goHome() {
 // ADMIN AUTH
 // ══════════════════════════════════════════════════════════
 async function doAdminLogin() {
+  const email=(document.getElementById('adminEmail')?.value||'').trim();
   const pwd = document.getElementById('adminPwd').value;
-  const ok = (await sha256Hex(pwd)) === ADMIN_PASS_SHA256;
-  if(ok) {
-    sessionStorage.setItem('cce_auth','true');
-    sessionStorage.setItem('cce_auth_until',String(Date.now()+ADMIN_SESSION_MS));
-    document.getElementById('adminErr').style.display='none';
-    document.getElementById('adminPwd').value='';
-    navigate('dashboard');
-    if(income.length===0) loadAll();
-  } else {
-    document.getElementById('adminErr').style.display='block';
+  const err=document.getElementById('adminErr');
+  err.style.display='none';
+  try{
+    if(email){
+      const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SB_KEY},
+        body:JSON.stringify({email,password:pwd})
+      });
+      if(!r.ok) throw new Error('Supabase Auth rejected the login');
+      const data=await r.json();
+      setSupabaseSession(data.access_token,data.expires_in);
+      sessionStorage.setItem('cce_auth','true');
+      sessionStorage.setItem('cce_auth_until',String(Date.now()+Math.min(ADMIN_SESSION_MS,(data.expires_in||3600)*1000)));
+      document.getElementById('adminPwd').value='';
+      navigate('dashboard');
+      if(income.length===0) loadAll();
+      return;
+    }
+    const ok = (await sha256Hex(pwd)) === ADMIN_PASS_SHA256;
+    if(ok) {
+      sessionStorage.setItem('cce_auth','true');
+      sessionStorage.setItem('cce_auth_until',String(Date.now()+ADMIN_SESSION_MS));
+      document.getElementById('adminPwd').value='';
+      navigate('dashboard');
+      if(income.length===0) loadAll();
+    } else {
+      throw new Error('Incorrect password');
+    }
+  }catch(e){
+    err.textContent='❌ '+e.message;
+    err.style.display='block';
     document.getElementById('adminPwd').value='';
   }
 }
@@ -1804,6 +1900,7 @@ async function doAdminLogin() {
 function logoutAdmin() {
   sessionStorage.removeItem('cce_auth');
   sessionStorage.removeItem('cce_auth_until');
+  setSupabaseSession('',0);
   navigate('home');
 }
 
@@ -1816,6 +1913,10 @@ function showDashPage(id, btn) {
   const el = document.getElementById('page-'+( id==='dashboard'?'main-dashboard':id ));
   if(el) el.classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
+  if(id==='reports') renderAdvancedReports();
+  if(id==='receipts') renderReceipts();
+  if(id==='health') renderHorseHealth();
+  if(id==='tools') renderToolsPanel();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2153,8 +2254,8 @@ async function seedHorseEndDates(){
 async function migrateLegacyCategories(){
   if(localStorage.getItem('cce_woodshavings_migrated')==='1')return;
   try{
-    await fetch(`${SB_URL}/rest/v1/expenses?category=eq.Qeshbar`,{method:'PATCH',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify({category:'Wood Shavings'})});
-    await fetch(`${SB_URL}/rest/v1/income?activity=eq.Qeshbar`,{method:'PATCH',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify({activity:'Wood Shavings'})});
+    await fetch(`${SB_URL}/rest/v1/expenses?category=eq.Qeshbar`,{method:'PATCH',headers:buildHeaders('return=minimal'),body:JSON.stringify({category:'Wood Shavings'})});
+    await fetch(`${SB_URL}/rest/v1/income?activity=eq.Qeshbar`,{method:'PATCH',headers:buildHeaders('return=minimal'),body:JSON.stringify({activity:'Wood Shavings'})});
     localStorage.setItem('cce_woodshavings_migrated','1');
     console.log('[CCE] Qeshbar → Wood Shavings migrated in DB');
   }catch(e){console.log('category migration skipped');}
@@ -2211,7 +2312,7 @@ async function loadAll(){
     await seedHorseEndDates();
     await migrateLegacyCategories();
     await checkAndCreateLiveryNotifications();
-    populateDashPeriodFilters();buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();renderAuditLog();populateLists();initNotifications();checkScheduledNotifications();
+    populateDashPeriodFilters();buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();renderAuditLog();renderAdvancedReports();renderReceipts();renderHorseHealth();renderToolsPanel();populateLists();initNotifications();checkScheduledNotifications();dailyBackupSnapshot();
     ov.style.display='none';
 
   }catch(e){
@@ -2312,7 +2413,7 @@ function incTblHTML(data){
         '<td>'+BD(r.paid_bd)+'</td>'+ 
         '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+ 
         '<td style="white-space:nowrap">'+
-          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ 
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;income&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
           '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;income&apos;,'+r.id+')">&#128465;&#65039;</button>'+ 
         '</td>'+ 
@@ -2808,7 +2909,7 @@ function renderBookings(){
         '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
         '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
         '<td style="white-space:nowrap">'+
-          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
           '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>'+
         '</td>'+
@@ -4443,6 +4544,195 @@ function resetLivery(){
 }
 
 
+
+// ══════════════════════════════════════════════════════════
+// ADVANCED REPORTS / RECEIPTS / BACKUP / HEALTH / TOOLS
+// ══════════════════════════════════════════════════════════
+function monthKeyFromDate(d){return String(d||'').slice(0,7);}
+function currentMonthKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function previousMonthKey(k=currentMonthKey()){
+  const [y,m]=k.split('-').map(Number); const d=new Date(y,m-2,1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function periodStatsForMonth(k){
+  const inc=income.filter(r=>monthKeyFromDate(r.date)===k);
+  const exp=expenses.filter(r=>monthKeyFromDate(r.date)===k);
+  const cashRevenue=calcIncomeReceived(inc);
+  const paidExp=calcPaidExpenses(exp);
+  const pendingIncome=calcIncomePending(inc);
+  const unpaidExp=calcPendingAmount(exp);
+  const netCash=cashRevenue-paidExp;
+  const expected=(inc.reduce((s,r)=>s+moneyNum(r.amount_bd),0))-exp.reduce((s,r)=>s+moneyNum(r.amount_bd),0);
+  const collectionBase=inc.reduce((s,r)=>s+moneyNum(r.amount_bd),0);
+  return {inc,exp,cashRevenue,paidExp,pendingIncome,unpaidExp,netCash,expected,collectionBase,collectionRate:collectionBase?cashRevenue/collectionBase*100:0,expenseRatio:cashRevenue?paidExp/cashRevenue*100:0};
+}
+function pctDelta(cur,prev){ if(!prev) return cur?'+100%':'0%'; const v=((cur-prev)/Math.abs(prev))*100; return (v>=0?'+':'')+v.toFixed(1)+'%';}
+function topBy(rows,keyFn,valFn,n=8){const m={};rows.forEach(r=>{const k=keyFn(r)||'Other';m[k]=(m[k]||0)+(valFn(r)||0);});return Object.entries(m).sort(([,a],[,b])=>b-a).slice(0,n);}
+function renderMiniTable(rows,title,color='var(--navy)'){
+  return `<div class="card" style="box-shadow:none;border:1px solid var(--border);margin:0"><div class="card-title" style="color:${color};font-size:14px">${title}</div>`+
+    (rows.length?`<table><tbody>${rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td style="text-align:right;font-weight:700">${BD(v)}</td></tr>`).join('')}</tbody></table>`:'<p style="color:var(--muted);padding:8px">No data</p>')+'</div>';
+}
+function renderAdvancedReports(){
+  const el=document.getElementById('advancedReports'); if(!el)return;
+  const curK=currentMonthKey(), prevK=previousMonthKey(curK);
+  const cur=periodStatsForMonth(curK), prev=periodStatsForMonth(prevK);
+  const topCustomers=topBy(income,r=>(r.customer_name||'').split('|')[0].trim(),r=>moneyNum(r.paid_bd),10);
+  const topServices=topBy(income,r=>r.activity,r=>moneyNum(r.paid_bd),10);
+  const topExpenses=topBy(expenses.filter(isPaidRow),r=>r.category,r=>moneyNum(r.paid_bd),10);
+  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=r.activity||'Other';m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>(x.category||'Other')===k&&isPaidRow(x)).reduce((s,x)=>s+moneyNum(x.paid_bd),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  el.innerHTML=`
+    <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card green"><div class="stat-label">This Month Cash Profit</div><div class="stat-value">${BD(cur.netCash)}</div><div class="stat-sub">vs last month ${pctDelta(cur.netCash,prev.netCash)}</div></div>
+      <div class="stat-card navy"><div class="stat-label">Expected Profit</div><div class="stat-value">${BD(cur.expected)}</div><div class="stat-sub">includes pending/unpaid totals</div></div>
+      <div class="stat-card amber"><div class="stat-label">Collection Rate</div><div class="stat-value">${cur.collectionRate.toFixed(1)}%</div><div class="stat-sub">cash received / invoices</div></div>
+      <div class="stat-card red"><div class="stat-label">Expense Ratio</div><div class="stat-value">${cur.expenseRatio.toFixed(1)}%</div><div class="stat-sub">paid expenses / cash revenue</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Income</div><div class="stat-value">${BD(cur.pendingIncome)}</div><div class="stat-sub">remaining to collect</div></div>
+      <div class="stat-card"><div class="stat-label">Unpaid Expenses</div><div class="stat-value">${BD(cur.unpaidExp)}</div><div class="stat-sub">remaining to pay</div></div>
+    </div>
+    <div class="two-col" style="margin-bottom:14px">
+      ${renderMiniTable(topCustomers,'Top Customers — Paid','var(--green)')}
+      ${renderMiniTable(topServices,'Top Services — Revenue','var(--amber)')}
+    </div>
+    <div class="two-col">
+      ${renderMiniTable(topExpenses,'Top Expense Categories','var(--red)')}
+      ${renderMiniTable(svcProfit,'Estimated Service Profit','var(--navy)')}
+    </div>`;
+}
+function receiptNo(r){return 'CCE-'+String(r.date||'0000-00-00').replace(/-/g,'')+'-'+String(r.id||'').padStart(5,'0');}
+function receiptHtml(r,mode='receipt'){
+  const total=moneyNum(r.amount_bd), paid=moneyNum(r.paid_bd), remaining=Math.max(0,total-paid);
+  const qr=encodeURIComponent(`${receiptNo(r)} | ${r.customer_name||''} | ${BD(total)} | Paid ${BD(paid)} | Remaining ${BD(remaining)}`);
+  return `<div style="font-family:Arial,sans-serif;color:#1A2744;max-width:760px;margin:auto;padding:24px;border:1px solid #ddd;border-radius:14px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:2px solid #C8923A;padding-bottom:12px;margin-bottom:16px">
+      <div><h2 style="margin:0">Country Club Equestrian</h2><div style="color:#777">Receipt / إيصال</div></div>
+      <div style="text-align:right"><strong>${receiptNo(r)}</strong><br><span style="color:#777">${fmt(r.date)}</span></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Customer</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${esc(r.customer_name||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Horse</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(r.horse_name||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Service</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(r.activity||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Due Date</td><td style="padding:8px;border-bottom:1px solid #eee">${fmt(r.due_date)}</td></tr>
+    </tbody></table>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+      <div style="background:#F6F2E8;padding:12px;border-radius:10px"><div style="font-size:12px;color:#777">Total</div><strong>${BD(total)}</strong></div>
+      <div style="background:#E8F5EE;padding:12px;border-radius:10px"><div style="font-size:12px;color:#777">Paid</div><strong>${BD(paid)}</strong></div>
+      <div style="background:#FDECEA;padding:12px;border-radius:10px"><div style="font-size:12px;color:#777">Remaining</div><strong>${BD(remaining)}</strong></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div style="font-size:12px;color:#777;line-height:1.7">Thank you for choosing Country Club Equestrian.<br>شكراً لاختياركم نادي الريف للفروسية.</div>
+      <img alt="QR" style="width:96px;height:96px;border:1px solid #eee" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qr}">
+    </div>
+  </div>`;
+}
+function printReceipt(id){const r=income.find(x=>String(x.id)===String(id));if(!r)return;const w=window.open('','_blank');w.document.write('<html><head><title>'+receiptNo(r)+'</title></head><body>'+receiptHtml(r)+'<script>window.onload=function(){window.print()}<\/script></body></html>');w.document.close();}
+function whatsappReceipt(id){const r=income.find(x=>String(x.id)===String(id));if(!r)return;let phone=findContactForIncome(r);if(!phone){const entered=prompt('Enter WhatsApp number (e.g. 39001234):');if(!entered)return;phone=waPhone(entered);}if(!phone){alert('Invalid phone number');return;}const total=moneyNum(r.amount_bd),paid=moneyNum(r.paid_bd),rem=Math.max(0,total-paid);const msg='🐴 *Country Club Equestrian*\nReceipt: '+receiptNo(r)+'\nCustomer: '+(r.customer_name||'—')+'\nService: '+(r.activity||'—')+(r.horse_name?' — '+r.horse_name:'')+'\nTotal: '+BD(total)+'\nPaid: '+BD(paid)+'\nRemaining: '+BD(rem)+'\nThank you 🙏';window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');}
+function renderReceipts(){
+  const el=document.getElementById('receiptsTable'); if(!el)return;
+  const q=(document.getElementById('receiptSearch')?.value||'').toLowerCase(); const st=document.getElementById('receiptStatusFilter')?.value||'';
+  const rows=[...income].reverse().filter(r=>(!st||r.status===st)&&(!q||[r.customer_name,r.horse_name,r.activity,r.notes,receiptNo(r)].join(' ').toLowerCase().includes(q))).slice(0,200);
+  if(!rows.length){el.innerHTML='<p style="color:var(--muted);padding:12px">No receipts found</p>';return;}
+  el.innerHTML='<table><thead><tr><th>Receipt</th><th>Date</th><th>Customer</th><th>Horse</th><th>Service</th><th>Total</th><th>Paid</th><th>Remaining</th><th>Actions</th></tr></thead><tbody>'+rows.map(r=>`<tr><td><strong>${receiptNo(r)}</strong></td><td>${fmt(r.date)}</td><td>${esc(r.customer_name||'—')}</td><td>${esc(r.horse_name||'—')}</td><td>${esc(r.activity||'—')}</td><td>${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td>${BD(calcRemaining(r))}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt(${r.id})">Print/PDF</button> <button class="action-btn" style="background:#25D366;color:#fff" onclick="whatsappReceipt(${r.id})">WhatsApp</button></td></tr>`).join('')+'</tbody></table>';
+}
+function openCustomerStatement(){
+  const name=prompt('Customer name contains:'); if(!name)return;
+  const rows=income.filter(r=>(r.customer_name||'').toLowerCase().includes(name.toLowerCase())).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  if(!rows.length){alert('No records found');return;}
+  const total=rows.reduce((s,r)=>s+moneyNum(r.amount_bd),0), paid=rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0), rem=Math.max(0,total-paid);
+  const html=`<div style="font-family:Arial,sans-serif;padding:24px"><h2>Country Club Equestrian — Customer Statement</h2><p><strong>Customer:</strong> ${esc(name)}</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;border-bottom:1px solid #ddd;padding:7px">Date</th><th style="text-align:left;border-bottom:1px solid #ddd;padding:7px">Service</th><th style="text-align:left;border-bottom:1px solid #ddd;padding:7px">Horse</th><th style="text-align:right;border-bottom:1px solid #ddd;padding:7px">Total</th><th style="text-align:right;border-bottom:1px solid #ddd;padding:7px">Paid</th><th style="text-align:right;border-bottom:1px solid #ddd;padding:7px">Remaining</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="padding:7px;border-bottom:1px solid #eee">${fmt(r.date)}</td><td style="padding:7px;border-bottom:1px solid #eee">${esc(r.activity||'')}</td><td style="padding:7px;border-bottom:1px solid #eee">${esc(r.horse_name||'')}</td><td style="padding:7px;border-bottom:1px solid #eee;text-align:right">${BD(r.amount_bd)}</td><td style="padding:7px;border-bottom:1px solid #eee;text-align:right">${BD(r.paid_bd)}</td><td style="padding:7px;border-bottom:1px solid #eee;text-align:right">${BD(calcRemaining(r))}</td></tr>`).join('')}</tbody></table><h3>Total: ${BD(total)} &nbsp; Paid: ${BD(paid)} &nbsp; Remaining: ${BD(rem)}</h3></div>`;
+  const w=window.open('','_blank');w.document.write('<html><head><title>Customer Statement</title></head><body>'+html+'<script>window.onload=function(){window.print()}<\/script></body></html>');w.document.close();
+}
+function asCsv(rows){
+  if(!rows.length)return '';
+  const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))];
+  const cell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  return keys.map(cell).join(',')+'\n'+rows.map(r=>keys.map(k=>cell(r[k])).join(',')).join('\n');
+}
+function downloadTextFile(name,text,type='application/json'){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+}
+function backupObject(){return {app:'Country Club Equestrian',version:'v4-all-modules',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
+function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
+function exportCsvBundle(){
+  downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
+  downloadTextFile('CCE_expenses.csv',asCsv(expenses),'text/csv');
+  downloadTextFile('CCE_horses.csv',asCsv(horses),'text/csv');
+  downloadTextFile('CCE_schedule.csv',asCsv(schedule_data),'text/csv');
+  queueAudit('export','backup','csv',null,{tables:4});
+}
+function dailyBackupSnapshot(){
+  try{
+    const today=new Date().toISOString().slice(0,10), last=localStorage.getItem('cce_daily_snapshot_date');
+    if(last===today||!income.length&&!expenses.length&&!horses.length)return;
+    localStorage.setItem('cce_daily_snapshot',JSON.stringify(backupObject()));
+    localStorage.setItem('cce_daily_snapshot_date',today);
+  }catch(e){}
+}
+function downloadLocalDailySnapshot(){
+  const snap=localStorage.getItem('cce_daily_snapshot'); if(!snap){alert('No local snapshot found yet. Open dashboard after loading data to create one.');return;}
+  downloadTextFile('CCE_Local_Daily_Snapshot_'+(localStorage.getItem('cce_daily_snapshot_date')||'latest')+'.json',snap,'application/json');
+}
+async function restoreBackupFile(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const text=await file.text(); let data;
+  try{data=JSON.parse(text);}catch(e){alert('Invalid JSON backup');return;}
+  const tables=['income','expenses','horses','breeding','schedule','instructors'];
+  const available=tables.filter(t=>Array.isArray(data[t]));
+  if(!available.length){alert('No valid tables found in backup');return;}
+  if(!confirm('Restore will append records from backup to Supabase. It will not delete current data. Continue?'))return;
+  let count=0;
+  for(const t of available){
+    const rows=data[t].map(r=>{const x={...r};delete x.id;return x;});
+    for(const row of rows){try{await sbPost(t,row,{skipAudit:true});count++;}catch(e){console.warn('restore skipped',t,e.message);}}
+  }
+  queueAudit('restore','backup','json',null,{tables:available,count});
+  alert('Restore completed. Imported '+count+' rows.');
+  await loadAll();
+}
+function renderToolsPanel(){
+  const el=document.getElementById('toolsPanel'); if(!el)return;
+  const authStatus=hasSupabaseSession()?'Supabase Auth session active':'Emergency static login / anon API mode';
+  const lastSnap=localStorage.getItem('cce_daily_snapshot_date')||'Not created yet';
+  el.innerHTML=`
+    <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card navy"><div class="stat-label">Security Mode</div><div class="stat-value" style="font-size:18px">${esc(authStatus)}</div><div class="stat-sub">Enable RLS using the SQL file</div></div>
+      <div class="stat-card green"><div class="stat-label">Loaded Rows</div><div class="stat-value">${income.length+expenses.length+horses.length+schedule_data.length}</div><div class="stat-sub">income / expenses / horses / schedule</div></div>
+      <div class="stat-card amber"><div class="stat-label">Local Daily Snapshot</div><div class="stat-value" style="font-size:20px">${esc(lastSnap)}</div><div class="stat-sub">created when dashboard opens</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+        <div class="card-title">Backup / Export</div>
+        <div class="btn-row"><button class="btn btn-green" onclick="downloadJsonBackup()">Download JSON Backup</button><button class="btn btn-amber" onclick="downloadBackup()">Download Excel Backup</button><button class="btn btn-navy" onclick="exportCsvBundle()">Export CSV</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="downloadLocalDailySnapshot()">Download Daily Snapshot</button></div>
+      </div>
+      <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+        <div class="card-title">Restore</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Restore appends backup rows. Keep an old backup before using this.</p>
+        <input type="file" accept="application/json,.json" onchange="restoreBackupFile(this)">
+      </div>
+    </div>
+    <div class="card" style="box-shadow:none;border:1px solid var(--border);margin-top:14px">
+      <div class="card-title">Supabase Auth / RLS</div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.7">Create users in Supabase Auth, insert roles in <code>app_users</code>, then enable the SQL policies from the supplied migration file. Once RLS is enabled, use email + password on the admin login screen.</p>
+      <button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:9px 14px" onclick="downloadRlsSql()">Download RLS SQL</button>
+    </div>`;
+}
+function downloadRlsSql(){downloadTextFile('supabase_auth_rls_setup.sql',window.CCE_RLS_SQL||'-- RLS SQL file is included separately.','text/sql');}
+function daysBetween(d){if(!d)return null;const dt=dateOnly(d);if(!dt)return null;return Math.floor((todayDateOnly()-dt)/86400000);}
+function healthStatus(days,limit){if(days===null)return ['Missing','badge-red']; if(days>limit)return ['Overdue','badge-red']; if(days>limit-14)return ['Due soon','badge-amber']; return ['OK','badge-green'];}
+function renderHorseHealth(){
+  const el=document.getElementById('horseHealthDashboard'); if(!el)return;
+  const rows=horses.filter(h=>h.horse_name).map(h=>{
+    const far=daysBetween(h.farrier_date), dew=daysBetween(h.deworm_date), vac=daysBetween(h.vaccine_date), teeth=daysBetween(h.teeth_date), med=daysBetween(h.med_date);
+    return {h, far, dew, vac, teeth, med};
+  });
+  const overdue=rows.filter(x=>healthStatus(x.far,45)[0]==='Overdue'||healthStatus(x.dew,120)[0]==='Overdue'||healthStatus(x.vac,365)[0]==='Overdue'||healthStatus(x.teeth,365)[0]==='Overdue').length;
+  el.innerHTML=`<div class="stats-grid" style="margin-bottom:14px"><div class="stat-card red"><div class="stat-label">Overdue Care</div><div class="stat-value">${overdue}</div><div class="stat-sub">horses need attention</div></div><div class="stat-card navy"><div class="stat-label">Total Horses</div><div class="stat-value">${rows.length}</div><div class="stat-sub">tracked records</div></div></div>`+
+    '<div class="tbl-wrap"><table><thead><tr><th>Horse</th><th>Owner</th><th>Farrier</th><th>Deworm</th><th>Vaccine</th><th>Teeth</th><th>Medication</th><th>Action</th></tr></thead><tbody>'+rows.map(x=>{
+      const h=x.h; const stF=healthStatus(x.far,45), stD=healthStatus(x.dew,120), stV=healthStatus(x.vac,365), stT=healthStatus(x.teeth,365), stM=healthStatus(x.med,180);
+      const cell=(label,days,st)=>`<span class="badge ${st[1]}">${label}: ${st[0]}</span><br><small>${days===null?'no date':days+' days ago'}</small>`;
+      return `<tr><td><strong>${esc(h.horse_name)}</strong></td><td>${esc(h.owner||'—')}</td><td>${cell(fmt(h.farrier_date),x.far,stF)}</td><td>${cell(fmt(h.deworm_date),x.dew,stD)}</td><td>${cell(fmt(h.vaccine_date),x.vac,stV)}</td><td>${cell(fmt(h.teeth_date),x.teeth,stT)}</td><td>${cell(fmt(h.med_date),x.med,stM)}</td><td><button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editHorse(${h.id})">Edit</button></td></tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+
 // ══════════════════════════════════════════════════════════
 // PWA — Service Worker & Install Prompt
 // ══════════════════════════════════════════════════════════
@@ -4451,10 +4741,26 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('[CCE] SW registered:', reg.scope))
+    navigator.serviceWorker.register('./sw.js?v=5-fix-20260707', {scope:'./'})
+      .then(reg => {
+        console.log('[CCE] SW registered:', reg.scope);
+        reg.update();
+        reg.addEventListener('updatefound',()=>{
+          const nw=reg.installing;
+          if(nw) nw.addEventListener('statechange',()=>{ if(nw.state==='installed'&&navigator.serviceWorker.controller) showUpdateBanner(); });
+        });
+      })
       .catch(err => console.log('[CCE] SW error:', err));
   });
+}
+
+function showUpdateBanner(){
+  if(document.getElementById('updateBanner'))return;
+  const b=document.createElement('div');
+  b.id='updateBanner';
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#1E7D4E;color:#fff;padding:12px 16px;text-align:center;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2)';
+  b.innerHTML='A new version is ready. <button style="margin-left:10px;background:#fff;color:#1E7D4E;border:none;border-radius:7px;padding:6px 12px;font-weight:700" onclick="location.reload()">Update now</button>';
+  document.body.appendChild(b);
 }
 
 // Capture install prompt (Android/Chrome)
