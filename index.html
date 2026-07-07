@@ -1931,8 +1931,20 @@ const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
 // Accounting helpers — keep dashboard/backup/charts/overdue consistent
 const moneyNum=v=>parseFloat(v)||0;
 const calcRemaining=r=>Math.max(0, moneyNum(r.amount_bd)-moneyNum(r.paid_bd));
-const isPaidRow=r=>String((r&&r.status)||'Pending').toLowerCase()==='paid';
+const rowIsFullyPaid=r=>{
+  const total=moneyNum(r&&r.amount_bd);
+  const paid=moneyNum(r&&r.paid_bd);
+  return total>0 && paid+0.0004>=total;
+};
+// Treat legacy records as paid when Paid BD already equals Amount BD, even if old status still says Pending.
+const isPaidRow=r=>String((r&&r.status)||'Pending').toLowerCase()==='paid'||rowIsFullyPaid(r);
 const isPendingRow=r=>!isPaidRow(r);
+function normalizeLoadedPaymentStatuses(rows){
+  (rows||[]).forEach(r=>{
+    if(rowIsFullyPaid(r)) r.status='Paid';
+    else if(!String(r.status||'').trim()) r.status='Pending';
+  });
+}
 const hasRemaining=r=>calcRemaining(r)>0.0004;
 const rowMonthKey=r=>String((r&&r.date)||'').slice(0,7);
 const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
@@ -2288,9 +2300,11 @@ async function loadAll(){
     setMsg('Step 2: Loading income...','Connection OK ✓');
     
     income   = await sbGet('income',  'select=*&limit=2000');
+    normalizeLoadedPaymentStatuses(income);
     setMsg('Step 3: Loading expenses...',income.length+' income records loaded');
     
     expenses = await sbGet('expenses','select=*&limit=1000');
+    normalizeLoadedPaymentStatuses(expenses);
     // Normalize legacy category name: Qeshbar → Wood Shavings (display + filters)
     expenses.forEach(r=>{if(r.category==='Qeshbar')r.category='Wood Shavings';});
     income.forEach(r=>{if(r.activity==='Qeshbar')r.activity='Wood Shavings';});
