@@ -167,7 +167,7 @@ body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF
 .note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
 .note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
 .note-text{font-size:13px;color:#1A2744;line-height:1.6}
-.iban{font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
 .btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
 .btn:hover{background:#C8923A}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -211,7 +211,7 @@ body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF
 .note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
 .note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
 .note-text{font-size:13px;color:#1A2744;line-height:1.6}
-.iban{font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
 .btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
 .btn:hover{background:#C8923A}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -711,6 +711,13 @@ html[dir="rtl"] .pie-legend-item {
         </div>
         <input type="hidden" id="b-service"><input type="hidden" id="b-price">
         <div class="required-hint">Please select a service before submitting your booking.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128052; Select Horse — اختر الحصان *</div>
+        <div class="booking-horse-grid" id="horseGrid"><p style="color:#7A8399;font-size:13px">Loading horses...</p></div>
+        <input type="hidden" id="b-horse">
+        <div class="required-hint">Selecting a horse helps prevent double-booking.</div>
       </div>
       
       <!-- Rider Level Assessment -->
@@ -1303,11 +1310,10 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <div class="security-note"><strong>Security Update:</strong> Admin login now uses Supabase Auth. Access is allowed only for users with role <strong>admin</strong> in <strong>app_profiles</strong>.</div>
-      <input class="inp" type="email" id="adminEmail" placeholder="Admin email" autocomplete="username" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      <input class="inp" type="password" id="adminPwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      <button class="login-btn" id="adminLoginBtn" onclick="doAdminLogin()">🔐 Login</button>
-      <div class="err" id="adminErr" style="display:none">❌ Login failed</div>
+      <div class="security-note"><strong>Security Note:</strong> This is an enhanced interface version. For official deployment, it's recommended to migrate admin login to Supabase Auth and enable Row Level Security.</div>
+      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <button class="login-btn" onclick="doAdminLogin()">🔐 Login</button>
+      <div class="err" id="adminErr" style="display:none">❌ Incorrect password</div>
     </div>
   </div>
 </div>
@@ -1325,12 +1331,22 @@ html[dir="rtl"] .pie-legend-item {
     <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
     <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
     <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
+    <button class="nav-btn" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
       <div class="overdue-banner hidden" id="overdueBanner">
         <div style="font-size:32px">&#9888;&#65039;</div>
         <div><div style="font-weight:700;font-size:16px">Overdue Payments</div><div style="font-size:13px;opacity:.9" id="overdueText"></div></div>
+      </div>
+      <div class="card" style="padding:12px 16px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <strong style="color:var(--navy);font-size:14px">📅 Dashboard Period</strong>
+          <select id="dashYearFilter" onchange="buildDash()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:120px"><option value="">All Years</option></select>
+          <select id="dashMonthFilter" onchange="buildDash()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:130px"><option value="">All Months</option></select>
+          <button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 14px" onclick="resetDashPeriod()">Reset</button>
+          <span id="dashPeriodNote" style="margin-left:auto;color:var(--muted);font-size:12px"></span>
+        </div>
       </div>
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card"><div class="card-title">&#128197; Monthly Revenue vs Expenses</div><div class="bar-chart" id="barChart"></div><div class="chart-legend"><span><span class="legend-dot" style="background:var(--green)"></span>Revenue</span><span><span class="legend-dot" style="background:var(--red)"></span>Expenses</span></div></div>
@@ -1458,6 +1474,21 @@ html[dir="rtl"] .pie-legend-item {
       <div id="instructorsGrid"></div>
     </div>
 
+    <div class="section" id="page-audit">
+      <div class="card">
+        <div class="card-title">&#128221; Audit Log</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Tracks add, edit, delete, mark-paid, password reset, schedule and instructor changes. It is saved locally in this browser and also sent to Supabase table <b>audit_logs</b> if that table exists.
+        </div>
+        <div class="search-bar">
+          <input type="text" id="auditSearch" placeholder="&#128269; Search action, table, actor..." oninput="renderAuditLog()">
+          <select id="auditActionFilter" onchange="renderAuditLog()"><option value="">All Actions</option><option>create</option><option>update</option><option>delete</option></select>
+          <button class="action-btn" style="background:#FDECEA;color:var(--red);padding:9px 14px" onclick="clearAuditLog()">Clear Local Log</button>
+        </div>
+        <div class="tbl-wrap" id="auditTable"></div>
+      </div>
+    </div>
+
     <div class="section" id="page-notifications">
       <!-- Browser Push Card -->
       <div class="card">
@@ -1558,30 +1589,49 @@ html[dir="rtl"] .pie-legend-item {
 // ══════════════════════════════════════════════════════════
 const SB_URL='https://ipiarzkljcictghtkcri.supabase.co';
 const SB_KEY='sb_publishable_rmX0zdqsDXUj-7s2ijWzHQ_jaVGiuch';
+const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
 
-function getSupabaseAccessToken(){
-  try{
-    const s=JSON.parse(sessionStorage.getItem('cce_sb_session')||'{}');
-    if(s && s.access_token && Number(s.expires_at||0)>Date.now()) return s.access_token;
-  }catch(e){}
-  return '';
+// Security hardening for the static admin page.
+// IMPORTANT: client-side checks are only a UI gate; Supabase Row Level Security should still be enabled in production.
+const ADMIN_PASS_SHA256='cf6d2999357d30281e4c212f9aef02a31c2ce00d7199de6e91dac95cda455670';
+const ADMIN_SESSION_MS=8*60*60*1000;
+async function sha256Hex(str){
+  if(!window.crypto||!crypto.subtle) return '';
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function getHeaders(prefer='return=representation'){
-  const token=getSupabaseAccessToken();
-  return {
-    'Content-Type':'application/json',
-    'apikey':SB_KEY,
-    'Authorization':'Bearer '+(token||SB_KEY),
-    'Prefer':prefer
-  };
+function isAdminAuthed(){
+  const until=parseInt(sessionStorage.getItem('cce_auth_until')||'0',10);
+  if(sessionStorage.getItem('cce_auth')==='true' && until>Date.now()) return true;
+  sessionStorage.removeItem('cce_auth');
+  sessionStorage.removeItem('cce_auth_until');
+  return false;
 }
-let HDR=getHeaders();
-function refreshHeaders(){HDR=getHeaders();return HDR;}
 
-async function sbGet(t,q=''){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPost(t,d){refreshHeaders();const data={...d};delete data.id;const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbPatch(t,id,d){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function sbDel(t,id){refreshHeaders();const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:getHeaders('return=minimal')});if(!r.ok)throw new Error(await r.text());}
+async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
+function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data})[t]||[];}
+async function sbPost(t,d,opts={}){
+  const data={...d};delete data.id;
+  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  const out=await r.json();
+  if(!opts.skipAudit&&t!=='audit_logs')queueAudit('create',t,(out&&out[0]&&out[0].id)||'',null,(out&&out[0])||data);
+  return out;
+}
+async function sbPatch(t,id,d,opts={}){
+  const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
+  const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});
+  if(!r.ok)throw new Error(await r.text());
+  const out=await r.json();
+  if(!opts.skipAudit&&t!=='audit_logs')queueAudit('update',t,id,before,(out&&out[0])||d);
+  return out;
+}
+async function sbDel(t,id,opts={}){
+  const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
+  const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:{...HDR,'Prefer':'return=minimal'}});
+  if(!r.ok)throw new Error(await r.text());
+  if(!opts.skipAudit&&t!=='audit_logs')queueAudit('delete',t,id,before,null);
+}
 
 
 // ══════════════════════════════════════════════════════════
@@ -1684,12 +1734,10 @@ function openWhatsAppProof(type){
 let currentPage = 'home';
 
 function navigate(page) {
+  if(page==='dashboard' && !isAdminAuthed()) page='admin';
   if(APP_MODE==='book'&&['owner','instructor','admin','dashboard'].includes(page))return;
   if(APP_MODE==='stable'&&page!=='owner')return;
   if(APP_MODE==='instructor'&&page!=='instructor')return;
-  if(page==='dashboard' && !isAdminAuthed()){
-    page='admin';
-  }
   document.querySelectorAll('.app-page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   currentPage = page;
@@ -1735,128 +1783,27 @@ function goHome() {
 }
 
 // ══════════════════════════════════════════════════════════
-// ADMIN AUTH — Supabase Auth + RLS gate
-// الحماية الحقيقية تتم عبر Supabase Auth + Row Level Security، وليس عبر كلمة مرور داخل ملف HTML.
+// ADMIN AUTH
 // ══════════════════════════════════════════════════════════
-const ADMIN_SESSION_MS=60*60*1000;      // 1 hour local UI session cap
-const ADMIN_LOCK_MS=10*60*1000;         // 10 minutes
-const ADMIN_MAX_ATTEMPTS=5;
-
-function adminErr(msg){
-  const el=document.getElementById('adminErr');
-  if(el){el.textContent=msg;el.style.display='block';}
-}
-function adminLockUntil(){return parseInt(localStorage.getItem('cce_admin_lock_until')||'0',10)||0;}
-function adminAttempts(){return parseInt(localStorage.getItem('cce_admin_attempts')||'0',10)||0;}
-function clearAdminFailures(){localStorage.removeItem('cce_admin_attempts');localStorage.removeItem('cce_admin_lock_until');}
-function clearAdminAuth(){
-  sessionStorage.removeItem('cce_sb_session');
-  sessionStorage.removeItem('cce_auth');
-  refreshHeaders();
-}
-function saveSupabaseSession(session){
-  if(!session || !session.access_token)return;
-  const expiresAtMs=session.expires_at ? Number(session.expires_at)*1000 : Date.now()+ADMIN_SESSION_MS;
-  sessionStorage.setItem('cce_sb_session',JSON.stringify({
-    access_token:session.access_token,
-    refresh_token:session.refresh_token||'',
-    expires_at:Math.min(expiresAtMs,Date.now()+ADMIN_SESSION_MS),
-    user_id:session.user&&session.user.id?session.user.id:''
-  }));
-  refreshHeaders();
-}
-function getAdminAuth(){
-  try{return JSON.parse(sessionStorage.getItem('cce_sb_session')||'{}');}
-  catch(e){return {}; }
-}
-function isAdminAuthed(){
-  const s=getAdminAuth();
-  if(s && s.access_token && Number(s.expires_at)>Date.now()) return true;
-  clearAdminAuth();
-  return false;
-}
-async function requireAdminRole(userId){
-  refreshHeaders();
-  const r=await fetch(`${SB_URL}/rest/v1/app_profiles?select=role&id=eq.${encodeURIComponent(userId)}&limit=1`,{headers:HDR});
-  if(!r.ok)throw new Error(await r.text());
-  const rows=await r.json();
-  return !!(rows&&rows[0]&&rows[0].role==='admin');
-}
-function requireAdmin(){
-  if(isAdminAuthed()) return true;
-  clearAdminAuth();
-  const ov=document.getElementById('loadingOverlay');if(ov)ov.style.display='none';
-  navigate('admin');
-  return false;
-}
-async function doAdminLogin(){
-  const emailInput=document.getElementById('adminEmail');
-  const pwdInput=document.getElementById('adminPwd');
-  const btn=document.getElementById('adminLoginBtn');
-  const email=(emailInput?.value||'').trim();
-  const password=(pwdInput?.value||'').trim();
-  const now=Date.now();
-  const lockedUntil=adminLockUntil();
-
-  if(lockedUntil>now){
-    const mins=Math.ceil((lockedUntil-now)/60000);
-    adminErr('⛔ Too many attempts. Try again after '+mins+' minute(s).');
-    if(pwdInput)pwdInput.value='';
-    return;
-  }
-  if(!email||!password){adminErr('❌ Enter admin email and password');return;}
-  if(btn){btn.disabled=true;btn.textContent='⏳ Signing in...';}
-
-  try{
-    const loginRes=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SB_KEY},
-      body:JSON.stringify({email,password})
-    });
-    if(!loginRes.ok)throw new Error('Invalid login');
-    const session=await loginRes.json();
-    if(!session||!session.access_token||!session.user||!session.user.id)throw new Error('No session returned');
-
-    saveSupabaseSession(session);
-    const okAdmin=await requireAdminRole(session.user.id);
-    if(!okAdmin){
-      clearAdminAuth();
-      throw new Error('Not admin');
-    }
-
-    clearAdminFailures();
-    const err=document.getElementById('adminErr');if(err)err.style.display='none';
-    if(pwdInput)pwdInput.value='';
+async function doAdminLogin() {
+  const pwd = document.getElementById('adminPwd').value;
+  const ok = (await sha256Hex(pwd)) === ADMIN_PASS_SHA256;
+  if(ok) {
+    sessionStorage.setItem('cce_auth','true');
+    sessionStorage.setItem('cce_auth_until',String(Date.now()+ADMIN_SESSION_MS));
+    document.getElementById('adminErr').style.display='none';
+    document.getElementById('adminPwd').value='';
     navigate('dashboard');
-    if(income.length===0) await loadAll();
-  }catch(e){
-    clearAdminAuth();
-    const attempts=adminAttempts()+1;
-    localStorage.setItem('cce_admin_attempts',String(attempts));
-    if(attempts>=ADMIN_MAX_ATTEMPTS){
-      localStorage.setItem('cce_admin_lock_until',String(Date.now()+ADMIN_LOCK_MS));
-      localStorage.setItem('cce_admin_attempts','0');
-      adminErr('⛔ Locked for 10 minutes after too many failed attempts.');
-    }else{
-      adminErr('❌ Login failed or this user is not admin — attempts left: '+(ADMIN_MAX_ATTEMPTS-attempts));
-    }
-    if(pwdInput)pwdInput.value='';
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='🔐 Login';}
+    if(income.length===0) loadAll();
+  } else {
+    document.getElementById('adminErr').style.display='block';
+    document.getElementById('adminPwd').value='';
   }
 }
 
-async function logoutAdmin(){
-  try{
-    const token=getSupabaseAccessToken();
-    if(token){
-      await fetch(`${SB_URL}/auth/v1/logout`,{
-        method:'POST',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}
-      });
-    }
-  }catch(e){}
-  clearAdminAuth();
+function logoutAdmin() {
+  sessionStorage.removeItem('cce_auth');
+  sessionStorage.removeItem('cce_auth_until');
   navigate('home');
 }
 
@@ -1879,9 +1826,142 @@ const CCE_CATEGORIES=['Hack','Lesson','Livery','Breeding','Shuwar','Salary','Woo
 let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
+
+// Accounting helpers — keep dashboard/backup/charts/overdue consistent
+const moneyNum=v=>parseFloat(v)||0;
+const calcRemaining=r=>Math.max(0, moneyNum(r.amount_bd)-moneyNum(r.paid_bd));
+const isPaidRow=r=>String((r&&r.status)||'Pending').toLowerCase()==='paid';
+const isPendingRow=r=>!isPaidRow(r);
+const hasRemaining=r=>calcRemaining(r)>0.0004;
+const rowMonthKey=r=>String((r&&r.date)||'').slice(0,7);
+const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
+const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
+const isOverdueRow=r=>isPendingRow(r)&&!!r.due_date&&isPastDueDate(r.due_date)&&hasRemaining(r);
+// Net Profit uses fully-paid expense records only. Pending/partial expense records stay in Unpaid/Overdue.
+const calcPaidExpenses=(rows)=>rows.filter(isPaidRow).reduce((s,r)=>s+moneyNum(r.paid_bd),0);
+const calcPendingAmount=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
+const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
+const calcIncomePending=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
+function normalizePaidStatus(total,paid){return paid>=total&&total>0?'Paid':'Pending';}
+function validatePaymentInput(total,paid,label){
+  if(paid<0){alert(label+' paid amount cannot be negative');return false;}
+  if(paid-total>0.0004){alert(label+' paid amount cannot be greater than total amount');return false;}
+  return true;
+}
+function getDashPeriod(){
+  return {year:document.getElementById('dashYearFilter')?.value||'', month:document.getElementById('dashMonthFilter')?.value||''};
+}
+function filterRowsByDashPeriod(rows){
+  const p=getDashPeriod();
+  return rows.filter(r=>{const m=rowMonthKey(r);if(!m)return false;return (!p.year||m.slice(0,4)===p.year)&&(!p.month||m.slice(5,7)===p.month);});
+}
+function populateDashPeriodFilters(){
+  const ySel=document.getElementById('dashYearFilter'), mSel=document.getElementById('dashMonthFilter');
+  if(!ySel||!mSel)return;
+  const curY=ySel.value, curM=mSel.value;
+  const keys=[...income,...expenses].map(rowMonthKey).filter(Boolean);
+  const years=[...new Set(keys.map(k=>k.slice(0,4)))].sort();
+  ySel.innerHTML='<option value="">All Years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  mSel.innerHTML='<option value="">All Months</option>'+MN.slice(1).map((name,i)=>`<option value="${String(i+1).padStart(2,'0')}">${name}</option>`).join('');
+  if(years.includes(curY)) ySel.value=curY;
+  if(curM) mSel.value=curM;
+}
+function resetDashPeriod(){
+  const y=document.getElementById('dashYearFilter'),m=document.getElementById('dashMonthFilter');
+  if(y)y.value=''; if(m)m.value=''; buildDash();
+}
+
 const fmt=d=>{if(!d)return '&#8212;';try{return new Date(d+'T00:00:00').toLocaleDateString('en-GB');}catch(e){return d;}};
 const MN=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PC=['#1E7D4E','#C8923A','#2471A3','#8E44AD','#C0392B','#1A2744','#17A589','#E67E22'];
+
+// Security / rendering helpers
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function escAttr(v){return esc(v);}
+function jsStr(v){return JSON.stringify(String(v??''));}
+function isHash(v){return /^[a-f0-9]{64}$/i.test(String(v||''));}
+async function hashSecret(v){v=String(v||'').trim();return v?await sha256Hex(v):null;}
+async function verifySecret(stored,input){
+  stored=String(stored||'').trim(); input=String(input||'').trim();
+  if(!stored||!input)return false;
+  return isHash(stored)?((await sha256Hex(input))===stored):(stored===input);
+}
+function scrubSecretRecord(obj){
+  if(!obj||typeof obj!=='object')return obj;
+  const out={...obj};
+  ['owner_pwd','pin','password','pwd'].forEach(k=>{if(out[k])out[k]='[protected]';});
+  return out;
+}
+function currentActor(){
+  if(typeof currentInstructor!=='undefined'&&currentInstructor&&currentInstructor.name)return 'Instructor: '+currentInstructor.name;
+  if(typeof currentOwner!=='undefined'&&currentOwner)return 'Owner: '+currentOwner;
+  return isAdminAuthed()?'Admin':'Public';
+}
+function readAuditLog(){try{return JSON.parse(localStorage.getItem('cce_audit_log')||'[]');}catch(e){return [];}}
+function saveAuditLog(list){localStorage.setItem('cce_audit_log',JSON.stringify(list.slice(0,500)));}
+function queueAudit(action,tableName,recordId,before,after){
+  const entry={ts:new Date().toISOString(),actor:currentActor(),action,table_name:tableName,record_id:String(recordId||''),before:scrubSecretRecord(before),after:scrubSecretRecord(after)};
+  const list=readAuditLog();list.unshift(entry);saveAuditLog(list);
+  renderAuditLog();
+  // Best-effort server audit. Create a Supabase table named audit_logs to persist these centrally.
+  fetch(`${SB_URL}/rest/v1/audit_logs`,{method:'POST',headers:HDR,body:JSON.stringify({ts:entry.ts,actor:entry.actor,action:entry.action,table_name:entry.table_name,record_id:entry.record_id,before_data:entry.before,after_data:entry.after})}).catch(()=>{});
+}
+function auditSummary(e){
+  const after=e.after||{}, before=e.before||{};
+  const name=after.customer_name||after.horse_name||after.supplier||after.name||after.mare_name||before.customer_name||before.horse_name||before.supplier||before.name||before.mare_name||'';
+  return name?esc(name):'—';
+}
+function renderAuditLog(){
+  const el=document.getElementById('auditTable'); if(!el)return;
+  const q=(document.getElementById('auditSearch')?.value||'').toLowerCase();
+  const ac=document.getElementById('auditActionFilter')?.value||'';
+  let rows=readAuditLog();
+  rows=rows.filter(e=>(!ac||e.action===ac)&&(!q||[e.actor,e.action,e.table_name,e.record_id,auditSummary(e)].join(' ').toLowerCase().includes(q)));
+  if(!rows.length){el.innerHTML='<p style="color:var(--muted);padding:12px">No audit entries yet</p>';return;}
+  el.innerHTML='<table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Table</th><th>Record</th><th>Summary</th></tr></thead><tbody>'+rows.slice(0,200).map(e=>`<tr><td>${new Date(e.ts).toLocaleString('en-GB')}</td><td>${esc(e.actor)}</td><td><span class="badge ${e.action==='delete'?'badge-red':e.action==='create'?'badge-green':'badge-amber'}">${esc(e.action)}</span></td><td>${esc(e.table_name)}</td><td>${esc(e.record_id)}</td><td>${auditSummary(e)}</td></tr>`).join('')+'</tbody></table>';
+}
+function clearAuditLog(){if(!confirm('Clear local audit log in this browser?'))return;localStorage.removeItem('cce_audit_log');renderAuditLog();}
+
+// Booking conflict helpers
+function timeToMin(t){const m=String(t||'').match(/^(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):0;}
+function minToTime(n){n=((n%1440)+1440)%1440;return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
+function addMins(t,m){return minToTime(timeToMin(t)+m);}
+function rangesOverlap(a1,a2,b1,b2){const A1=timeToMin(a1),A2=timeToMin(a2||addMins(a1,45)),B1=timeToMin(b1),B2=timeToMin(b2||addMins(b1,45));return A1<B2&&B1<A2;}
+function normText(v){return String(v||'').trim().toLowerCase();}
+function extractTrainingSlots(r){
+  const slots=[]; const notes=String(r.notes||'');
+  const re=/(\d{4}-\d{2}-\d{2})\s*@\s*(\d{2}:\d{2})/g; let m;
+  while((m=re.exec(notes))!==null)slots.push({date:m[1],start:m[2]});
+  return slots;
+}
+function conflictEvents(){
+  const events=[];
+  schedule_data.forEach(r=>events.push({source:'schedule',dbId:String(r.id),date:r.date,start:r.start_time||'00:00',end:r.end_time||'',horse:r.horse_name||'',instructor:r.instructor||'',customer:r.customer_name||'',activity:r.activity||'',status:r.status||'Scheduled'}));
+  income.forEach(r=>{
+    const slots=extractTrainingSlots(r);
+    if(slots.length){slots.forEach((s,i)=>events.push({source:'income',dbId:String(r.id),slot:i,date:s.date,start:s.start,end:r.end_time||'',horse:r.horse_name||'',instructor:'',customer:r.customer_name||'',activity:r.activity||'',status:r.status||'Pending'}));}
+    else if(r.date&&r.start_time){events.push({source:'income',dbId:String(r.id),date:r.date,start:r.start_time,end:r.end_time||'',horse:r.horse_name||'',instructor:'',customer:r.customer_name||'',activity:r.activity||'',status:r.status||'Pending'});}
+  });
+  return events.filter(e=>e.status!=='Cancelled');
+}
+function findBookingConflicts(c,exclude={}){
+  const end=c.end||addMins(c.start,c.duration||45);
+  return conflictEvents().filter(e=>{
+    if(exclude.source&&e.source===exclude.source&&String(e.dbId)===String(exclude.dbId))return false;
+    if(e.date!==c.date)return false;
+    if(!rangesOverlap(c.start,end,e.start,e.end))return false;
+    const horseClash=c.horse&&e.horse&&normText(c.horse)===normText(e.horse);
+    const instrClash=c.instructor&&e.instructor&&normText(c.instructor)===normText(e.instructor);
+    return horseClash||instrClash;
+  });
+}
+function alertConflicts(conflicts){
+  if(!conflicts.length)return false;
+  alert('⚠️ Booking conflict detected:\n\n'+conflicts.slice(0,5).map(e=>`${e.date} ${e.start} — ${e.activity||'Session'}${e.horse?' / Horse: '+e.horse:''}${e.instructor?' / Instructor: '+e.instructor:''}${e.customer?' / '+e.customer:''}`).join('\n')+'\n\nPlease choose another time, horse, or instructor.');
+  return true;
+}
+
 
 // ══════════════════════════════════════════════════════════
 // DASHBOARD SCRIPT (from dashboard.html)
@@ -1945,15 +2025,21 @@ async function downloadBackup(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(breData), 'Breeding');
 
     // Summary sheet
-    const totalRev=inc.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-    const totalExpPaid=exp.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-    const totalPending=exp.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
-    const totalExp=totalExpPaid-totalPending;
+    const totalRev=calcIncomeReceived(inc);
+    // Total expenses = fully paid expense records only; pending/partial records are not deducted from Net Profit.
+    const totalExp=calcPaidExpenses(exp);
+    const totalPending=calcPendingAmount(exp);
+    const totalPendingIncome=calcIncomePending(inc);
+    const totalOverdueIncome=inc.filter(isOverdueRow).reduce((s,r)=>s+calcRemaining(r),0);
+    const totalOverdueExpenses=exp.filter(isOverdueRow).reduce((s,r)=>s+calcRemaining(r),0);
     const sumData=[
       {Metric:'Total Revenue BD',Value:totalRev.toFixed(3)},
       {Metric:'Total Expenses BD',Value:totalExp.toFixed(3)},
       {Metric:'Net Profit BD',Value:(totalRev-totalExp).toFixed(3)},
+      {Metric:'Pending Income BD',Value:totalPendingIncome.toFixed(3)},
       {Metric:'Unpaid Expenses BD',Value:totalPending.toFixed(3)},
+      {Metric:'Overdue Income BD',Value:totalOverdueIncome.toFixed(3)},
+      {Metric:'Overdue Expenses BD',Value:totalOverdueExpenses.toFixed(3)},
       {Metric:'Total Horses',Value:hor.length},
       {Metric:'Total Sessions',Value:inc.length},
       {Metric:'Total Expense Records',Value:exp.length},
@@ -1974,7 +2060,7 @@ async function downloadBackup(){
 }
 
 function logout() {
-  clearAdminAuth();
+  sessionStorage.removeItem('cce_auth');
   navigate('home');
 }
 function skipLoad(){
@@ -1983,8 +2069,6 @@ function skipLoad(){
 }
 
 async function forceLoad(){
-  if(!requireAdmin())return;
-  refreshHeaders();
   document.getElementById('retryBtn').style.display='none';
   document.getElementById('spinner').style.display='block';
   document.getElementById('debugInfo').textContent='';
@@ -2067,7 +2151,6 @@ async function seedHorseEndDates(){
 
 // ── One-time DB migration: rename legacy "Qeshbar" → "Wood Shavings" permanently ──
 async function migrateLegacyCategories(){
-  refreshHeaders();
   if(localStorage.getItem('cce_woodshavings_migrated')==='1')return;
   try{
     await fetch(`${SB_URL}/rest/v1/expenses?category=eq.Qeshbar`,{method:'PATCH',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify({category:'Wood Shavings'})});
@@ -2078,8 +2161,6 @@ async function migrateLegacyCategories(){
 }
 
 async function loadAll(){
-  if(!requireAdmin())return;
-  refreshHeaders();
   const ov=document.getElementById('loadingOverlay');
   const msg=document.getElementById('loadingMsg');
   ov.style.display='flex';
@@ -2130,7 +2211,7 @@ async function loadAll(){
     await seedHorseEndDates();
     await migrateLegacyCategories();
     await checkAndCreateLiveryNotifications();
-    buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();populateLists();initNotifications();checkScheduledNotifications();
+    populateDashPeriodFilters();buildDash();buildAlerts();renderIncome();renderExpenses();renderHorses();renderBreeding();renderOverdue();renderBookings();renderSchedule();renderInstructors();renderAuditLog();populateLists();initNotifications();checkScheduledNotifications();
     ov.style.display='none';
 
   }catch(e){
@@ -2150,30 +2231,39 @@ function showPage(id,btn){
   document.getElementById('headerSub').textContent=t('dash_'+id)||id;
 }
 function buildDash(){
-  // ✅ FIX: Total revenue = sum of paid amounts
-  const rev=income.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-  
-  // ✅ FIX: Total paid expenses
-  const pexp=expenses.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0);
-  
-  // ✅ FIX: Pending expenses = subtract paid from total for pending items only
-  const pend=expenses.filter(r=>r.status==='Pending').reduce((s,r)=>{const remaining=(parseFloat(r.amount_bd)||0)-(parseFloat(r.paid_bd)||0);return s+remaining;},0);
-  
-  // ✅ UPDATED: Total expenses = all paid amounts
-  const exp=pexp;
-  
-  // Profit = Revenue - Total Expenses
+  populateDashPeriodFilters();
+  const p=getDashPeriod();
+  const hasPeriod=!!(p.year||p.month);
+  const incRows=hasPeriod?filterRowsByDashPeriod(income):income;
+  const expRows=hasPeriod?filterRowsByDashPeriod(expenses):expenses;
+
+  // Total revenue = received income cash. Pending income shows remaining only.
+  const rev=calcIncomeReceived(incRows);
+
+  // Total expenses / Net Profit = only fully-paid expense records.
+  // Pending or partially-paid expense rows stay in Unpaid/Overdue until marked Paid.
+  const exp=calcPaidExpenses(expRows);
+  const pend=calcPendingAmount(expRows);
   const profit=rev-exp;
-  const pendInc=income.filter(r=>r.status==='Pending').reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
-  const ov=expenses.filter(r=>r.status==='Pending'&&r.due_date);
-  // ✅ FIX: Overdue = subtract paid from total
-  const ovAmt=ov.reduce((s,r)=>{const remaining=(parseFloat(r.amount_bd)||0)-(parseFloat(r.paid_bd)||0);return s+remaining;},0);
+  const pendInc=calcIncomePending(incRows);
+
+  // Banner always shows all genuinely overdue records, independent of the dashboard period filter.
+  const overdueIncAll=income.filter(isOverdueRow);
+  const overdueExpAll=expenses.filter(isOverdueRow);
+  const ov=[...overdueIncAll,...overdueExpAll];
+  const ovAmt=ov.reduce((s,r)=>s+calcRemaining(r),0);
+
   const actH=horses.filter(h=>h.status==='Available').length;
-  const totL=income.filter(r=>r.activity==='Lesson').length;
-  const totH=income.filter(r=>r.activity==='Hack').length;
+  const totL=incRows.filter(r=>r.activity==='Lesson').length;
+  const totH=incRows.filter(r=>r.activity==='Hack').length;
+  const note=document.getElementById('dashPeriodNote');
+  if(note){
+    const label=hasPeriod?[(p.month?MN[parseInt(p.month,10)]:'All Months'),(p.year||'All Years')].join(' / '):'Showing all-time data';
+    note.textContent=label+' — '+incRows.length+' income, '+expRows.length+' expense records';
+  }
   if(ov.length>0){
     document.getElementById('overdueBanner').classList.remove('hidden');
-    document.getElementById('overdueText').textContent=ov.length+' payment(s) — '+BD(ovAmt);
+    document.getElementById('overdueText').textContent=ov.length+' overdue payment(s) — '+BD(ovAmt);
     document.getElementById('overdueBadge').classList.remove('hidden');
     document.getElementById('overdueCount').textContent=ov.length;
   }else{
@@ -2193,36 +2283,39 @@ function buildDash(){
   ];
   document.getElementById('statsGrid').innerHTML=stats.map(s=>`<div class="stat-box"><div class="stat-label">${s.l}</div><div class="stat-value" style="color:${s.c}">${s.v}</div></div>`).join('');
   const mo={};
-  income.forEach(r=>{const m=(r.date||'').slice(0,7);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=parseFloat(r.paid_bd)||0;});
-  expenses.forEach(r=>{const m=(r.date||'').slice(0,7);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=parseFloat(r.paid_bd)||0;});
+  const chartIncome=(p.year&&!p.month)?income.filter(r=>rowMonthKey(r).slice(0,4)===p.year):income;
+  const chartExpenses=(p.year&&!p.month)?expenses.filter(r=>rowMonthKey(r).slice(0,4)===p.year):expenses;
+  chartIncome.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=moneyNum(r.paid_bd);});
+  chartExpenses.filter(isPaidRow).forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=moneyNum(r.paid_bd);});
   const months=Object.entries(mo).sort(([a],[b])=>a.localeCompare(b)).slice(-9);
   const mx=Math.max(...months.flatMap(([,v])=>[v.rev,v.exp]),1);
-  document.getElementById('barChart').innerHTML=months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join('');
-  const aM={};income.forEach(r=>{const a=r.activity||'Other';aM[a]=(aM[a]||0)+(parseFloat(r.paid_bd)||0);});
+  document.getElementById('barChart').innerHTML=months.length?months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join(''):'<p style="color:var(--muted);padding:12px">No monthly data</p>';
+  const aM={};incRows.forEach(r=>{const a=r.activity||'Other';aM[a]=(aM[a]||0)+moneyNum(r.paid_bd);});
   document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
-  const eM={};expenses.forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+(parseFloat(r.paid_bd)||0);});
+  const eM={};expRows.filter(isPaidRow).forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+moneyNum(r.paid_bd);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
-  document.getElementById('recentInc').innerHTML=incTblHTML([...income].reverse().slice(0,10));
+  document.getElementById('recentInc').innerHTML=incTblHTML([...incRows].reverse().slice(0,10));
 }
+
 function incTblHTML(data){
   if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
-  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Category</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Category</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+ 
     data.map(function(r){
-      return '<tr>'+
-        '<td>'+fmt(r.date)+'</td>'+
-        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+
-        '<td>'+(r.customer_name||'&mdash;')+'</td>'+
-        '<td>'+(r.horse_name||'&mdash;')+'</td>'+
-        '<td><span class="badge badge-amber">'+(r.activity||'')+'</span></td>'+
-        '<td>'+(r.qty||1)+'</td>'+
-        '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
-        '<td>'+BD(r.paid_bd)+'</td>'+
-        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+      return '<tr>'+ 
+        '<td>'+fmt(r.date)+'</td>'+ 
+        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+ 
+        '<td>'+esc(r.customer_name||'&mdash;')+'</td>'+ 
+        '<td>'+esc(r.horse_name||'&mdash;')+'</td>'+ 
+        '<td><span class="badge badge-amber">'+esc(r.activity||'')+'</span></td>'+ 
+        '<td>'+esc(r.qty||1)+'</td>'+ 
+        '<td class="money-green">'+BD(r.amount_bd)+'</td>'+ 
+        '<td>'+BD(r.paid_bd)+'</td>'+ 
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+ 
         '<td style="white-space:nowrap">'+
-          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;income&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
-          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;income&apos;,'+r.id+')">&#128465;&#65039;</button>'+
-        '</td>'+
+          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;income&apos;,'+r.id+')">&#128465;&#65039;</button>'+ 
+        '</td>'+ 
       '</tr>';
     }).join('')+'</tbody></table>';
 }
@@ -2246,9 +2339,10 @@ async function addIncome(){
   const qty=parseFloat(document.getElementById('inc-qty').value)||1;
   const total=qty*amt;
   const paid=parseFloat(document.getElementById('inc-paid').value)||0;
+  if(!validatePaymentInput(total,paid,'Income'))return;
   const btn=document.getElementById('incSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:document.getElementById('inc-activity').value,qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});
+    await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:document.getElementById('inc-activity').value,qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:normalizePaidStatus(total,paid)});
     // Notify if booking
     const notes=document.getElementById('inc-notes').value||'';
     if(notes.includes('BOOKING REQUEST')||notes.includes('TRAINING REQUEST')){
@@ -2262,22 +2356,22 @@ async function addIncome(){
 }
 function expTblHTML(data){
   if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
-  return '<table><thead><tr><th>Date</th><th>Due</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+ 
     data.map(function(r){
-      return '<tr>'+
-        '<td>'+fmt(r.date)+'</td>'+
-        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+
-        '<td><span class="badge badge-amber">'+(r.category||'')+'</span></td>'+
-        '<td>'+(r.supplier||'&mdash;')+'</td>'+
-        '<td>'+(r.qty||1)+'</td>'+
-        '<td class="money-red">'+BD(r.amount_bd)+'</td>'+
-        '<td>'+BD(r.paid_bd)+'</td>'+
-        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+      return '<tr>'+ 
+        '<td>'+fmt(r.date)+'</td>'+ 
+        '<td>'+(r.due_date?'<span style="color:var(--red);font-weight:700">'+fmt(r.due_date)+'</span>':'&mdash;')+'</td>'+ 
+        '<td><span class="badge badge-amber">'+esc(r.category||'')+'</span></td>'+ 
+        '<td>'+esc(r.supplier||'&mdash;')+'</td>'+ 
+        '<td>'+esc(r.qty||1)+'</td>'+ 
+        '<td class="money-red">'+BD(r.amount_bd)+'</td>'+ 
+        '<td>'+BD(r.paid_bd)+'</td>'+ 
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+ 
         '<td style="white-space:nowrap">'+
-          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editExpense('+r.id+')">&#9999;&#65039;</button>'+
+          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editExpense('+r.id+')">&#9999;&#65039;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;expenses&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
-          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;expenses&apos;,'+r.id+')">&#128465;&#65039;</button>'+
-        '</td>'+
+          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(&apos;expenses&apos;,'+r.id+')">&#128465;&#65039;</button>'+ 
+        '</td>'+ 
       '</tr>';
     }).join('')+'</tbody></table>';
 }
@@ -2288,12 +2382,9 @@ function renderExpenses(){
   const st=document.getElementById('expStFilter').value;
   let data=expenses.filter(r=>{const m=!q||(r.supplier||'').toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q);return m&&(!ca||r.category===ca)&&(!st||r.status===st);});
   document.getElementById('expCount').textContent=data.length;
-  // ✅ FIX: Calculate total by subtracting paid amounts
-  const totalExpense = data.reduce((s,r) => {
-    const remaining = (parseFloat(r.amount_bd)||0) - (parseFloat(r.paid_bd)||0);
-    return s + remaining;
-  }, 0);
-  document.getElementById('expTotalAmt').textContent='Total: '+BD(totalExpense);
+  // Remaining amount for filtered expense rows
+  const totalExpense = data.reduce((s,r) => s + calcRemaining(r), 0);
+  document.getElementById('expTotalAmt').textContent='Remaining: '+BD(totalExpense);
   const pages=Math.ceil(data.length/PER)||1;expPage=Math.min(expPage,pages);
   document.getElementById('expTable').innerHTML=expTblHTML([...data].reverse().slice((expPage-1)*PER,expPage*PER));
   renderPag('expPag',pages,expPage,p=>{expPage=p;renderExpenses();});
@@ -2306,9 +2397,11 @@ async function addExpense(){
   const qty=parseFloat(document.getElementById('exp-qty').value)||1;
   const total=qty*amt;
   const paid=parseFloat(document.getElementById('exp-paid').value)||0;
+  if(!validatePaymentInput(total,paid,'Expense'))return;
+  if(!document.getElementById('exp-cat').value){alert('Fill: Category');return;}
   const btn=document.getElementById('expSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:document.getElementById('exp-cat').value,supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:document.getElementById('exp-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});
+    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:document.getElementById('exp-cat').value,supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:document.getElementById('exp-notes').value||null,status:normalizePaidStatus(total,paid)});
     ['exp-date','exp-due','exp-supplier','exp-amount','exp-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('exp-qty').value='1';document.getElementById('exp-paid').value='0';document.getElementById('exp-total').value='';
     await loadAll();
@@ -2375,7 +2468,7 @@ function sendWhatsAppReminder(id){
 
 // ── Broadcast: one grouped message per customer, sent one-by-one ──
 function buildWaGroups(){
-  const ov=income.filter(r=>r.status==='Pending'&&r.due_date&&((parseFloat(r.amount_bd)||0)-(parseFloat(r.paid_bd)||0))>0);
+  const ov=income.filter(isOverdueRow);
   const groups={};
   ov.forEach(r=>{
     const name=(r.customer_name||'Customer').split('|')[0].trim();
@@ -2452,31 +2545,32 @@ function waSendGroup(i){
 }
 
 function renderOverdue(){
-  const expData=expenses.filter(r=>r.status==='Pending'&&r.due_date);
-  const incData=income.filter(r=>r.status==='Pending'&&r.due_date);
-  const totalExp=expData.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
-  const totalInc=incData.reduce((s,r)=>s+(parseFloat(r.amount_bd)||0),0);
+  const expData=expenses.filter(isOverdueRow);
+  const incData=income.filter(isOverdueRow);
+  const totalExp=expData.reduce((s,r)=>s+calcRemaining(r),0);
+  const totalInc=incData.reduce((s,r)=>s+calcRemaining(r),0);
   let html='';
   if(!expData.length&&!incData.length){
     html='<p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p>';
   } else {
     if(incData.length){
       html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div style="font-weight:700;color:var(--navy);font-size:14px">&#128176; Overdue Income</div><button class="action-btn" style="background:#25D366;color:#fff;padding:7px 16px;font-weight:700" onclick="startWaBroadcast()">&#128172; Send to All</button></div>';
-      html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Total: '+BD(totalInc)+'</span></div>';
-      html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Amount</th><th>Action</th></tr></thead><tbody>'+
-        incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
+      html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Remaining Total: '+BD(totalInc)+'</span></div>';
+      html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Action</th></tr></thead><tbody>'+
+        incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
         '</tbody></table></div>';
     }
     if(expData.length){
       html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128184; Overdue Expenses</div>';
-      html+='<div style="margin-bottom:10px"><span class="badge badge-red" style="font-size:13px;padding:5px 14px">Total: '+BD(totalExp)+'</span></div>';
-      html+='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+
-        expData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${r.category||''}</span></td><td>${r.supplier||'&#8212;'}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${r.notes||'&#8212;'}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('expenses',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
+      html+='<div style="margin-bottom:10px"><span class="badge badge-red" style="font-size:13px;padding:5px 14px">Remaining Total: '+BD(totalExp)+'</span></div>';
+      html+='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+
+        expData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${r.category||''}</span></td><td>${r.supplier||'&#8212;'}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td>${r.notes||'&#8212;'}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('expenses',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
         '</tbody></table></div>';
     }
   }
   document.getElementById('overdueList').innerHTML=html;
 }
+
 function renderHorses(){
   const q=(document.getElementById('horseSearch').value||'').toLowerCase();
   const st=document.getElementById('horseStFilter').value;
@@ -2727,30 +2821,27 @@ function editOwnerPwd(id){
   const h=horses.find(x=>x.id===id);if(!h)return;
   const horseName=h.horse_name||'';
   const ownerName=h.owner||'';
-  const cur=h.owner_pwd||'';
+  const isSet=!!h.owner_pwd;
   openModal('&#128273; Owner Password — '+horseName,`
     <div style="margin-bottom:14px;padding:12px;background:var(--sand);border-radius:10px;font-size:13px">
-      <strong>Horse:</strong> ${horseName}<br>
-      <strong>Owner:</strong> ${ownerName}<br>
-      <strong>Login via:</strong> Contact phone number + this password (optional extra security)
+      <strong>Horse:</strong> ${esc(horseName)}<br>
+      <strong>Owner:</strong> ${esc(ownerName)}<br>
+      <strong>Password status:</strong> ${isSet?'Set / protected':'Not set'}<br>
+      <strong>Login via:</strong> Password only. The password is never displayed here.
     </div>
     <div class="form-grid" style="grid-template-columns:1fr">
       <div class="form-group">
-        <label>Current Password</label>
-        <input type="text" value="${cur}" readonly style="background:#f0f0f0;cursor:not-allowed">
-      </div>
-      <div class="form-group">
         <label>New Password</label>
-        <input type="text" id="opwd-new" placeholder="Enter new password..." value="">
+        <input type="password" id="opwd-new" placeholder="Enter new password..." value="" autocomplete="new-password">
       </div>
       <div class="form-group">
         <label>Confirm Password</label>
-        <input type="text" id="opwd-confirm" placeholder="Repeat new password...">
+        <input type="password" id="opwd-confirm" placeholder="Repeat new password..." autocomplete="new-password">
       </div>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Leave blank to remove password (login by phone only)</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Leave both fields blank to remove the owner password. New passwords are stored as SHA-256 hashes in the existing owner_pwd field.</div>
     <div class="btn-row">
-      <button class="btn btn-amber" onclick="saveOwnerPwd(${id})">&#128190; Save Password</button>
+      <button class="btn btn-amber" onclick="saveOwnerPwd(${id})">&#128190; Save / Reset Password</button>
       <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
     </div>`);
 }
@@ -2759,16 +2850,17 @@ async function saveOwnerPwd(id){
   const cp=document.getElementById('opwd-confirm').value.trim();
   if(np&&np!==cp){alert('Passwords do not match!');return;}
   try{
-    await sbPatch('horses',id,{owner_pwd:np||null});
-    const h=horses.find(x=>x.id===id);if(h)h.owner_pwd=np||null;
+    const hashed=np?await hashSecret(np):null;
+    await sbPatch('horses',id,{owner_pwd:hashed});
+    const h=horses.find(x=>x.id===id);if(h)h.owner_pwd=hashed;
     closeModal();
-    alert('&#9989; Password '+(np?'updated':'removed')+' successfully!');
+    alert('✅ Owner password '+(np?'updated and protected':'removed')+' successfully!');
   }catch(e){alert('Error: '+e.message);}
 }
 
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modalOverlay').classList.remove('hidden');}
 function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
-function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort().map(n=>'<option value="'+n+'" '+(n===sel?'selected':'')+'>'+n+'</option>').join('');}
+function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort().map(n=>'<option value="'+escAttr(n)+'" '+(n===sel?'selected':'')+'>'+esc(n)+'</option>').join('');}
 function editIncome(id){
   const r=income.find(x=>x.id===id);if(!r)return;
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
@@ -2791,7 +2883,8 @@ async function saveIncome(id){
   const qty=parseFloat(document.getElementById('ei-qty').value)||1;
   const amt=parseFloat(document.getElementById('ei-amt').value)||0;
   const total=qty*amt;const paid=parseFloat(document.getElementById('ei-paid').value)||0;
-  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity:document.getElementById('ei-act').value,qty,amount_bd:total,paid_bd:paid,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  if(!validatePaymentInput(total,paid,'Income'))return;
+  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity:document.getElementById('ei-act').value,qty,amount_bd:total,paid_bd:paid,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
@@ -2813,7 +2906,8 @@ async function saveExpense(id){
   const qty=parseFloat(document.getElementById('ee-qty').value)||1;
   const amt=parseFloat(document.getElementById('ee-amt').value)||0;
   const total=qty*amt;const paid=parseFloat(document.getElementById('ee-paid').value)||0;
-  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:document.getElementById('ee-cat').value,supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:document.getElementById('ee-notes').value||null,status:paid>=total&&total>0?'Paid':'Pending'});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  if(!validatePaymentInput(total,paid,'Expense'))return;
+  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:document.getElementById('ee-cat').value,supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:document.getElementById('ee-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editHorse(id){
   const h=horses.find(x=>x.id===id);if(!h)return;
@@ -2871,15 +2965,18 @@ async function saveBreeding(id){
   try{await sbPatch('breeding',id,{mare_name:document.getElementById('eb-mare').value,owner:document.getElementById('eb-owner').value,mobile:document.getElementById('eb-mobile').value||null,day1:document.getElementById('eb-d1').value||null,day2:document.getElementById('eb-d2').value||null,day3:document.getElementById('eb-d3').value||null,day4:document.getElementById('eb-d4').value||null,day5:document.getElementById('eb-d5').value||null,day6:document.getElementById('eb-d6').value||null,day7:document.getElementById('eb-d7').value||null,day8:document.getElementById('eb-d8').value||null,day9:document.getElementById('eb-d9').value||null});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 async function markPaid(t,id,amt){
-  if(!confirm('Mark as Paid ('+BD(amt)+')?'))return;
+  const rows=(t==='income')?income:expenses;
+  const row=rows.find(x=>String(x.id)===String(id));
+  const finalAmount=moneyNum(row?.amount_bd ?? amt);
+  if(!confirm('Mark as Paid ('+BD(finalAmount)+')?'))return;
   // Capture record BEFORE reload (for the thank-you message)
-  const rec=(t==='income')?income.find(x=>String(x.id)===String(id)):null;
+  const rec=(t==='income')?row:null;
   try{
-    await sbPatch(t,id,{paid_bd:parseFloat(amt)||0,status:'Paid'});
+    await sbPatch(t,id,{paid_bd:finalAmount,status:'Paid'});
     await loadAll();
     // Offer a thank-you WhatsApp message (income only)
     if(rec&&confirm('✅ Marked as Paid!\n\nSend a thank-you WhatsApp message to '+(rec.customer_name||'the customer').split('|')[0].trim()+'?')){
-      sendWhatsAppThanks(rec,parseFloat(amt)||0);
+      sendWhatsAppThanks(rec,finalAmount);
     }
   }catch(e){alert('Error: '+e.message);}
 }
@@ -2932,12 +3029,12 @@ function cET(p){
 }
 function populateLists(){
   const cl=document.getElementById('cList');
-  if(cl)cl.innerHTML=[...new Set(income.map(r=>r.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+c+'">').join('');
+  if(cl)cl.innerHTML=[...new Set(income.map(r=>r.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('');
   const hn=horses.map(h=>h.horse_name).filter(Boolean).sort();
   const ih=document.getElementById('inc-horse');
-  if(ih)ih.innerHTML='<option value="">&#8212; Select &#8212;</option>'+hn.map(h=>'<option>'+h+'</option>').join('');
+  if(ih)ih.innerHTML='<option value="">&#8212; Select &#8212;</option>'+hn.map(h=>'<option>'+esc(h)+'</option>').join('');
   const eh=document.getElementById('exp-horse');
-  if(eh)eh.innerHTML='<option value="">&#8212; None &#8212;</option>'+hn.map(h=>'<option>'+h+'</option>').join('');
+  if(eh)eh.innerHTML='<option value="">&#8212; None &#8212;</option>'+hn.map(h=>'<option>'+esc(h)+'</option>').join('');
 }
 function renderPag(id,total,cur,fn){
   const el=document.getElementById(id);if(total<=1){el.innerHTML='';return;}
@@ -2948,11 +3045,7 @@ function renderPag(id,total,cur,fn){
   el.innerHTML=h;
 }
 applyLanguage(currentLang);
-if(isAdminAuthed()){
-  loadAll();
-}else{
-  const ov=document.getElementById('loadingOverlay');if(ov)ov.style.display='none';
-}
+loadAll();
 
 
 // ══════════════════════════════════════════════════════════
@@ -2966,6 +3059,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(APP_MODE==='stable'){document.body.classList.add('mode-stable');navigate('owner');}
   else if(APP_MODE==='instructor'){document.body.classList.add('mode-instructor');navigate('instructor');}
   else if(APP_MODE==='book'){document.body.classList.add('mode-book');}
+  loadCCHorses();
 });
 
 async function loadCCHorses() {
@@ -2975,7 +3069,7 @@ async function loadCCHorses() {
     const grid = document.getElementById('horseGrid');
     if(!grid) return;
     if(!list.length){grid.innerHTML='<p style="color:#7A8399;font-size:13px">No horses available.</p>';return;}
-    grid.innerHTML = list.map(h=>`<div class="booking-horse-card" onclick="selectHorse('${h.horse_name}',this)"><div class="h-icon">&#128052;</div><div class="h-name">${h.horse_name}</div></div>`).join('');
+    grid.innerHTML = list.map(h=>`<div class="booking-horse-card" onclick="selectHorse(${jsStr(h.horse_name)},this)"><div class="h-icon">&#128052;</div><div class="h-name">${esc(h.horse_name)}</div></div>`).join('');
   }catch(e){const g=document.getElementById('horseGrid');if(g)g.innerHTML='<p style="color:#C0392B">Error loading horses.</p>';}
 }
 
@@ -3012,13 +3106,16 @@ async function submitBooking(){
   const time=document.getElementById('b-time').value;
   const riderLevel=document.getElementById('b-rider-level').value;
   const service=document.getElementById('b-service').value;
+  const horse=document.getElementById('b-horse')?.value||'';
   const price=parseFloat(document.getElementById('b-price').value)||0;
-  if(!name||!phone||!personalId||!date||!time||!riderLevel||!service){alert('⚠️ يرجى تعبئة جميع البيانات المطلوبة.');return;}
+  if(!name||!phone||!personalId||!date||!time||!riderLevel||!service||!horse){alert('⚠️ يرجى تعبئة جميع البيانات المطلوبة واختيار الحصان.');return;}
+  const duration=/1 Hour/i.test(service)?60:30;
+  if(alertConflicts(findBookingConflicts({date,start:time,duration,horse})))return;
   if(!validBahrainPhone(phone)){alert('⚠️ رقم الهاتف يجب أن يتكون من 8 أرقام.');return;}
   if(!document.getElementById('b-terms').checked){alert('⚠️ يرجى قراءة اتفاقية تأجير ركوب الخيل والموافقة عليها للمتابعة.');return;}
   const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
   try{
-    await sbPost('income',{date,start_time:time,customer_name:name+' | '+phone,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
+    await sbPost('income',{date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:horse,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
     document.getElementById('bookingForm').style.display='none';
     document.getElementById('bookSuccess').style.display='block';
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';}
@@ -3029,6 +3126,7 @@ function resetBooking(){
   document.getElementById('bookSuccess').style.display='none';
   const bt=document.getElementById('b-terms');if(bt)bt.checked=false;
   ['b-name','b-phone','b-personal-id','b-emergency','b-health','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
+  const bh=document.getElementById('b-horse');if(bh)bh.value='';document.querySelectorAll('.booking-horse-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('b-rider-level').value='';
   document.querySelectorAll('input[name="rider-level"]').forEach(r=>r.checked=false);
   const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';
@@ -3113,6 +3211,8 @@ async function submitTraining(){
     if(!dateEl||!timeEl||!dateEl.value){alert('&#9888;&#65039; Please fill all session dates (حصة '+i+')');return;}
     slots.push({date:dateEl.value,time:timeEl.value});
   }
+  const dupSlot=slots.find((s,i)=>slots.findIndex(x=>x.date===s.date&&x.time===s.time)!==i);
+  if(dupSlot){alert('⚠️ Duplicate training slot selected: '+dupSlot.date+' @ '+dupSlot.time);return;}
 
   const btn=document.getElementById('trainBtn');btn.disabled=true;btn.textContent='⏳ Submitting...';
   try{
@@ -3132,7 +3232,7 @@ async function submitTraining(){
     document.getElementById('trainingForm').style.display='none';
     document.getElementById('trainSuccess').style.display='block';
     document.getElementById('trainSuccessText').innerHTML=
-      'Thank you <strong>'+name+'</strong>!<br><br>'+
+      'Thank you <strong>'+esc(name)+'</strong>!<br><br>'+
       'Package: <strong>'+selectedPkg+'</strong><br>'+
       'Sessions: <strong>'+selectedPkgSessions+' حصص</strong><br>'+
       'Amount: <strong>'+selectedPrice+' BD</strong><br><br>'+
@@ -3167,21 +3267,19 @@ async function doOwnerLogin(){
   const btn=document.querySelector('#ownerLoginWrap .login-btn');
   btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/rpc/owner_get_horses`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
-      body:JSON.stringify({p_owner_pwd:pwd})
-    });
-    if(!r.ok) throw new Error(await r.text());
+    const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&limit=500`,{headers:HDR});
     const list=await r.json();
-    const matched=(list||[]).filter(h=>h.horse_name);
+    const matched=[];
+    for(const h of (list||[])){
+      if(h.horse_name && await verifySecret(h.owner_pwd,pwd)) matched.push(h);
+    }
     if(!matched.length){
       if(errEl) errEl.style.display='block';
       btn.textContent='🔐 Login';btn.disabled=false;return;
     }
     ownerHorses=matched;currentOwner=matched[0].owner||'Owner';
-    sessionStorage.setItem('owner_phone',pwd);
     sessionStorage.setItem('owner_name',currentOwner);
+    sessionStorage.setItem('owner_auth','true');
     if(errEl) errEl.style.display='none';
     showOwnerPortal();
   }catch(e){alert('Error: '+e.message);btn.textContent='🔐 Login';btn.disabled=false;}
@@ -3196,7 +3294,7 @@ function showOwnerPortal(){
 }
 
 function logoutOwner(){
-  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');
+  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');sessionStorage.removeItem('owner_auth');
   ownerHorses=[];currentOwner='';
   document.getElementById('ownerLoginWrap').style.display='flex';
   document.getElementById('ownerPortal').style.display='none';
@@ -3291,15 +3389,8 @@ async function saveOwnerHorse(i,id){
       medicant:document.getElementById('oe_medicant_'+i).value||null,
       med_date:document.getElementById('oe_meddate_'+i).value||null,
     };
-    const ownerPwd=sessionStorage.getItem('owner_phone')||document.getElementById('ownerPwd')?.value||'';
-    const r=await fetch(`${SB_URL}/rest/v1/rpc/owner_update_horse`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
-      body:JSON.stringify({p_owner_pwd:ownerPwd,p_horse_id:id,p_data:data})
-    });
-    if(!r.ok) throw new Error(await r.text());
-    const updated=await r.json();
-    Object.assign(ownerHorses[i],updated||data);
+    await sbPatch('horses',id,data);
+    Object.assign(ownerHorses[i],data);
     toggleOwnerEdit(i);
     renderOwnerHorses();
     alert('&#9989; Horse updated successfully!');
@@ -3486,8 +3577,8 @@ function buildNotifMessages(){
 
   // Overdue payments
   if(notifGet('check_overdue')!==false){
-    const overdueExp=expenses.filter(r=>r.status==='Pending'&&r.due_date);
-    const overdueInc=income.filter(r=>r.status==='Pending'&&r.due_date);
+    const overdueExp=expenses.filter(isOverdueRow);
+    const overdueInc=income.filter(isOverdueRow);
     if(overdueExp.length) msgs.push('💰 Overdue expenses: '+overdueExp.length+' items');
     if(overdueInc.length) msgs.push('💰 Overdue income: '+overdueInc.length+' items');
   }
@@ -3633,14 +3724,16 @@ function getAllEvents(){
     });
   });
 
-  // From income (only rides & lessons that have a start_time)
-  income.filter(r=>r.start_time&&r.date&&isSession(r.activity)).forEach(r=>{
-    events.push({
-      id:'i_'+r.id,
+  // From income (rides & lessons). Training packages may contain several slots in notes.
+  income.filter(r=>r.date&&isSession(r.activity)).forEach(r=>{
+    const slots=extractTrainingSlots(r);
+    const list=slots.length?slots:[{date:r.date,start:r.start_time||'00:00'}];
+    list.forEach((slot,idx)=>events.push({
+      id:'i_'+r.id+'_'+idx,
       dbId:r.id,
       source:'income',
-      date:r.date,
-      start:r.start_time,
+      date:slot.date,
+      start:slot.start,
       end:r.end_time||'',
       activity:r.activity||'Others',
       horse:r.horse_name||'',
@@ -3649,7 +3742,7 @@ function getAllEvents(){
       notes:r.notes||'',
       status:r.status==='Paid'?'Done':'Scheduled',
       color:actColor(r.activity)
-    });
+    }));
   });
 
   return events.sort((a,b)=>a.start.localeCompare(b.start));
@@ -3664,17 +3757,17 @@ function adminSessionCard(ev){
       <div style="font-size:28px">🐴</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-          <span style="font-weight:700;font-size:15px;color:var(--navy)">${ev.start||''} ${ev.activity||''}</span>
+          <span style="font-weight:700;font-size:15px;color:var(--navy)">${esc(ev.start||'')} ${esc(ev.activity||'')}</span>
           <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${ev.status}</span>
           ${ev.source==='income'?'<span style="background:#e8f0ff;color:#1A2744;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">Income</span>':''}
         </div>
         <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
-          ${ev.horse?`<span>🐴 ${ev.horse}</span>`:''}
-          ${ev.customer?`<span>👤 ${ev.customer}</span>`:''}
-          ${ev.instructor?`<span>🎓 ${ev.instructor}</span>`:''}
-          ${ev.end?`<span>⏱ ${ev.start} → ${ev.end}</span>`:''}
+          ${ev.horse?`<span>🐴 ${esc(ev.horse)}</span>`:''}
+          ${ev.customer?`<span>👤 ${esc(ev.customer)}</span>`:''}
+          ${ev.instructor?`<span>🎓 ${esc(ev.instructor)}</span>`:''}
+          ${ev.end?`<span>⏱ ${esc(ev.start)} → ${esc(ev.end)}</span>`:''}
         </div>
-        ${ev.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${ev.notes}</div>`:''}
+        ${ev.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${esc(ev.notes)}</div>`:''}
       </div>
     </div>
   </div>`;
@@ -3807,14 +3900,18 @@ async function saveSchedule(){
   const date=document.getElementById('sc-date').value;
   const start=document.getElementById('sc-start').value;
   if(!date||!start){alert('Date and Start Time are required');return;}
+  const horse=document.getElementById('sc-horse').value||'';
+  const instructor=document.getElementById('sc-instructor').value||'';
+  const end=document.getElementById('sc-end').value||'';
+  if(alertConflicts(findBookingConflicts({date,start,end,horse,instructor})))return;
   try{
-    await sbPost('schedule',{
+    await sbPost('schedule',{ 
       date,start_time:start,
-      end_time:document.getElementById('sc-end').value||null,
+      end_time:end||null,
       activity:document.getElementById('sc-activity').value,
-      horse_name:document.getElementById('sc-horse').value||null,
+      horse_name:horse||null,
       customer_name:document.getElementById('sc-customer').value||null,
-      instructor:document.getElementById('sc-instructor').value||null,
+      instructor:instructor||null,
       status:document.getElementById('sc-status').value,
       notes:document.getElementById('sc-notes').value||null,
       color:actColor(document.getElementById('sc-activity').value)
@@ -3845,15 +3942,21 @@ async function openEditSchedule(id){
 }
 
 async function updateSchedule(id){
+  const date=document.getElementById('sc-date').value;
+  const start=document.getElementById('sc-start').value;
+  const end=document.getElementById('sc-end').value||'';
+  const horse=document.getElementById('sc-horse').value||'';
+  const instructor=document.getElementById('sc-instructor').value||'';
+  if(alertConflicts(findBookingConflicts({date,start,end,horse,instructor},{source:'schedule',dbId:id})))return;
   try{
     await sbPatch('schedule',id,{
       date:document.getElementById('sc-date').value,
       start_time:document.getElementById('sc-start').value,
-      end_time:document.getElementById('sc-end').value||null,
+      end_time:end||null,
       activity:document.getElementById('sc-activity').value,
-      horse_name:document.getElementById('sc-horse').value||null,
+      horse_name:horse||null,
       customer_name:document.getElementById('sc-customer').value||null,
-      instructor:document.getElementById('sc-instructor').value||null,
+      instructor:instructor||null,
       status:document.getElementById('sc-status').value,
       notes:document.getElementById('sc-notes').value||null,
       color:actColor(document.getElementById('sc-activity').value)
@@ -3903,15 +4006,19 @@ async function doInstrLogin(){
   const errEl=document.getElementById('instrErr');
   if(!user||!pwd){if(errEl)errEl.style.display='block';return;}
   try{
-    // Username = instructor name (case-insensitive), Password = PIN stored in DB
-    const r=await fetch(`${SB_URL}/rest/v1/instructors?name=ilike.${encodeURIComponent(user)}&pin=eq.${encodeURIComponent(pwd)}&active=eq.true`,{headers:HDR});
+    // Username = instructor name (case-insensitive). Password supports legacy plain text and new SHA-256 hashes.
+    const r=await fetch(`${SB_URL}/rest/v1/instructors?name=ilike.${encodeURIComponent(user)}&active=eq.true&select=*`,{headers:HDR});
     const list=await r.json();
-    if(!list||!list.length){
+    let matched=null;
+    for(const instr of (list||[])){
+      if(await verifySecret(instr.pin,pwd)){matched=instr;break;}
+    }
+    if(!matched){
       if(errEl) errEl.style.display='block';
       document.getElementById('instrPwd').value='';
       return;
     }
-    currentInstructor=list[0];
+    currentInstructor={...matched,pin:'[protected]'};
     sessionStorage.setItem('cce_instr',JSON.stringify(currentInstructor));
     document.getElementById('instrUser').value='';
     document.getElementById('instrPwd').value='';
@@ -4116,7 +4223,6 @@ function renderInstructors(){
   }
 
   el.innerHTML=instructors_data.map(instr=>{
-    // Count this month sessions
     const now=new Date();
     const monthSess=schedule_data.filter(s=>{
       if(s.instructor!==instr.name) return false;
@@ -4124,22 +4230,24 @@ function renderInstructors(){
       return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
     });
     const doneSess=monthSess.filter(s=>s.status==='Done');
+    const active=!!instr.active;
 
     return `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
       <div style="width:46px;height:46px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0">&#127919;</div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--navy)">${instr.name}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${instr.phone||'No phone'}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--navy)">${esc(instr.name)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(instr.phone||'No phone')}</div>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
           <span style="font-size:11px;background:#E8F5EE;color:var(--green);border-radius:6px;padding:2px 8px;font-weight:600">&#128197; ${monthSess.length} sessions this month</span>
           <span style="font-size:11px;background:#EEF2FF;color:var(--navy);border-radius:6px;padding:2px 8px;font-weight:600">&#9989; ${doneSess.length} done</span>
-          <span style="font-size:11px;background:${instr.active?'#E8F5EE':'#FDECEA'};color:${instr.active?'var(--green)':'var(--red)'};border-radius:6px;padding:2px 8px;font-weight:600">${instr.active?'Active':'Inactive'}</span>
+          <span style="font-size:11px;background:${active?'#E8F5EE':'#FDECEA'};color:${active?'var(--green)':'var(--red)'};border-radius:6px;padding:2px 8px;font-weight:600">${active?'Active':'Inactive'}</span>
+          <span style="font-size:11px;background:#F0F1F4;color:var(--muted);border-radius:6px;padding:2px 8px;font-weight:600">Password protected</span>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editInstructor(${instr.id})">&#9999;&#65039;</button>
-        <button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Reset PIN" onclick="resetInstrPIN(${instr.id},'${instr.name}')">&#128273;</button>
-        <button class="action-btn" style="background:${instr.active?'#FDECEA':'#E8F5EE'};color:${instr.active?'var(--red)':'var(--green)'};padding:8px 10px;font-size:15px" title="${instr.active?'Deactivate':'Activate'}" onclick="toggleInstructor(${instr.id},${instr.active})">${instr.active?'&#128683;':'&#9989;'}</button>
+        <button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Reset Password" onclick="resetInstrPIN(${instr.id},${jsStr(instr.name)})">&#128273;</button>
+        <button class="action-btn" style="background:${active?'#FDECEA':'#E8F5EE'};color:${active?'var(--red)':'var(--green)'};padding:8px 10px;font-size:15px" title="${active?'Deactivate':'Activate'}" onclick="toggleInstructor(${instr.id},${active})">${active?'&#128683;':'&#9989;'}</button>
       </div>
     </div>`;
   }).join('');
@@ -4152,11 +4260,10 @@ function openAddInstructor(){
       <div class="form-group"><label>Phone</label><input type="tel" id="instr-phone" placeholder="+973 XXXXXXXX"></div>
       <div class="form-group">
         <label>Password *</label>
-        <input type="text" id="instr-pin" placeholder="Enter password..."
-          style="letter-spacing:8px;font-size:18px;font-weight:700">
+        <input type="password" id="instr-pin" placeholder="Enter password..." autocomplete="new-password">
       </div>
       <div style="font-size:12px;color:var(--muted);background:var(--sand);padding:10px;border-radius:8px">
-        ℹ️ The instructor logs in with their name as username and this password. Share it privately.
+        ℹ️ The instructor logs in with name + password. The password will be stored as a SHA-256 hash, not displayed later.
       </div>
     </div>
     <div class="btn-row">
@@ -4172,7 +4279,7 @@ async function saveInstructor(){
   if(!name){alert('Name is required');return;}
   if(!pin){alert('Please enter a password');return;}
   try{
-    await sbPost('instructors',{name,pin,phone:phone||null,active:true});
+    await sbPost('instructors',{name,pin:await hashSecret(pin),phone:phone||null,active:true});
     closeModal();
     await loadAll();
     alert('✅ Instructor added successfully!');
@@ -4182,10 +4289,10 @@ async function saveInstructor(){
 function editInstructor(id){
   const instr=instructors_data.find(x=>x.id===id);
   if(!instr) return;
-  openModal('✏️ Edit Instructor — '+instr.name,`
+  openModal('✏️ Edit Instructor — '+(instr.name||''),`
     <div class="form-grid" style="grid-template-columns:1fr">
-      <div class="form-group"><label>Full Name *</label><input type="text" id="instr-name" value="${instr.name}"></div>
-      <div class="form-group"><label>Phone</label><input type="tel" id="instr-phone" value="${instr.phone||''}"></div>
+      <div class="form-group"><label>Full Name *</label><input type="text" id="instr-name" value="${escAttr(instr.name)}"></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="instr-phone" value="${escAttr(instr.phone||'')}"></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-amber" onclick="updateInstructor(${id})">&#128190; Save Changes</button>
@@ -4204,19 +4311,22 @@ async function updateInstructor(id){
 }
 
 function resetInstrPIN(id,name){
-  openModal('&#128273; Reset PIN — '+name,`
+  openModal('&#128273; Reset Password — '+(name||''),`
+    <div style="font-size:12px;color:var(--muted);background:var(--sand);padding:10px;border-radius:8px;margin-bottom:12px">
+      Current password is protected and cannot be viewed. Enter a new password to replace it.
+    </div>
     <div class="form-group">
       <label>New Password *</label>
-      <input type="number" id="new-pin" placeholder="e.g. 5678" maxlength="4" min="1000" max="9999"
-        style="letter-spacing:8px;font-size:18px;font-weight:700;width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
+      <input type="password" id="new-pin" placeholder="New password" autocomplete="new-password"
+        style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
     </div>
     <div class="form-group">
-      <label>Confirm PIN</label>
-      <input type="number" id="confirm-pin" placeholder="Repeat PIN"
-        style="letter-spacing:8px;font-size:18px;font-weight:700;width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
+      <label>Confirm Password</label>
+      <input type="password" id="confirm-pin" placeholder="Repeat password" autocomplete="new-password"
+        style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;background:#FDFAF4">
     </div>
     <div class="btn-row">
-      <button class="btn btn-amber" onclick="saveInstrPIN(${id})">&#128190; Save PIN</button>
+      <button class="btn btn-amber" onclick="saveInstrPIN(${id})">&#128190; Save Password</button>
       <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
     </div>`);
 }
@@ -4225,11 +4335,11 @@ async function saveInstrPIN(id){
   const np=document.getElementById('new-pin').value.trim();
   const cp=document.getElementById('confirm-pin').value.trim();
   if(!np){alert('Please enter a password');return;}
-  if(np!==cp){alert('PINs do not match');return;}
+  if(np!==cp){alert('Passwords do not match');return;}
   try{
-    await sbPatch('instructors',id,{pin:np});
+    await sbPatch('instructors',id,{pin:await hashSecret(np)});
     closeModal();
-    alert('✅ PIN updated successfully!');
+    alert('✅ Password updated successfully!');
     await loadAll();
   }catch(e){alert('Error: '+e.message);}
 }
@@ -4313,7 +4423,7 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
     document.getElementById('liveryForm').style.display='none';
     document.getElementById('liverySuccess').style.display='block';
     document.getElementById('liverySuccessText').innerHTML=
-      'Thank you <strong>'+name+'</strong>!<br><br>'+
+      'Thank you <strong>'+esc(name)+'</strong>!<br><br>'+
       '🐴 Horse: <strong>'+horse+'</strong>'+(breed?' — '+breed:'')+
       (date?'<br>📅 Start Date: <strong>'+date+'</strong>':'')+
       '<br><br><div style="font-size:12px;text-align:left">'+services.map(s=>'✓ '+s).join('<br>')+'</div>'+
