@@ -1951,8 +1951,11 @@ const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
 const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
 const isOverdueRow=r=>isPendingRow(r)&&!!r.due_date&&isPastDueDate(r.due_date)&&hasRemaining(r);
-// Net Profit uses fully-paid expense records only. Pending/partial expense records stay in Unpaid/Overdue.
-const calcPaidExpenses=(rows)=>rows.filter(isPaidRow).reduce((s,r)=>s+moneyNum(r.paid_bd),0);
+// Net Profit uses paid expense records only.
+// Important legacy fix: some old expenses are marked Paid while paid_bd is blank/0.
+// For a Paid expense, deduct the full amount_bd from Net Profit; for fully-paid legacy rows, deduct amount_bd too.
+const calcPaidExpenseAmount=r=>isPaidRow(r)?moneyNum(r.amount_bd):0;
+const calcPaidExpenses=(rows)=>rows.filter(isPaidRow).reduce((s,r)=>s+calcPaidExpenseAmount(r),0);
 const calcPendingAmount=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
 const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
 const calcIncomePending=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
@@ -2401,13 +2404,13 @@ function buildDash(){
   const chartIncome=(p.year&&!p.month)?income.filter(r=>rowMonthKey(r).slice(0,4)===p.year):income;
   const chartExpenses=(p.year&&!p.month)?expenses.filter(r=>rowMonthKey(r).slice(0,4)===p.year):expenses;
   chartIncome.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=moneyNum(r.paid_bd);});
-  chartExpenses.filter(isPaidRow).forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=moneyNum(r.paid_bd);});
+  chartExpenses.filter(isPaidRow).forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=calcPaidExpenseAmount(r);});
   const months=Object.entries(mo).sort(([a],[b])=>a.localeCompare(b)).slice(-9);
   const mx=Math.max(...months.flatMap(([,v])=>[v.rev,v.exp]),1);
   document.getElementById('barChart').innerHTML=months.length?months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join(''):'<p style="color:var(--muted);padding:12px">No monthly data</p>';
   const aM={};incRows.forEach(r=>{const a=r.activity||'Other';aM[a]=(aM[a]||0)+moneyNum(r.paid_bd);});
   document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
-  const eM={};expRows.filter(isPaidRow).forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+moneyNum(r.paid_bd);});
+  const eM={};expRows.filter(isPaidRow).forEach(r=>{const c=r.category||'Other';eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${k}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
   document.getElementById('recentInc').innerHTML=incTblHTML([...incRows].reverse().slice(0,10));
 }
@@ -4592,8 +4595,8 @@ function renderAdvancedReports(){
   const cur=periodStatsForMonth(curK), prev=periodStatsForMonth(prevK);
   const topCustomers=topBy(income,r=>(r.customer_name||'').split('|')[0].trim(),r=>moneyNum(r.paid_bd),10);
   const topServices=topBy(income,r=>r.activity,r=>moneyNum(r.paid_bd),10);
-  const topExpenses=topBy(expenses.filter(isPaidRow),r=>r.category,r=>moneyNum(r.paid_bd),10);
-  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=r.activity||'Other';m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>(x.category||'Other')===k&&isPaidRow(x)).reduce((s,x)=>s+moneyNum(x.paid_bd),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topExpenses=topBy(expenses.filter(isPaidRow),r=>r.category,r=>calcPaidExpenseAmount(r),10);
+  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=r.activity||'Other';m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>(x.category||'Other')===k&&isPaidRow(x)).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
   el.innerHTML=`
     <div class="stats-grid" style="margin-bottom:14px">
       <div class="stat-card green"><div class="stat-label">This Month Cash Profit</div><div class="stat-value">${BD(cur.netCash)}</div><div class="stat-sub">vs last month ${pctDelta(cur.netCash,prev.netCash)}</div></div>
