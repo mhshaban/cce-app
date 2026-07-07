@@ -63,6 +63,10 @@ body.mode-book .portal-link{display:none !important}
 .nav::-webkit-scrollbar{display:none}
 .nav-btn{flex-shrink:0;border:none;background:none;cursor:pointer;padding:12px 16px;font-size:13px;color:var(--muted);border-bottom:3px solid transparent;font-weight:500;white-space:nowrap;transition:all .2s;border-radius:8px 8px 0 0}
 .nav-btn.active{color:#fff;background:var(--amber);border-bottom-color:var(--amber);font-weight:700;border-radius:12px 12px 0 0}
+.nav{flex-wrap:wrap;gap:6px;padding:8px;background:#fff;align-items:center;justify-content:flex-start;overflow-x:visible}
+.nav-btn{border:1px solid var(--border);border-bottom-width:1px;border-radius:12px;background:#fff;padding:10px 14px}
+.nav-btn.active{border-color:var(--amber);box-shadow:0 2px 8px rgba(200,146,58,.18)}
+@media(max-width:640px){.nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}.nav-btn{width:100%;padding:10px 6px;font-size:12px;text-align:center}.nav-btn.active{border-radius:12px}}
 .content{padding:16px;max-width:1400px;margin:0 auto}
 .section{display:none}.section.active{display:block}
 .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
@@ -1295,6 +1299,10 @@ html[dir="rtl"] .pie-legend-item {
         <button id="instrViewActive" onclick="setInstrView('active')" style="padding:7px 16px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">&#128197; Active</button>
         <button id="instrViewWeek" onclick="setInstrView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">&#128198; Week</button>
       </div>
+      <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <button id="instrScopeAll" onclick="setInstrScope('all')" style="padding:7px 14px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">All Trainers</button>
+        <button id="instrScopeMine" onclick="setInstrScope('mine')" style="padding:7px 14px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">My Sessions</button>
+      </div>
       <button onclick="instrNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">&#8249;</button>
       <span id="instrDateLabel" style="font-weight:700;font-size:14px;color:var(--navy);flex:1;text-align:center"></span>
       <button onclick="instrNav(1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">&#8250;</button>
@@ -1322,20 +1330,21 @@ html[dir="rtl"] .pie-legend-item {
 <!-- ════════════════════════════ DASHBOARD ════════════════════════════ -->
 <div class="app-page" id="page-dashboard">
   <div class="nav" id="dashNav">
+    <!-- Logical order: overview → operations → stable → finance → communication → administration -->
     <button class="nav-btn active" id="nav-dashboard" onclick="showDashPage('dashboard',this)">&#128202; Dashboard</button>
+    <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
+    <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
+    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
+    <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
+    <button class="nav-btn" id="nav-health" onclick="showDashPage('health',this)">&#129658; Horse Health</button>
+    <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
     <button class="nav-btn" id="nav-income"   onclick="showDashPage('income',this)">&#128176; Income</button>
     <button class="nav-btn" id="nav-expenses" onclick="showDashPage('expenses',this)">&#128184; Expenses</button>
     <button class="nav-btn" id="nav-overdue"  onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
-    <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
-    <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
-    <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
-    <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
-    <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
-    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
-    <button class="nav-btn" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
-    <button class="nav-btn" id="nav-reports" onclick="showDashPage('reports',this)">&#128200; Reports</button>
     <button class="nav-btn" id="nav-receipts" onclick="showDashPage('receipts',this)">&#129534; Receipts</button>
-    <button class="nav-btn" id="nav-health" onclick="showDashPage('health',this)">&#129658; Horse Health</button>
+    <button class="nav-btn" id="nav-reports" onclick="showDashPage('reports',this)">&#128200; Reports</button>
+    <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
+    <button class="nav-btn" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
     <button class="nav-btn" id="nav-tools" onclick="showDashPage('tools',this)">&#128736;&#65039; Tools</button>
   </div>
   <div class="content">
@@ -3903,7 +3912,7 @@ function renderSchedule(){
     const activeEvents=allEvents.filter(e=>e.status!=='Done'&&e.status!=='Cancelled'&&e.status!=='Paid');
     document.getElementById('schedDateLabel').textContent='🟢 Active Sessions';
     if(!activeEvents.length){
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions</div>';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions for this filter</div>';
       return;
     }
     // Sort by date then time
@@ -4100,6 +4109,7 @@ async function delSchedule(id){
 
 let currentInstructor = null;
 let instrView = 'active';
+let instrScope = 'all';
 let instrDate = new Date(); instrDate.setHours(0,0,0,0);
 const MONTHS_AR=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_AR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -4180,27 +4190,31 @@ async function loadInstrData(){
     }
     const allSessions=Array.isArray(json)?json:[];
     const instrName=normText(currentInstructor.name);
-    const sessions=allSessions.filter(s=>normText(s.instructor)===instrName);
+    const mySessions=allSessions.filter(s=>normText(s.instructor)===instrName);
 
-    // Stats
+    // Stats stay personal for the logged-in instructor; the list below can show all trainers.
     const today=new Date(); today.setHours(0,0,0,0);
     const todayKey=fmtDateKey(today);
     const nowMonth=today.getMonth(); const nowYear=today.getFullYear();
-    const todaySess=sessions.filter(s=>s.date===todayKey);
-    const monthSess=sessions.filter(s=>{
+    const todaySess=mySessions.filter(s=>s.date===todayKey);
+    const monthSess=mySessions.filter(s=>{
       const d=new Date(s.date);
       return !isNaN(d)&&d.getMonth()===nowMonth&&d.getFullYear()===nowYear;
     });
     document.getElementById('instrTodayCount').textContent=todaySess.length;
     document.getElementById('instrMonthCount').textContent=monthSess.length;
     document.getElementById('instrMonthStats').textContent=
-      MONTHS_AR[nowMonth]+' '+nowYear+' — '+monthSess.length+' sessions total';
+      MONTHS_AR[nowMonth]+' '+nowYear+' — '+monthSess.length+' of your sessions / '+allSessions.length+' total scheduled';
 
-    // Render
-    window._instrSessions=sessions;
+    // Render all schedule rows by default. The filter can switch to the logged-in instructor only.
+    window._instrAllSessions=allSessions;
+    window._instrMySessions=mySessions;
+    window._instrSessions=allSessions;
     renderInstrSchedule();
   }catch(e){
     console.log('instr data error',e);
+    window._instrAllSessions=[];
+    window._instrMySessions=[];
     window._instrSessions=[];
     renderInstrSchedule();
     const st=document.getElementById('instrMonthStats');
@@ -4215,6 +4229,16 @@ function setInstrView(v){
   document.getElementById('instrViewActive').style.color=v==='active'?'#fff':'var(--navy)';
   document.getElementById('instrViewWeek').style.background=v==='week'?'var(--green)':'#f0f0f0';
   document.getElementById('instrViewWeek').style.color=v==='week'?'#fff':'var(--navy)';
+  renderInstrSchedule();
+}
+
+function setInstrScope(scope){
+  instrScope=scope;
+  window._instrSessions = scope==='mine' ? (window._instrMySessions||[]) : (window._instrAllSessions||[]);
+  const allBtn=document.getElementById('instrScopeAll');
+  const mineBtn=document.getElementById('instrScopeMine');
+  if(allBtn){allBtn.style.background=scope==='all'?'var(--green)':'#f0f0f0'; allBtn.style.color=scope==='all'?'#fff':'var(--navy)';}
+  if(mineBtn){mineBtn.style.background=scope==='mine'?'var(--green)':'#f0f0f0'; mineBtn.style.color=scope==='mine'?'#fff':'var(--navy)';}
   renderInstrSchedule();
 }
 
@@ -4234,16 +4258,16 @@ function renderInstrSchedule(){
   if(instrView==='active'){
     // Show all active/pending sessions
     const activeSess=sessions.filter(s=>s.status!=='Done'&&s.status!=='Cancelled');
-    document.getElementById('instrDateLabel').textContent='🟢 Active Sessions';
+    document.getElementById('instrDateLabel').textContent='🟢 Active Sessions — '+(instrScope==='mine'?'My Sessions':'All Trainers');
     if(!activeSess.length){
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions</div>';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions for this filter</div>';
       return;
     }
     // Sort by date and time
     activeSess.sort((a,b)=>{
       const dateA=new Date(a.date);
       const dateB=new Date(b.date);
-      if(dateA!==dateB) return dateA-dateB;
+      if(dateA.getTime()!==dateB.getTime()) return dateA-dateB;
       const timeA=parseInt((a.start_time||'00:00').replace(':',''));
       const timeB=parseInt((b.start_time||'00:00').replace(':',''));
       return timeA-timeB;
@@ -4253,7 +4277,7 @@ function renderInstrSchedule(){
     const weekDays=getWeekDays(instrDate);
     const s0=weekDays[0]; const s6=weekDays[6];
     document.getElementById('instrDateLabel').textContent=
-      s0.getDate()+' '+MONTHS_AR[s0.getMonth()]+' — '+s6.getDate()+' '+MONTHS_AR[s6.getMonth()]+' '+s6.getFullYear();
+      s0.getDate()+' '+MONTHS_AR[s0.getMonth()]+' — '+s6.getDate()+' '+MONTHS_AR[s6.getMonth()]+' '+s6.getFullYear()+' — '+(instrScope==='mine'?'My Sessions':'All Trainers');
     let html='';
     weekDays.forEach(d=>{
       const key=fmtDateKey(d);
@@ -4284,6 +4308,7 @@ function instrSessionCard(s){
         <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
           ${s.horse_name?`<span>🐴 ${s.horse_name}</span>`:''}
           ${s.customer_name?`<span>👤 ${s.customer_name}</span>`:''}
+          ${s.instructor?`<span>🎓 ${s.instructor}</span>`:''}
           ${s.end_time?`<span>⏱ ${s.start_time} → ${s.end_time}</span>`:''}
         </div>
         ${s.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${s.notes}</div>`:''}
@@ -4291,8 +4316,8 @@ function instrSessionCard(s){
         ${instrHorseInfo(s.horse_name)}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${s.status!=='Done'&&s.status!=='Cancelled'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px;font-size:13px" onclick="instrMarkDone(${s.id})">✅</button>`:''}
-        <button class="action-btn" style="background:#EEF2FF;color:var(--navy);padding:8px 12px;font-size:13px" onclick="instrAddNote(${s.id},'${(s.notes||'').replace(/'/g,"\\'")}')">📝</button>
+        ${normText(s.instructor)===normText(currentInstructor.name)&&s.status!=='Done'&&s.status!=='Cancelled'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px;font-size:13px" onclick="instrMarkDone(${s.id})">✅</button>`:''}
+        ${normText(s.instructor)===normText(currentInstructor.name)?`<button class="action-btn" style="background:#EEF2FF;color:var(--navy);padding:8px 12px;font-size:13px" onclick="instrAddNote(${s.id},'${(s.notes||'').replace(/'/g,"\\'")}')">📝</button>`:''}
       </div>
     </div>
   </div>`;
