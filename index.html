@@ -3167,7 +3167,12 @@ async function doOwnerLogin(){
   const btn=document.querySelector('#ownerLoginWrap .login-btn');
   btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/horses?select=*&owner_pwd=eq.${encodeURIComponent(pwd)}&limit=50`,{headers:HDR});
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/owner_get_horses`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({p_owner_pwd:pwd})
+    });
+    if(!r.ok) throw new Error(await r.text());
     const list=await r.json();
     const matched=(list||[]).filter(h=>h.horse_name);
     if(!matched.length){
@@ -3286,8 +3291,15 @@ async function saveOwnerHorse(i,id){
       medicant:document.getElementById('oe_medicant_'+i).value||null,
       med_date:document.getElementById('oe_meddate_'+i).value||null,
     };
-    await sbPatch('horses',id,data);
-    Object.assign(ownerHorses[i],data);
+    const ownerPwd=sessionStorage.getItem('owner_phone')||document.getElementById('ownerPwd')?.value||'';
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/owner_update_horse`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({p_owner_pwd:ownerPwd,p_horse_id:id,p_data:data})
+    });
+    if(!r.ok) throw new Error(await r.text());
+    const updated=await r.json();
+    Object.assign(ownerHorses[i],updated||data);
     toggleOwnerEdit(i);
     renderOwnerHorses();
     alert('&#9989; Horse updated successfully!');
