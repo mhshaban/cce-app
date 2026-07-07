@@ -167,7 +167,7 @@ body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF
 .note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
 .note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
 .note-text{font-size:13px;color:#1A2744;line-height:1.6}
-.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.iban{font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
 .btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
 .btn:hover{background:#C8923A}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -211,7 +211,7 @@ body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF
 .note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
 .note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
 .note-text{font-size:13px;color:#1A2744;line-height:1.6}
-.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.iban{font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
 .btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
 .btn:hover{background:#C8923A}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -1303,9 +1303,9 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">&#127943;</div>
       <div class="login-title">Admin Access</div>
       <div class="login-sub">Staff only — Authorized personnel</div>
-      <div class="security-note"><strong>Security Note:</strong> This is an enhanced interface version. For official deployment, it's recommended to migrate admin login to Supabase Auth and enable Row Level Security.</div>
-      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()">
-      <button class="login-btn" onclick="doAdminLogin()">🔐 Login</button>
+      <div class="security-note"><strong>Security Update:</strong> Admin password is not stored as plain text in this file. For full production security, enable Supabase Auth and Row Level Security policies.</div>
+      <input class="inp" type="password" id="adminPwd" placeholder="Enter password" autocomplete="current-password" inputmode="numeric" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <button class="login-btn" id="adminLoginBtn" onclick="doAdminLogin()">🔐 Login</button>
       <div class="err" id="adminErr" style="display:none">❌ Incorrect password</div>
     </div>
   </div>
@@ -1668,6 +1668,9 @@ function navigate(page) {
   if(APP_MODE==='book'&&['owner','instructor','admin','dashboard'].includes(page))return;
   if(APP_MODE==='stable'&&page!=='owner')return;
   if(APP_MODE==='instructor'&&page!=='instructor')return;
+  if(page==='dashboard' && !isAdminAuthed()){
+    page='admin';
+  }
   document.querySelectorAll('.app-page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   currentPage = page;
@@ -1713,24 +1716,89 @@ function goHome() {
 }
 
 // ══════════════════════════════════════════════════════════
-// ADMIN AUTH
+// ADMIN AUTH — hardened client-side gate
+// ملاحظة: هذه حماية واجهة فقط. الحماية الحقيقية للبيانات يجب أن تكون عبر Supabase Auth + RLS.
 // ══════════════════════════════════════════════════════════
-function doAdminLogin() {
-  const pwd = document.getElementById('adminPwd').value;
-  if(pwd === 'Manama21') {
-    sessionStorage.setItem('cce_auth','true');
-    document.getElementById('adminErr').style.display='none';
-    document.getElementById('adminPwd').value='';
-    navigate('dashboard');
-    if(income.length===0) loadAll();
-  } else {
-    document.getElementById('adminErr').style.display='block';
-    document.getElementById('adminPwd').value='';
+const ADMIN_HASH='e7adc146e34cd7e3d41add75289ac26cba3fa50523e77699f9c94165540fb20f'; // sha256('cce-admin-v2:' + admin password)
+const ADMIN_SALT='cce-admin-v2:';
+const ADMIN_SESSION_MS=60*60*1000;      // 1 hour
+const ADMIN_LOCK_MS=10*60*1000;         // 10 minutes
+const ADMIN_MAX_ATTEMPTS=5;
+
+async function sha256Hex(text){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function adminErr(msg){
+  const el=document.getElementById('adminErr');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+function adminLockUntil(){return parseInt(localStorage.getItem('cce_admin_lock_until')||'0',10)||0;}
+function adminAttempts(){return parseInt(localStorage.getItem('cce_admin_attempts')||'0',10)||0;}
+function clearAdminFailures(){localStorage.removeItem('cce_admin_attempts');localStorage.removeItem('cce_admin_lock_until');}
+function clearAdminAuth(){sessionStorage.removeItem('cce_auth');}
+function setAdminAuth(){sessionStorage.setItem('cce_auth',JSON.stringify({ok:true,exp:Date.now()+ADMIN_SESSION_MS}));}
+function getAdminAuth(){
+  try{return JSON.parse(sessionStorage.getItem('cce_auth')||'{}');}
+  catch(e){return {};}
+}
+function isAdminAuthed(){
+  const a=getAdminAuth();
+  if(a && a.ok===true && Number(a.exp)>Date.now()) return true;
+  clearAdminAuth();
+  return false;
+}
+function requireAdmin(){
+  if(isAdminAuthed()) return true;
+  clearAdminAuth();
+  const ov=document.getElementById('loadingOverlay');if(ov)ov.style.display='none';
+  navigate('admin');
+  return false;
+}
+async function doAdminLogin() {
+  const input=document.getElementById('adminPwd');
+  const btn=document.getElementById('adminLoginBtn');
+  const pwd=(input?.value||'').trim();
+  const now=Date.now();
+  const lockedUntil=adminLockUntil();
+  if(lockedUntil>now){
+    const mins=Math.ceil((lockedUntil-now)/60000);
+    adminErr('⛔ Too many attempts. Try again after '+mins+' minute(s).');
+    if(input)input.value='';
+    return;
+  }
+  if(!pwd){adminErr('❌ Enter password');return;}
+  if(btn){btn.disabled=true;btn.textContent='⏳ Checking...';}
+  try{
+    const hash=await sha256Hex(ADMIN_SALT+pwd);
+    if(hash===ADMIN_HASH){
+      setAdminAuth();
+      clearAdminFailures();
+      const err=document.getElementById('adminErr');if(err)err.style.display='none';
+      if(input)input.value='';
+      navigate('dashboard');
+      if(income.length===0) await loadAll();
+    }else{
+      const attempts=adminAttempts()+1;
+      localStorage.setItem('cce_admin_attempts',String(attempts));
+      if(attempts>=ADMIN_MAX_ATTEMPTS){
+        localStorage.setItem('cce_admin_lock_until',String(now+ADMIN_LOCK_MS));
+        localStorage.setItem('cce_admin_attempts','0');
+        adminErr('⛔ Locked for 10 minutes after too many failed attempts.');
+      }else{
+        adminErr('❌ Incorrect password — attempts left: '+(ADMIN_MAX_ATTEMPTS-attempts));
+      }
+      if(input)input.value='';
+    }
+  }catch(e){
+    adminErr('❌ Security check failed. Please use a modern browser.');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔐 Login';}
   }
 }
 
 function logoutAdmin() {
-  sessionStorage.removeItem('cce_auth');
+  clearAdminAuth();
   navigate('home');
 }
 
@@ -1848,7 +1916,7 @@ async function downloadBackup(){
 }
 
 function logout() {
-  sessionStorage.removeItem('cce_auth');
+  clearAdminAuth();
   navigate('home');
 }
 function skipLoad(){
@@ -1857,6 +1925,7 @@ function skipLoad(){
 }
 
 async function forceLoad(){
+  if(!requireAdmin())return;
   document.getElementById('retryBtn').style.display='none';
   document.getElementById('spinner').style.display='block';
   document.getElementById('debugInfo').textContent='';
@@ -1949,6 +2018,7 @@ async function migrateLegacyCategories(){
 }
 
 async function loadAll(){
+  if(!requireAdmin())return;
   const ov=document.getElementById('loadingOverlay');
   const msg=document.getElementById('loadingMsg');
   ov.style.display='flex';
@@ -2817,7 +2887,11 @@ function renderPag(id,total,cur,fn){
   el.innerHTML=h;
 }
 applyLanguage(currentLang);
-loadAll();
+if(isAdminAuthed()){
+  loadAll();
+}else{
+  const ov=document.getElementById('loadingOverlay');if(ov)ov.style.display='none';
+}
 
 
 // ══════════════════════════════════════════════════════════
