@@ -1693,11 +1693,20 @@ async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&or
 function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data})[t]||[];}
 async function sbPost(t,d,opts={}){
   const data={...d};delete data.id;
-  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HDR,body:JSON.stringify(data)});
+  const prefer=opts.prefer||'return=representation';
+  const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:buildHeaders(prefer),body:JSON.stringify(data)});
   if(!r.ok)throw new Error(await r.text());
-  const out=await r.json();
+  let out=[];
+  if(!/return=minimal/i.test(prefer)){
+    try{out=await r.json();}catch(e){out=[];}
+  }
   if(!opts.skipAudit&&t!=='audit_logs')queueAudit('create',t,(out&&out[0]&&out[0].id)||'',null,(out&&out[0])||data);
   return out;
+}
+
+async function publicPostIncome(data){
+  // Public booking/training forms only need INSERT. Using return=minimal avoids requiring SELECT permission on income.
+  return sbPost('income',data,{prefer:'return=minimal',skipAudit:true});
 }
 async function sbPatch(t,id,d,opts={}){
   const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
@@ -3196,9 +3205,29 @@ async function loadCCHorses() {
 
 function selectHorse(name,el){
   document.querySelectorAll('.booking-horse-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
+  if(el)el.classList.add('selected');
   const bh=document.getElementById('b-horse');if(bh)bh.value=name;
 }
+
+function getSelectedBookingHorse(){
+  const hidden=document.getElementById('b-horse');
+  let horse=(hidden?.value||'').trim();
+  if(!horse){
+    const selected=document.querySelector('.booking-horse-card.selected .h-name');
+    horse=(selected?.textContent||'').trim();
+    if(horse&&hidden)hidden.value=horse;
+  }
+  return horse;
+}
+
+function showBookingMissingAlert(missing){
+  const labels={
+    name:'الاسم', phone:'رقم الهاتف', personalId:'الرقم الشخصي', date:'التاريخ', time:'الوقت',
+    riderLevel:'مستوى الراكب', service:'نوع الجولة', horse:'الحصان'
+  };
+  alert('⚠️ يرجى تعبئة البيانات التالية:\n\n- '+missing.map(k=>labels[k]||k).join('\n- '));
+}
+
 
 function selectRideService(el,service,price){
   document.querySelectorAll('.ride-card').forEach(c=>c.classList.remove('selected'));
@@ -3227,16 +3256,25 @@ async function submitBooking(){
   const time=document.getElementById('b-time').value;
   const riderLevel=document.getElementById('b-rider-level').value;
   const service=document.getElementById('b-service').value;
-  const horse=document.getElementById('b-horse')?.value||'';
+  const horse=getSelectedBookingHorse();
   const price=parseFloat(document.getElementById('b-price').value)||0;
-  if(!name||!phone||!personalId||!date||!time||!riderLevel||!service||!horse){alert('⚠️ يرجى تعبئة جميع البيانات المطلوبة واختيار الحصان.');return;}
+  const missing=[];
+  if(!name)missing.push('name');
+  if(!phone)missing.push('phone');
+  if(!personalId)missing.push('personalId');
+  if(!date)missing.push('date');
+  if(!time)missing.push('time');
+  if(!riderLevel)missing.push('riderLevel');
+  if(!service)missing.push('service');
+  if(!horse)missing.push('horse');
+  if(missing.length){showBookingMissingAlert(missing);return;}
   const duration=/1 Hour/i.test(service)?60:30;
   if(alertConflicts(findBookingConflicts({date,start:time,duration,horse})))return;
   if(!validBahrainPhone(phone)){alert('⚠️ رقم الهاتف يجب أن يتكون من 8 أرقام.');return;}
   if(!document.getElementById('b-terms').checked){alert('⚠️ يرجى قراءة اتفاقية تأجير ركوب الخيل والموافقة عليها للمتابعة.');return;}
   const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
   try{
-    await sbPost('income',{date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:horse,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
+    await publicPostIncome({date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:horse,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
     document.getElementById('bookingForm').style.display='none';
     document.getElementById('bookSuccess').style.display='block';
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';}
@@ -3339,7 +3377,7 @@ async function submitTraining(){
   try{
     // Submit one income record per session
     const slotsText=slots.map((s,i)=>'حصة '+(i+1)+': '+s.date+' @ '+s.time).join(' | ');
-    await sbPost('income',{
+    await publicPostIncome({
       date:slots[0].date,
       start_time:slots[0].time,
       customer_name:name+' | '+phone,
@@ -4568,7 +4606,7 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
   btn.disabled=true;btn.textContent='⏳ Submitting...';
 
   try{
-    await sbPost('income',{
+    await publicPostIncome({
       date:date||new Date().toISOString().slice(0,10),
       customer_name:name+' | '+phone,
       horse_name:horse,
