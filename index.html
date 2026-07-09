@@ -6,16 +6,33 @@
   <!-- PWA -->
   <link rel="manifest" id="cceManifestLink" href="manifest.json">
   <script>
-  // Keep each Add-to-Home-Screen shortcut locked to its portal.
-  // Without this, the shared manifest.json start_url opens the full app after relaunch.
+  // iOS + Android portal lock for Add-to-Home-Screen shortcuts.
+  // iOS may ignore query-string start_url, so we also support /book/, /stable/, /instructor/ paths
+  // and remember the portal when launched as a standalone web app.
   (function(){
     try{
-      var mode=(new URLSearchParams(window.location.search).get('app')||'full').toLowerCase();
+      function portalFromPath(){
+        var parts=window.location.pathname.toLowerCase().split('/').filter(Boolean);
+        var last=parts[parts.length-1]||'';
+        if(['book','stable','instructor'].indexOf(last)>=0) return last;
+        return '';
+      }
+      var params=new URLSearchParams(window.location.search);
+      var mode=(params.get('app')||portalFromPath()||'').toLowerCase();
+      var isStandalone=(window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+      if(['book','stable','instructor'].indexOf(mode)>=0){
+        localStorage.setItem('cce_last_portal',mode);
+      }else if(isStandalone){
+        mode=(localStorage.getItem('cce_last_portal')||'full').toLowerCase();
+      }else{
+        mode='full';
+      }
+      window.CCE_PORTAL_MODE=mode;
       var manifestMap={
-        full:'manifest.json?v=portal-fix-20260709',
-        book:'manifest-book.json?v=portal-fix-20260709',
-        stable:'manifest-stable.json?v=portal-fix-20260709',
-        instructor:'manifest-instructor.json?v=portal-fix-20260709'
+        full:'manifest.json?v=portal-ios-fix-20260709',
+        book:'manifest-book.json?v=portal-ios-fix-20260709',
+        stable:'manifest-stable.json?v=portal-ios-fix-20260709',
+        instructor:'manifest-instructor.json?v=portal-ios-fix-20260709'
       };
       var titleMap={
         full:'CC Equestrian',
@@ -31,7 +48,7 @@
       }
       setAppleTitle();
       document.addEventListener('DOMContentLoaded', setAppleTitle);
-    }catch(e){console.warn('[CCE] manifest portal setup failed',e);}
+    }catch(e){console.warn('[CCE] portal setup failed',e);window.CCE_PORTAL_MODE='full';}
   })();
   </script>
   <meta name="theme-color" content="#1A2744">
@@ -1804,7 +1821,7 @@ const CCE_DEFAULT_LANG='en';
 localStorage.setItem('cce_lang','en');
 let currentLang = 'en';
 // App interface mode via URL: ?app=book | stable | instructor (default full)
-const APP_MODE=(new URLSearchParams(location.search).get('app')||'full').toLowerCase();
+const APP_MODE=(window.CCE_PORTAL_MODE||new URLSearchParams(location.search).get('app')||'full').toLowerCase();
 const CCE_I18N={
   en:{
     backHome:'← Home',refresh:'🔄 Refresh',backup:'💾 Backup',logout:'🔓 Logout',alerts:'🔔 Alerts',
@@ -4018,7 +4035,7 @@ function resetTraining(){
 // ══════════════════════════════════════════════════════════
 // OWNER PORTAL SCRIPT
 // ══════════════════════════════════════════════════════════
-let ownerHorses=[];let currentOwner='';
+let ownerHorses=[];let currentOwner='';let currentOwnerSecret=sessionStorage.getItem('owner_secret')||'';
 
 function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').trim():'';}
 
@@ -4042,6 +4059,8 @@ async function doOwnerLogin(){
       btn.textContent='🔐 Login';btn.disabled=false;return;
     }
     ownerHorses=matched;currentOwner=matched[0].owner||'Owner';
+    currentOwnerSecret=String(matched[0].owner_pwd||'');
+    sessionStorage.setItem('owner_secret',currentOwnerSecret);
     sessionStorage.setItem('owner_name',currentOwner);
     sessionStorage.setItem('owner_auth','true');
     if(errEl) errEl.style.display='none';
@@ -4058,8 +4077,8 @@ function showOwnerPortal(){
 }
 
 function logoutOwner(){
-  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');sessionStorage.removeItem('owner_auth');
-  ownerHorses=[];currentOwner='';
+  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');sessionStorage.removeItem('owner_auth');sessionStorage.removeItem('owner_secret');
+  ownerHorses=[];currentOwner='';currentOwnerSecret='';
   document.getElementById('ownerLoginWrap').style.display='flex';
   document.getElementById('ownerPortal').style.display='none';
   const ownerPwdEl=document.getElementById('ownerPwd'); if(ownerPwdEl) ownerPwdEl.value='';
@@ -4129,6 +4148,38 @@ function toggleOwnerEdit(i){
   info.style.display=open?'grid':'none';
 }
 
+
+function humanSupabaseError(e){
+  const msg=String((e&&e.message)||e||'');
+  if(msg.includes('permission denied for table horses')||msg.includes('42501')){
+    return 'Owner update is blocked by Supabase permissions. Please run the included SQL file: supabase_owner_portal_update_rpc.sql';
+  }
+  return msg;
+}
+
+async function ownerUpdateHorse(id,data){
+  const secret=currentOwnerSecret||sessionStorage.getItem('owner_secret')||'';
+  if(!secret) throw new Error('Owner session expired. Please logout and login again.');
+  const payload={p_horse_id:id,p_owner_secret:secret};
+  Object.keys(data).forEach(k=>{payload['p_'+k]=data[k];});
+  const r=await fetch(`${SB_URL}/rest/v1/rpc/cce_owner_update_horse`,{
+    method:'POST',
+    headers:buildHeaders('return=representation'),
+    body:JSON.stringify(payload)
+  });
+  const txt=await r.text();
+  let json=null;try{json=txt?JSON.parse(txt):null;}catch(e){}
+  if(!r.ok){
+    const msg=(json&&(json.message||json.error))||txt||('Supabase request failed: '+r.status);
+    if(msg.includes('cce_owner_update_horse')||msg.includes('function')||msg.includes('schema cache')){
+      throw new Error('Owner update function is not installed yet. Run the included Supabase SQL file once, then try again.');
+    }
+    throw new Error(msg);
+  }
+  if(Array.isArray(json)&&json[0])return json;
+  return json||[];
+}
+
 async function saveOwnerHorse(i,id){
   const btn=document.querySelector('#ownerEdit_'+i+' .save-btn');
   btn.disabled=true;btn.textContent='⏳ Saving...';
@@ -4153,12 +4204,12 @@ async function saveOwnerHorse(i,id){
       medicant:document.getElementById('oe_medicant_'+i).value||null,
       med_date:document.getElementById('oe_meddate_'+i).value||null,
     };
-    await sbPatch('horses',id,data);
+    await ownerUpdateHorse(id,data);
     Object.assign(ownerHorses[i],data);
     toggleOwnerEdit(i);
     renderOwnerHorses();
     alert('&#9989; Horse updated successfully!');
-  }catch(e){alert('Error: '+e.message);}
+  }catch(e){alert('Error: '+humanSupabaseError(e));}
   finally{btn.disabled=false;btn.textContent='💾 Save Changes';}
 }
 
