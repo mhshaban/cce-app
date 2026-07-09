@@ -1405,8 +1405,8 @@ html[dir="rtl"] .pie-legend-item {
             <div class="form-group"><label>Due Date (if pending)</label><input type="date" id="exp-due"></div>
             <div class="form-group"><label>Category *</label><select id="exp-cat"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Wood Shavings</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Rent</option><option>Others</option></select></div>
             <div class="form-group"><label>Supplier *</label><input type="text" id="exp-supplier" placeholder="Name..."></div>
-            <div class="form-group"><label>Qty</label><input type="number" id="exp-qty" value="1" min="1" oninput="calcTotal('exp')"></div>
-            <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="exp-amount" placeholder="0.000" oninput="calcTotal('exp')"></div>
+            <div class="form-group"><label>Qty</label><input type="number" id="exp-qty" value="1" min="1" oninput="syncExpenseInvoiceTotals('exp')"></div>
+            <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="exp-amount" placeholder="0.000" oninput="syncExpenseInvoiceTotals('exp')"></div>
             <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="exp-total" readonly></div>
             <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="exp-paid" value="0"></div>
             <div class="form-group"><label>Horse (optional)</label><select id="exp-horse"><option value="">&#8212; None &#8212;</option></select></div>
@@ -2618,11 +2618,33 @@ function removeInvoiceLine(btn,scope){
   if(tb&&!tb.querySelector('.invoice-line'))addInvoiceLine(scope);
   updateInvoiceTotal(scope);
 }
-function updateInvoiceTotal(scope){
+function getInvoiceEditorTotal(scope){
   const tb=document.getElementById(scope+'-invoice-lines');
-  const total=tb?[...tb.querySelectorAll('.invoice-amount')].reduce((s,el)=>s+moneyNum(el.value),0):0;
+  return tb?[...tb.querySelectorAll('.invoice-amount')].reduce((s,el)=>s+moneyNum(el.value),0):0;
+}
+function syncExpenseInvoiceTotals(scope){
+  if(scope!=='exp'&&scope!=='ee')return;
+  const total=money3(getInvoiceEditorTotal(scope));
+  const qtyId=scope==='exp'?'exp-qty':'ee-qty';
+  const amtId=scope==='exp'?'exp-amount':'ee-amt';
+  const totalId=scope==='exp'?'exp-total':'ee-total';
+  const qtyEl=document.getElementById(qtyId);
+  const amtEl=document.getElementById(amtId);
+  const totalEl=document.getElementById(totalId);
+  const qty=Math.max(1,moneyNum(qtyEl&&qtyEl.value)||1);
+  if(total>0){
+    if(amtEl)amtEl.value=(total/qty).toFixed(3);
+    if(totalEl)totalEl.value=total.toFixed(3);
+  }else{
+    const amt=moneyNum(amtEl&&amtEl.value);
+    if(totalEl)totalEl.value=(qty*amt).toFixed(3);
+  }
+}
+function updateInvoiceTotal(scope){
+  const total=getInvoiceEditorTotal(scope);
   const out=document.getElementById(scope+'-invoice-total');
   if(out)out.textContent=BD(total);
+  syncExpenseInvoiceTotals(scope);
 }
 function updateInvoiceAttachmentLabel(scope){
   const out=document.getElementById(scope+'-invoice-file-name');
@@ -2702,7 +2724,7 @@ function newExpenseInstallmentId(){return 'inst_'+Date.now()+'_'+Math.random().t
 function installmentPaymentsHTML(inst){
   const i=normalizeExpenseInstallment(inst);
   if(!i.payments.length)return '<span style="color:var(--muted)">—</span>';
-  return i.payments.map(p=>'<div>'+fmt(p.date)+' — '+BD(p.amount)+'</div>').join('');
+  return i.payments.map(p=>'<div>'+fmt(p.date)+' — '+BD(p.amount)+(p.note?' <span style="color:var(--muted)">('+esc(p.note)+')</span>':'')+'</div>').join('');
 }
 function viewExpenseDetails(id){
   const r=expenses.find(x=>String(x.id)===String(id));if(!r)return;
@@ -2752,7 +2774,8 @@ function viewExpenseInstallments(id){
       <td style="white-space:normal;min-width:150px;font-size:12px">${installmentPaymentsHTML(i)}</td>
       <td style="white-space:nowrap">
         ${st!=='Paid'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick='payExpenseInstallment(${expenseArg},${instArg})'>&#9989; Pay</button>`:''}
-        <button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick='editExpenseInstallment(${expenseArg},${instArg})'>&#9999;&#65039;</button>
+        <button class="action-btn" style="background:#EEF3FF;color:var(--navy)" onclick='manageExpenseInstallmentPayments(${expenseArg},${instArg})'>&#128176; Payments</button>
+        <button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick='editExpenseInstallment(${expenseArg},${instArg})'>&#9999;&#65039; Edit</button>
         <button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick='deleteExpenseInstallment(${expenseArg},${instArg})'>&#128465;&#65039;</button>
       </td>
     </tr>`;
@@ -2764,6 +2787,8 @@ function viewExpenseInstallments(id){
       <span><strong>Expense Remaining:</strong> ${BD(t.expenseRemaining)}</span>
       <span><strong>Plan Remaining:</strong> ${BD(t.planRemaining)}</span>
       <span><strong>Unplanned:</strong> ${BD(t.unplannedRemaining)}</span>
+      <span><strong>Installments Paid:</strong> ${BD(t.paid)}</span>
+      ${Math.abs(t.paid-moneyNum(r.paid_bd))>0.0004?`<span style="color:var(--red);font-weight:700">Paid mismatch: Expense ${BD(r.paid_bd)} / Plan ${BD(t.paid)}</span><button class="action-btn" style="background:#EEF3FF;color:var(--navy)" onclick="syncExpensePaidIntoInstallments(${id})">Sync Paid → Installments</button>`:''}
       ${t.overPlanned>0.0004?`<span style="color:var(--red);font-weight:700">Over planned: ${BD(t.overPlanned)}</span>`:''}
     </div>
     <div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Installment Amount</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Note</th><th>Payment History</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div>
@@ -2781,10 +2806,15 @@ function viewExpenseInstallments(id){
 async function saveExpenseMetaPatch(expenseId,details,installments,paidOverride,invoiceOverride){
   const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
   const invoice=(typeof invoiceOverride==='undefined')?expenseInvoice(r):invoiceOverride;
-  const payload={notes:buildExpenseNotes(details,installments,invoice)};
+  const cleanInstallments=(installments||[]).map(normalizeExpenseInstallment).filter(i=>i.amount>0);
+  const payload={notes:buildExpenseNotes(details,cleanInstallments,invoice)};
   if(typeof paidOverride==='number'){
     payload.paid_bd=money3(paidOverride);
-    payload.status=normalizePaidStatus(moneyNum(r.amount_bd),money3(paidOverride));
+    payload.status=normalizePaidStatus(moneyNum(r.amount_bd),payload.paid_bd);
+  }else if(cleanInstallments.length){
+    // When an installment plan exists, Paid BD is controlled by installment payments.
+    payload.paid_bd=money3(cleanInstallments.reduce((s,i)=>s+installmentPaid(i),0));
+    payload.status=normalizePaidStatus(moneyNum(r.amount_bd),payload.paid_bd);
   }
   await sbPatch('expenses',r.id,payload);
   await loadAll();
@@ -2820,8 +2850,90 @@ async function payExpenseInstallment(expenseId,instId){
   if(date===null)return;
   const payDate=(date||todayISOForInstallment()).trim();
   inst.payments.push({date:payDate,amount,note:''});
-  const newPaid=Math.min(moneyNum(r.amount_bd),moneyNum(r.paid_bd)+amount);
+  const newPaid=Math.min(moneyNum(r.amount_bd),rows.reduce((s,i)=>s+installmentPaid(i),0));
   try{await saveExpenseMetaPatch(expenseId,meta.details,rows,newPaid);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
+}
+
+function paymentLineHTML(p={}){
+  const date=String((p&&p.date)||todayISOForInstallment());
+  const amount=moneyNum(p&&p.amount)>0?moneyNum(p.amount).toFixed(3):'';
+  const note=String((p&&p.note)||'');
+  return '<tr class="payment-line">'+
+    '<td><input type="date" class="pay-date" value="'+escAttr(date)+'"></td>'+ 
+    '<td><input type="number" step="0.001" class="pay-amount" value="'+escAttr(amount)+'" placeholder="0.000"></td>'+ 
+    '<td><input type="text" class="pay-note" value="'+escAttr(note)+'" placeholder="Payment note"></td>'+ 
+    '<td><button type="button" class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="removePaymentLine(this)">&#128465;&#65039;</button></td>'+ 
+  '</tr>';
+}
+function addPaymentLine(p={}){
+  const tb=document.getElementById('inst-payment-lines');
+  if(tb)tb.insertAdjacentHTML('beforeend',paymentLineHTML(p));
+}
+function removePaymentLine(btn){
+  const row=btn&&btn.closest?btn.closest('tr'):null;
+  if(row)row.remove();
+  const tb=document.getElementById('inst-payment-lines');
+  if(tb&&!tb.querySelector('.payment-line'))addPaymentLine({date:todayISOForInstallment(),amount:0,note:''});
+}
+function manageExpenseInstallmentPayments(expenseId,instId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const rows=expenseInstallments(r);
+  const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
+  const pays=normalizeExpenseInstallment(inst).payments;
+  const body=(pays.length?pays:[{date:todayISOForInstallment(),amount:0,note:''}]).map(paymentLineHTML).join('');
+  openModal('Edit Installment Payments',`<div style="display:grid;gap:12px;font-size:13px;line-height:1.6">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge badge-amber">${esc(r.category||'Expense')}</span>
+      <span><strong>Supplier:</strong> ${esc(r.supplier||'—')}</span>
+      <span><strong>Installment:</strong> ${BD(inst.amount)}</span>
+      <span><strong>Current Paid:</strong> ${BD(installmentPaid(inst))}</span>
+      <span><strong>Remaining:</strong> ${BD(installmentRemaining(inst))}</span>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>Payment Date</th><th>Amount BD</th><th>Note</th><th></th></tr></thead><tbody id="inst-payment-lines">${body}</tbody></table></div>
+    <div style="font-size:12px;color:var(--muted)">Saving these rows will update Expense Paid BD automatically from all installment payments.</div>
+    <div class="btn-row">
+      <button class="btn" style="background:#E8F5EE;color:var(--green)" onclick="addPaymentLine({date:todayISOForInstallment(),amount:0,note:''})">+ Add Payment Row</button>
+      <button class="btn btn-red" onclick="saveExpenseInstallmentPayments('${String(expenseId).replace(/'/g,"\'")}','${String(instId).replace(/'/g,"\'")}')">Save Payments</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="viewExpenseInstallments('${String(expenseId).replace(/'/g,"\'")}')">Back</button>
+    </div>
+  </div>`);
+}
+async function saveExpenseInstallmentPayments(expenseId,instId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r);
+  const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
+  const tb=document.getElementById('inst-payment-lines');
+  const payments=tb?[...tb.querySelectorAll('.payment-line')].map(row=>({
+    date:(row.querySelector('.pay-date')?.value||todayISOForInstallment()).trim(),
+    amount:money3(row.querySelector('.pay-amount')?.value||0),
+    note:(row.querySelector('.pay-note')?.value||'').trim()
+  })).filter(p=>p.amount>0):[];
+  const total=payments.reduce((s,p)=>s+moneyNum(p.amount),0);
+  if(total-moneyNum(inst.amount)>0.0004){alert('Payments cannot be greater than the installment amount.');return;}
+  inst.payments=payments;
+  const allPaid=rows.reduce((s,i)=>s+installmentPaid(i),0);
+  if(allPaid-moneyNum(r.amount_bd)>0.0004){alert('All installment payments cannot be greater than expense amount.');return;}
+  try{await saveExpenseMetaPatch(expenseId,meta.details,rows,allPaid);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
+}
+async function syncExpensePaidIntoInstallments(expenseId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+  if(!rows.length){alert('No installment plan found.');return;}
+  const currentPaid=money3(r.paid_bd);
+  if(currentPaid<=0){alert('Expense Paid BD is zero. Nothing to distribute.');return;}
+  const planned=rows.reduce((s,i)=>s+moneyNum(i.amount),0);
+  if(currentPaid-planned>0.0004 && !confirm('Paid BD is greater than planned installments by '+BD(currentPaid-planned)+'. Distribute only across planned installments?'))return;
+  if(!confirm('This will replace current installment payment rows and distribute Expense Paid BD across installments from earliest due date. Continue?'))return;
+  let left=currentPaid;
+  rows.forEach(i=>{
+    const a=Math.min(moneyNum(i.amount),left);
+    i.payments=a>0.0004?[{date:i.due_date||todayISOForInstallment(),amount:money3(a),note:'Synced from Expense Paid BD'}]:[];
+    left=money3(left-a);
+  });
+  const allPaid=rows.reduce((s,i)=>s+installmentPaid(i),0);
+  try{await saveExpenseMetaPatch(expenseId,meta.details,rows,allPaid);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
 }
 async function editExpenseInstallment(expenseId,instId){
   const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
@@ -2890,16 +3002,23 @@ function renderExpenses(){
 async function addExpense(){
   const date=document.getElementById('exp-date').value;
   const sup=document.getElementById('exp-supplier').value.trim();
-  const amt=parseFloat(document.getElementById('exp-amount').value)||0;
-  if(!date||!sup||!amt){alert('Fill: Date, Supplier, Amount');return;}
   const qty=parseFloat(document.getElementById('exp-qty').value)||1;
-  const total=qty*amt;
+  const inv=collectInvoiceData('exp');
+  const invTotal=money3(invoiceTotal(inv));
+  const manualAmt=parseFloat(document.getElementById('exp-amount').value)||0;
+  const total=invTotal>0?invTotal:money3(qty*manualAmt);
+  const amt=qty>0?money3(total/qty):total;
+  if(invTotal>0){
+    document.getElementById('exp-amount').value=amt.toFixed(3);
+    document.getElementById('exp-total').value=total.toFixed(3);
+  }
+  if(!date||!sup||total<=0){alert('Fill: Date, Supplier, and either Amount or Invoice lines');return;}
   const paid=parseFloat(document.getElementById('exp-paid').value)||0;
   if(!validatePaymentInput(total,paid,'Expense'))return;
   if(!document.getElementById('exp-cat').value){alert('Fill: Category');return;}
   const btn=document.getElementById('expSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:normalizeActivityCategory(document.getElementById('exp-cat').value),supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:buildExpenseNotes(document.getElementById('exp-notes').value||'',[],collectInvoiceData('exp')),status:normalizePaidStatus(total,paid)});
+    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:normalizeActivityCategory(document.getElementById('exp-cat').value),supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:buildExpenseNotes(document.getElementById('exp-notes').value||'',[],inv),status:normalizePaidStatus(total,paid)});
     ['exp-date','exp-due','exp-supplier','exp-amount','exp-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('exp-qty').value='1';document.getElementById('exp-paid').value='0';document.getElementById('exp-total').value='';renderInvoiceEditor('exp',null);
     await loadAll();
@@ -3387,15 +3506,16 @@ async function saveIncome(id){
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
+  const plan=expensePlanTotals(r);const hasPlan=plan.count>0;const paidValue=hasPlan?plan.paid:(r.paid_bd||0);
   openModal('Edit Expense',`<div class="form-grid">
     <div class="form-group"><label>Date</label><input type="date" id="ee-date" value="${r.date||''}"></div>
     <div class="form-group"><label>Due Date</label><input type="date" id="ee-due" value="${r.due_date||''}"></div>
     <div class="form-group"><label>Category</label><select id="ee-cat">${CCE_CATEGORIES.map(c=>'<option '+(r.category===c?'selected':'')+'>'+c+'</option>').join('')}</select></div>
     <div class="form-group"><label>Supplier</label><input type="text" id="ee-sup" value="${r.supplier||''}"></div>
-    <div class="form-group"><label>Qty</label><input type="number" id="ee-qty" value="${qty}" min="1" oninput="cET('exp')"></div>
-    <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ee-amt" value="${apu.toFixed(3)}" oninput="cET('exp')"></div>
+    <div class="form-group"><label>Qty</label><input type="number" id="ee-qty" value="${qty}" min="1" oninput="syncExpenseInvoiceTotals('ee')"></div>
+    <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ee-amt" value="${apu.toFixed(3)}" oninput="syncExpenseInvoiceTotals('ee')"></div>
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ee-total" value="${r.amount_bd}" readonly></div>
-    <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ee-paid" value="${r.paid_bd||0}"></div>
+    <div class="form-group"><label>Paid BD ${hasPlan?'(auto from installments)':''}</label><input type="number" step="0.001" id="ee-paid" value="${paidValue}" ${hasPlan?'readonly title="Paid BD is controlled by installment payments"':''}>${hasPlan?'<div style="font-size:11px;color:var(--muted);margin-top:4px">Edit payments from Installments, not here.</div>':''}</div>
     <div class="form-group"><label>Horse</label><select id="ee-horse"><option value="">&#8212;</option>${hOpts(r.horse)}</select></div>
     <div class="form-group" style="grid-column:1/-1"><label>Agreement / Expense Details (text)</label><textarea id="ee-notes" rows="7" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical">${esc(expenseDetailsText(r)||'')}</textarea></div>
     <div class="form-group" style="grid-column:1/-1">
@@ -3415,11 +3535,22 @@ function editExpense(id){
   renderInvoiceEditor('ee',expenseInvoice(r));
 }
 async function saveExpense(id){
+  const r=expenses.find(x=>String(x.id)===String(id))||{};
   const qty=parseFloat(document.getElementById('ee-qty').value)||1;
-  const amt=parseFloat(document.getElementById('ee-amt').value)||0;
-  const total=qty*amt;const paid=parseFloat(document.getElementById('ee-paid').value)||0;
+  const inv=collectInvoiceData('ee');
+  const invTotal=money3(invoiceTotal(inv));
+  const manualAmt=parseFloat(document.getElementById('ee-amt').value)||0;
+  const total=invTotal>0?invTotal:money3(qty*manualAmt);
+  const amt=qty>0?money3(total/qty):total;
+  if(invTotal>0){
+    document.getElementById('ee-amt').value=amt.toFixed(3);
+    document.getElementById('ee-total').value=total.toFixed(3);
+  }
+  const installments=expenseInstallments(r);
+  const hasPlan=installments.length>0;
+  const paid=hasPlan?money3(installments.reduce((s,i)=>s+installmentPaid(i),0)):(parseFloat(document.getElementById('ee-paid').value)||0);
   if(!validatePaymentInput(total,paid,'Expense'))return;
-  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:normalizeActivityCategory(document.getElementById('ee-cat').value),supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:buildExpenseNotes(document.getElementById('ee-notes').value||'',expenseInstallments(expenses.find(x=>String(x.id)===String(id))||{}),collectInvoiceData('ee')),status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:normalizeActivityCategory(document.getElementById('ee-cat').value),supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:buildExpenseNotes(document.getElementById('ee-notes').value||'',installments,inv),status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editHorse(id){
   const h=horses.find(x=>x.id===id);if(!h)return;
