@@ -5491,7 +5491,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6-portal-start-url-20260709', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=8-ios-subfolder-hardfix-20260709', {scope:'./'})
       .then(reg => {
         console.log('[CCE] SW registered:', reg.scope);
         reg.update();
