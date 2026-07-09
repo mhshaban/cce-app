@@ -96,6 +96,20 @@ body.mode-book .portal-link{display:none !important}
 .nav-btn{border:1px solid var(--border);border-bottom-width:1px;border-radius:12px;background:#fff;padding:10px 14px}
 .nav-btn.active{border-color:var(--amber);box-shadow:0 2px 8px rgba(200,146,58,.18)}
 @media(max-width:640px){.nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}.nav-btn{width:100%;padding:10px 6px;font-size:12px;text-align:center}.nav-btn.active{border-radius:12px}}
+/* Dashboard grouped navigation: Dashboard | Finance | Operations | Horses | Management */
+.dash-nav-wrap{position:sticky;top:62px;z-index:99;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 2px 10px rgba(26,39,68,.04)}
+.dash-nav-wrap .nav{position:static;top:auto;z-index:auto;border-bottom:0;overflow-x:visible;scrollbar-width:none}
+.dash-nav-wrap .nav::-webkit-scrollbar{display:none}
+.nav-groups{display:flex;flex-wrap:wrap;gap:8px;padding:8px 8px 4px;background:#fff;align-items:center}
+.nav-group-btn{border:1px solid var(--border);background:#fff;color:var(--navy);cursor:pointer;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:800;white-space:nowrap;transition:all .2s;box-shadow:0 1px 0 rgba(26,39,68,.02)}
+.nav-group-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,39,68,.08)}
+.nav-group-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 4px 14px rgba(26,39,68,.18)}
+.nav-subtabs{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px 8px;background:#fffaf0;border-top:1px solid #f0e4cd;align-items:center}
+.nav-subtabs .nav-btn{background:#fff;border:1px solid var(--border);border-radius:12px;padding:9px 13px;font-size:12px}
+.nav-subtabs .nav-btn.active{background:var(--amber);color:#fff;border-color:var(--amber);box-shadow:0 2px 8px rgba(200,146,58,.18)}
+.nav-btn.sub-hidden{display:none!important}
+@media(max-width:640px){.dash-nav-wrap{position:static}.nav-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px}.nav-group-btn{width:100%;padding:10px 8px;text-align:center}.nav-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px 8px 8px}.nav-subtabs .nav-btn{width:100%;padding:9px 5px;font-size:11px;text-align:center}}
+
 .content{padding:16px;max-width:1400px;margin:0 auto}
 .section{display:none}.section.active{display:block}
 .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
@@ -1358,23 +1372,31 @@ html[dir="rtl"] .pie-legend-item {
 
 <!-- ════════════════════════════ DASHBOARD ════════════════════════════ -->
 <div class="app-page" id="page-dashboard">
-  <div class="nav" id="dashNav">
-    <!-- Logical order: overview → operations → stable → finance → communication → administration -->
-    <button class="nav-btn active" id="nav-dashboard" onclick="showDashPage('dashboard',this)">&#128202; Dashboard</button>
-    <button class="nav-btn" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
-    <button class="nav-btn" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
-    <button class="nav-btn" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
-    <button class="nav-btn" id="nav-horses"   onclick="showDashPage('horses',this)">&#128052; Horses</button>
-    <button class="nav-btn" id="nav-health" onclick="showDashPage('health',this)">&#129658; Horse Health</button>
-    <button class="nav-btn" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
-    <button class="nav-btn" id="nav-income"   onclick="showDashPage('income',this)">&#128176; Income</button>
-    <button class="nav-btn" id="nav-expenses" onclick="showDashPage('expenses',this)">&#128184; Expenses</button>
-    <button class="nav-btn" id="nav-overdue"  onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
-    <button class="nav-btn" id="nav-receipts" onclick="showDashPage('receipts',this)">&#129534; Receipts</button>
-    <button class="nav-btn" id="nav-reports" onclick="showDashPage('reports',this)">&#128200; Reports</button>
-    <button class="nav-btn" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
-    <button class="nav-btn" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
-    <button class="nav-btn" id="nav-tools" onclick="showDashPage('tools',this)">&#128736;&#65039; Tools</button>
+  <div class="dash-nav-wrap" id="dashNav">
+    <div class="nav-groups" id="dashGroupNav" aria-label="Dashboard groups">
+      <button class="nav-group-btn active" id="dash-group-dashboard" onclick="showDashGroup('dashboard')">&#128202; Dashboard</button>
+      <button class="nav-group-btn" id="dash-group-finance" onclick="showDashGroup('finance')">&#128176; Finance</button>
+      <button class="nav-group-btn" id="dash-group-operations" onclick="showDashGroup('operations')">&#128467;&#65039; Operations</button>
+      <button class="nav-group-btn" id="dash-group-horses" onclick="showDashGroup('horses')">&#128052; Horses</button>
+      <button class="nav-group-btn" id="dash-group-management" onclick="showDashGroup('management')">&#9881;&#65039; Management</button>
+    </div>
+    <div class="nav nav-subtabs" id="dashSubNav" aria-label="Dashboard section tabs">
+      <button class="nav-btn active" data-dash-group="dashboard" id="nav-dashboard" onclick="showDashPage('dashboard',this)">&#128202; Dashboard</button>
+      <button class="nav-btn" data-dash-group="finance" id="nav-income" onclick="showDashPage('income',this)">&#128176; Income</button>
+      <button class="nav-btn" data-dash-group="finance" id="nav-expenses" onclick="showDashPage('expenses',this)">&#128184; Expenses</button>
+      <button class="nav-btn" data-dash-group="finance" id="nav-overdue" onclick="showDashPage('overdue',this)">&#9888;&#65039; Overdue</button>
+      <button class="nav-btn" data-dash-group="finance" id="nav-receipts" onclick="showDashPage('receipts',this)">&#129534; Receipts</button>
+      <button class="nav-btn" data-dash-group="finance" id="nav-reports" onclick="showDashPage('reports',this)">&#128200; Reports</button>
+      <button class="nav-btn" data-dash-group="operations" id="nav-bookings" onclick="showDashPage('bookings',this)">&#128203; Bookings</button>
+      <button class="nav-btn" data-dash-group="operations" id="nav-schedule" onclick="showDashPage('schedule',this)">&#128197; Schedule</button>
+      <button class="nav-btn" data-dash-group="operations" id="nav-instructors" onclick="showDashPage('instructors',this)">&#127891; Instructors</button>
+      <button class="nav-btn" data-dash-group="horses" id="nav-horses" onclick="showDashPage('horses',this)">&#128052; Horses</button>
+      <button class="nav-btn" data-dash-group="horses" id="nav-health" onclick="showDashPage('health',this)">&#129658; Horse Health</button>
+      <button class="nav-btn" data-dash-group="horses" id="nav-breeding" onclick="showDashPage('breeding',this)">&#128300; Breeding</button>
+      <button class="nav-btn" data-dash-group="management" id="nav-notifications" onclick="showDashPage('notifications',this)">&#128276; Notifications</button>
+      <button class="nav-btn" data-dash-group="management" id="nav-audit" onclick="showDashPage('audit',this)">&#128221; Audit Log</button>
+      <button class="nav-btn" data-dash-group="management" id="nav-tools" onclick="showDashPage('tools',this)">&#128736;&#65039; Tools</button>
+    </div>
   </div>
   <div class="content">
     <div class="section active" id="page-main-dashboard">
@@ -1967,17 +1989,48 @@ function logoutAdmin() {
 // ══════════════════════════════════════════════════════════
 // DASHBOARD INTERNAL NAV
 // ══════════════════════════════════════════════════════════
+const DASH_GROUPS={
+  dashboard:['dashboard'],
+  finance:['income','expenses','overdue','receipts','reports'],
+  operations:['bookings','schedule','instructors'],
+  horses:['horses','health','breeding'],
+  management:['notifications','audit','tools']
+};
+function dashGroupForPage(id){
+  for(const [group,pages] of Object.entries(DASH_GROUPS)) if(pages.includes(id)) return group;
+  return 'dashboard';
+}
+function updateDashGroupedNav(id){
+  const group=dashGroupForPage(id);
+  document.querySelectorAll('.nav-group-btn').forEach(b=>b.classList.toggle('active',b.id==='dash-group-'+group));
+  document.querySelectorAll('#dashSubNav .nav-btn').forEach(b=>{
+    const inGroup=b.dataset.dashGroup===group;
+    b.classList.toggle('sub-hidden',!inGroup);
+    b.classList.toggle('active',b.id==='nav-'+id);
+  });
+}
+function showDashGroup(group){
+  const first=(DASH_GROUPS[group]&&DASH_GROUPS[group][0])||'dashboard';
+  showDashPage(first,document.getElementById('nav-'+first));
+}
 function showDashPage(id, btn) {
   document.querySelectorAll('#page-dashboard .section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#dashSubNav .nav-btn').forEach(b=>b.classList.remove('active'));
   const el = document.getElementById('page-'+( id==='dashboard'?'main-dashboard':id ));
   if(el) el.classList.add('active');
   const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
+  updateDashGroupedNav(id);
   if(id==='reports') renderAdvancedReports();
   if(id==='receipts') renderReceipts();
   if(id==='health') renderHorseHealth();
   if(id==='tools') renderToolsPanel();
 }
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>updateDashGroupedNav('dashboard'));
+}else{
+  updateDashGroupedNav('dashboard');
+}
+
 
 // ══════════════════════════════════════════════════════════
 // STATE
@@ -2405,10 +2458,7 @@ async function loadAll(){
   }
 }
 function showPage(id,btn){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  const nb=btn||document.getElementById('nav-'+id);if(nb)nb.classList.add('active');
+  showDashPage(id,btn);
   document.getElementById('headerSub').textContent=t('dash_'+id)||id;
 }
 function buildDash(){
