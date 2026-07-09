@@ -1410,7 +1410,20 @@ html[dir="rtl"] .pie-legend-item {
             <div class="form-group"><label>Total BD (auto)</label><input type="number" step="0.001" id="exp-total" readonly></div>
             <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="exp-paid" value="0"></div>
             <div class="form-group"><label>Horse (optional)</label><select id="exp-horse"><option value="">&#8212; None &#8212;</option></select></div>
-            <div class="form-group" style="grid-column:1/-1"><label>Expense Details / Agreement / Invoice</label><textarea id="exp-notes" rows="7" placeholder="Paste agreement, reimbursement mechanism, invoice breakdown, or any long expense details here..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>
+            <div class="form-group" style="grid-column:1/-1"><label>Agreement / Expense Details (text)</label><textarea id="exp-notes" rows="6" placeholder="Paste agreement, reimbursement mechanism, or any long expense details here..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Invoice</label>
+              <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa;display:grid;gap:10px">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <button type="button" class="action-btn" style="background:#EEF3FF;color:var(--navy);padding:8px 12px" onclick="document.getElementById('exp-invoice-file').click()">&#128206; Attach Invoice</button>
+                  <input type="file" id="exp-invoice-file" accept="image/*,.pdf" style="display:none" onchange="handleInvoiceAttachment('exp',this)">
+                  <span id="exp-invoice-file-name" style="font-size:12px;color:var(--muted)">No invoice attached</span>
+                  <button type="button" class="action-btn" style="background:#FDECEA;color:var(--red);padding:7px 10px" onclick="clearInvoiceAttachment('exp')">Remove</button>
+                </div>
+                <div class="tbl-wrap"><table style="margin:0"><thead><tr><th>Invoice Item / Description</th><th>Amount BD</th><th></th></tr></thead><tbody id="exp-invoice-lines"><tr class="invoice-line"><td><input type="text" class="invoice-desc" placeholder="Example: Electrical tools - switches, timer, lamp"></td><td><input type="number" step="0.001" class="invoice-amount" placeholder="0.000" oninput="updateInvoiceTotal('exp')"></td><td><button type="button" class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="removeInvoiceLine(this,'exp')">&#128465;&#65039;</button></td></tr></tbody><tfoot><tr><th>Total</th><th id="exp-invoice-total">BHD 0.000</th><th></th></tr></tfoot></table></div>
+                <div><button type="button" class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px" onclick="addInvoiceLine('exp')">&#10133; Add Invoice Line</button></div>
+              </div>
+            </div>
           </div>
           <button class="btn btn-red" id="expSaveBtn" onclick="addExpense()">&#128184; Save to Database</button>
         </div>
@@ -1969,7 +1982,7 @@ const rowMonthKey=r=>String((r&&r.date)||'').slice(0,7);
 const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
 const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
-const isOverdueRow=r=>isPendingRow(r)&&!!r.due_date&&isPastDueDate(r.due_date)&&hasRemaining(r);
+const isOverdueRow=r=>isPendingRow(r)&&hasRemaining(r)&&((!!r.due_date&&isPastDueDate(r.due_date))||(r&&Object.prototype.hasOwnProperty.call(r,'supplier')&&expenseHasOverdueInstallment(r)));
 // Cash accounting rule requested:
 // Total Revenue = money actually received (sum income.paid_bd).
 // Total Expenses = money actually paid/spent (sum expenses.paid_bd), regardless of status.
@@ -2485,37 +2498,361 @@ async function addIncome(){
   }catch(e){alert('Error: '+e.message);}
   finally{btn.disabled=false;btn.textContent='Save to Database';}
 }
-function expenseDetailsText(r){return String((r&&r.notes)||'').trim();}
+const EXPENSE_META_PREFIX='CCE_EXPENSE_META_V1:';
+const CCE_EMPTY_INVOICE={attachment:null,lines:[]};
+window.CCE_INVOICE_ATTACHMENTS=window.CCE_INVOICE_ATTACHMENTS||{};
+function parseExpenseMetaFromNotes(notes){
+  const raw=String(notes||'');
+  if(raw.startsWith(EXPENSE_META_PREFIX)){
+    try{
+      const meta=JSON.parse(raw.slice(EXPENSE_META_PREFIX.length));
+      return {
+        details:String((meta&&meta.details)||''),
+        invoice:normalizeExpenseInvoice(meta&&meta.invoice),
+        installments:Array.isArray(meta&&meta.installments)?meta.installments:[]
+      };
+    }catch(e){
+      return {details:raw,invoice:normalizeExpenseInvoice(null),installments:[]};
+    }
+  }
+  return {details:raw,invoice:normalizeExpenseInvoice(null),installments:[]};
+}
+function money3(v){return Math.round(moneyNum(v)*1000)/1000;}
+function expenseMeta(r){return parseExpenseMetaFromNotes(r&&r.notes);}
+function newInvoiceLineId(){return 'inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);}
+function normalizeInvoiceAttachment(att){
+  if(!att)return null;
+  const name=String((att&&att.name)||'').trim();
+  const type=String((att&&att.type)||'').trim();
+  const data_url=String((att&&att.data_url)||'');
+  if(!name&&!data_url)return null;
+  return {name:name||'Invoice attachment',type,data_url};
+}
+function normalizeInvoiceLine(line){
+  return {
+    id:String((line&&line.id)||newInvoiceLineId()),
+    description:String((line&&line.description)||''),
+    amount:money3(line&&line.amount)
+  };
+}
+function normalizeExpenseInvoice(inv){
+  const lines=Array.isArray(inv&&inv.lines)?inv.lines:[];
+  return {
+    attachment:normalizeInvoiceAttachment(inv&&inv.attachment),
+    lines:lines.map(normalizeInvoiceLine).filter(l=>l.description.trim()||l.amount>0)
+  };
+}
+function invoiceHasContent(invoice){
+  const inv=normalizeExpenseInvoice(invoice);
+  return !!(inv.attachment||inv.lines.length);
+}
+function invoiceTotal(invoice){return normalizeExpenseInvoice(invoice).lines.reduce((s,l)=>s+moneyNum(l.amount),0);}
+function expenseInvoice(r){return normalizeExpenseInvoice(expenseMeta(r).invoice);}
+function normalizeExpenseInstallment(inst){
+  const payments=Array.isArray(inst&&inst.payments)?inst.payments:[];
+  const migratedPaid=(!payments.length && moneyNum(inst&&inst.paid)>0)?[{date:String((inst&&inst.paid_date)||''),amount:money3(inst.paid),note:''}]:[];
+  return {
+    id:String((inst&&inst.id)||newExpenseInstallmentId()),
+    due_date:String((inst&&inst.due_date)||''),
+    amount:money3(inst&&inst.amount),
+    note:String((inst&&inst.note)||''),
+    payments:[...payments,...migratedPaid].map(p=>({date:String((p&&p.date)||''),amount:money3(p&&p.amount),note:String((p&&p.note)||'')})).filter(p=>p.amount>0)
+  };
+}
+function expenseInstallments(r){return expenseMeta(r).installments.map(normalizeExpenseInstallment).filter(i=>i.amount>0);}
+function buildExpenseNotes(details,installments,invoice){
+  const cleanInstallments=(installments||[]).map(normalizeExpenseInstallment).filter(i=>i.amount>0);
+  const cleanDetails=String(details||'');
+  const cleanInvoice=normalizeExpenseInvoice(invoice);
+  if(cleanInstallments.length||invoiceHasContent(cleanInvoice)){
+    return EXPENSE_META_PREFIX+JSON.stringify({details:cleanDetails,invoice:cleanInvoice,installments:cleanInstallments});
+  }
+  return cleanDetails||null;
+}
+function expenseDetailsText(r){return String(expenseMeta(r).details||'').trim();}
+function expenseHasDetails(r){return !!(expenseDetailsText(r)||invoiceHasContent(expenseInvoice(r)));}
+function expenseSearchText(r){
+  const meta=expenseMeta(r);
+  const inv=normalizeExpenseInvoice(meta.invoice);
+  const invText=[inv.attachment&&inv.attachment.name, ...inv.lines.map(l=>[l.description,l.amount].join(' '))].join(' ');
+  const plan=(meta.installments||[]).map(i=>[i.due_date,i.amount,i.note,(i.payments||[]).map(p=>[p.date,p.amount,p.note].join(' ')).join(' ')].join(' ')).join(' ');
+  return [r&&r.supplier,r&&r.category,meta.details,invText,plan].join(' ').toLowerCase();
+}
 function expenseDetailsPreview(r,max=70){
   const txt=expenseDetailsText(r).replace(/\s+/g,' ');
-  if(!txt)return '&mdash;';
-  return esc(txt.length>max?txt.slice(0,max-1)+'…':txt);
+  const inv=expenseInvoice(r);
+  const invSummary=invoiceHasContent(inv)?('Invoice: '+(inv.lines.length?inv.lines.length+' lines / '+BD(invoiceTotal(inv)):'attached')):'';
+  const combined=[txt,invSummary].filter(Boolean).join(' • ');
+  if(!combined)return '&mdash;';
+  return esc(combined.length>max?combined.slice(0,max-1)+'…':combined);
 }
 function expenseDetailsCell(r){
-  const has=!!expenseDetailsText(r);
+  const has=expenseHasDetails(r);
   return '<div style="min-width:170px">'+
     '<button class="action-btn" '+(has?'':'disabled')+' style="background:'+(has?'#EEF3FF':'#f3f3f3')+';color:'+(has?'var(--navy)':'#999')+';padding:6px 12px" onclick="viewExpenseDetails('+r.id+')">&#128196; Details</button>'+ 
     '<div style="margin-top:5px;color:var(--muted);font-size:11px;white-space:normal;max-width:260px">'+expenseDetailsPreview(r)+'</div>'+ 
   '</div>';
 }
+function invoiceLineHTML(scope,line={}){
+  const l=normalizeInvoiceLine(line);
+  return '<tr class="invoice-line"><td><input type="text" class="invoice-desc" value="'+escAttr(l.description)+'" placeholder="Invoice item / description"></td><td><input type="number" step="0.001" class="invoice-amount" value="'+(l.amount?l.amount.toFixed(3):'')+'" placeholder="0.000" oninput="updateInvoiceTotal(\''+scope+'\')"></td><td><button type="button" class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="removeInvoiceLine(this,\''+scope+'\')">&#128465;&#65039;</button></td></tr>';
+}
+function renderInvoiceEditor(scope,invoice){
+  const inv=normalizeExpenseInvoice(invoice);
+  window.CCE_INVOICE_ATTACHMENTS[scope]=inv.attachment||null;
+  const tb=document.getElementById(scope+'-invoice-lines');
+  if(tb)tb.innerHTML=(inv.lines.length?inv.lines:[{}]).map(l=>invoiceLineHTML(scope,l)).join('');
+  updateInvoiceAttachmentLabel(scope);
+  updateInvoiceTotal(scope);
+}
+function addInvoiceLine(scope,line={}){
+  const tb=document.getElementById(scope+'-invoice-lines');
+  if(!tb)return;
+  tb.insertAdjacentHTML('beforeend',invoiceLineHTML(scope,line));
+  updateInvoiceTotal(scope);
+}
+function removeInvoiceLine(btn,scope){
+  const row=btn&&btn.closest?btn.closest('tr'):null;
+  if(row)row.remove();
+  const tb=document.getElementById(scope+'-invoice-lines');
+  if(tb&&!tb.querySelector('.invoice-line'))addInvoiceLine(scope);
+  updateInvoiceTotal(scope);
+}
+function updateInvoiceTotal(scope){
+  const tb=document.getElementById(scope+'-invoice-lines');
+  const total=tb?[...tb.querySelectorAll('.invoice-amount')].reduce((s,el)=>s+moneyNum(el.value),0):0;
+  const out=document.getElementById(scope+'-invoice-total');
+  if(out)out.textContent=BD(total);
+}
+function updateInvoiceAttachmentLabel(scope){
+  const out=document.getElementById(scope+'-invoice-file-name');
+  if(!out)return;
+  const att=normalizeInvoiceAttachment(window.CCE_INVOICE_ATTACHMENTS[scope]);
+  out.textContent=att?att.name:'No invoice attached';
+  out.style.color=att?'var(--navy)':'var(--muted)';
+}
+function handleInvoiceAttachment(scope,input){
+  const file=input&&input.files&&input.files[0];
+  if(!file)return;
+  const max=2*1024*1024;
+  if(file.size>max){alert('Invoice attachment is too large. Maximum size is 2 MB.');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{window.CCE_INVOICE_ATTACHMENTS[scope]={name:file.name,type:file.type||'application/octet-stream',data_url:String(reader.result||'')};updateInvoiceAttachmentLabel(scope);};
+  reader.onerror=()=>alert('Could not read invoice attachment.');
+  reader.readAsDataURL(file);
+}
+function clearInvoiceAttachment(scope){
+  window.CCE_INVOICE_ATTACHMENTS[scope]=null;
+  const input=document.getElementById(scope+'-invoice-file');if(input)input.value='';
+  updateInvoiceAttachmentLabel(scope);
+}
+function collectInvoiceData(scope){
+  const tb=document.getElementById(scope+'-invoice-lines');
+  const lines=tb?[...tb.querySelectorAll('.invoice-line')].map(row=>({
+    description:row.querySelector('.invoice-desc')?.value||'',
+    amount:money3(row.querySelector('.invoice-amount')?.value||0)
+  })).filter(l=>String(l.description||'').trim()||moneyNum(l.amount)>0):[];
+  return normalizeExpenseInvoice({attachment:window.CCE_INVOICE_ATTACHMENTS[scope]||null,lines});
+}
+function invoiceAttachmentHTML(att){
+  const a=normalizeInvoiceAttachment(att);
+  if(!a)return '<span style="color:var(--muted)">No attachment</span>';
+  if(a.data_url)return '<a class="action-btn" style="background:#EEF3FF;color:var(--navy);display:inline-block;text-decoration:none;padding:7px 10px" href="'+escAttr(a.data_url)+'" download="'+escAttr(a.name)+'">&#128206; '+esc(a.name)+'</a>';
+  return '<span>&#128206; '+esc(a.name)+'</span>';
+}
+function invoiceTableHTML(invoice){
+  const inv=normalizeExpenseInvoice(invoice);
+  const rows=inv.lines.length?inv.lines.map(l=>'<tr><td style="white-space:normal;min-width:260px">'+esc(l.description||'—')+'</td><td class="money-red">'+BD(l.amount)+'</td></tr>').join(''):'<tr><td colspan="2" style="color:var(--muted);padding:10px">No invoice lines saved.</td></tr>';
+  return '<div class="tbl-wrap"><table><thead><tr><th>Invoice Item / Description</th><th>Amount</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><th>Total</th><th>'+BD(invoiceTotal(inv))+'</th></tr></tfoot></table></div>';
+}
+function installmentPaid(inst){return (normalizeExpenseInstallment(inst).payments||[]).reduce((s,p)=>s+moneyNum(p.amount),0);}
+function installmentRemaining(inst){const i=normalizeExpenseInstallment(inst);return Math.max(0,moneyNum(i.amount)-installmentPaid(i));}
+function installmentStatus(inst){
+  if(installmentRemaining(inst)<=0.0004)return 'Paid';
+  if(isPastDueDate(inst.due_date))return 'Overdue';
+  return 'Pending';
+}
+function expensePlanTotals(r){
+  const rows=expenseInstallments(r);
+  const planned=rows.reduce((s,i)=>s+moneyNum(i.amount),0);
+  const paid=rows.reduce((s,i)=>s+installmentPaid(i),0);
+  const planRemaining=rows.reduce((s,i)=>s+installmentRemaining(i),0);
+  const expenseRemaining=calcRemaining(r);
+  const unplannedRemaining=Math.max(0,expenseRemaining-planRemaining);
+  const overPlanned=Math.max(0,planRemaining-expenseRemaining);
+  const next=rows.filter(i=>installmentRemaining(i)>0.0004&&i.due_date).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)))[0]||null;
+  const overdueCount=rows.filter(i=>installmentRemaining(i)>0.0004&&isPastDueDate(i.due_date)).length;
+  return {count:rows.length,planned,paid,planRemaining,expenseRemaining,unplannedRemaining,overPlanned,next,overdueCount};
+}
+function expenseHasOverdueInstallment(r){return expenseInstallments(r).some(i=>installmentRemaining(i)>0.0004&&isPastDueDate(i.due_date));}
+function overdueExpenseInstallments(r){return expenseInstallments(r).filter(i=>installmentRemaining(i)>0.0004&&isPastDueDate(i.due_date));}
+function expenseOverdueAmount(r){const rows=overdueExpenseInstallments(r);return rows.length?rows.reduce((s,i)=>s+installmentRemaining(i),0):calcRemaining(r);}
+function expenseOverdueDueHTML(r){const rows=overdueExpenseInstallments(r);return rows.length?rows.map(i=>fmt(i.due_date)).join('<br>'):fmt(r.due_date);}
+function expenseInstallmentsCell(r){
+  const t=expensePlanTotals(r);
+  const bg=t.overdueCount?'#FDECEA':'#E8F5EE';
+  const color=t.overdueCount?'var(--red)':'var(--green)';
+  const label=t.count?('Plan ('+t.count+')'):'Add Plan';
+  const next=t.next?('<div style="font-size:11px;color:var(--muted);margin-top:4px">Next: '+fmt(t.next.due_date)+' / '+BD(installmentRemaining(t.next))+'</div>'):'';
+  const warn=t.unplannedRemaining>0.0004?('<div style="font-size:11px;color:var(--amber);margin-top:4px">Unplanned: '+BD(t.unplannedRemaining)+'</div>'):(t.overPlanned>0.0004?('<div style="font-size:11px;color:var(--red);margin-top:4px">Over planned: '+BD(t.overPlanned)+'</div>'):'');
+  return '<div style="min-width:155px"><button class="action-btn" style="background:'+bg+';color:'+color+';padding:6px 12px" onclick="viewExpenseInstallments('+r.id+')">&#128467;&#65039; '+label+'</button>'+next+warn+'</div>';
+}
+function todayISOForInstallment(){return new Date().toISOString().slice(0,10);}
+function newExpenseInstallmentId(){return 'inst_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);}
+function installmentPaymentsHTML(inst){
+  const i=normalizeExpenseInstallment(inst);
+  if(!i.payments.length)return '<span style="color:var(--muted)">—</span>';
+  return i.payments.map(p=>'<div>'+fmt(p.date)+' — '+BD(p.amount)+'</div>').join('');
+}
 function viewExpenseDetails(id){
-  const r=expenses.find(x=>x.id===id);if(!r)return;
-  const details=expenseDetailsText(r)||'No details saved for this expense.';
-  openModal('Expense Details',`<div style="display:grid;gap:10px;font-size:13px;line-height:1.7">
+  const r=expenses.find(x=>String(x.id)===String(id));if(!r)return;
+  const agreement=expenseDetailsText(r)||'No agreement/details text saved for this expense.';
+  const inv=expenseInvoice(r);
+  const plan=expensePlanTotals(r);
+  openModal('Expense Details',`<div style="display:grid;gap:12px;font-size:13px;line-height:1.7">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <span class="badge badge-amber">${esc(r.category||'Expense')}</span>
       <span><strong>Supplier:</strong> ${esc(r.supplier||'—')}</span>
       <span><strong>Amount:</strong> ${BD(r.amount_bd)}</span>
       <span><strong>Paid:</strong> ${BD(r.paid_bd)}</span>
       <span><strong>Remaining:</strong> ${BD(calcRemaining(r))}</span>
+      <span><strong>Invoice Total:</strong> ${BD(invoiceTotal(inv))}</span>
+      <span><strong>Installments:</strong> ${plan.count}</span>
     </div>
-    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;white-space:pre-wrap;max-height:55vh;overflow:auto;font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">${esc(details)}</div>
-    <div class="btn-row"><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Close</button><button class="btn btn-red" onclick="closeModal();editExpense(${id})">Edit Details</button></div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:8px">Agreement / Details</div>
+      <div style="white-space:pre-wrap;max-height:28vh;overflow:auto;font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">${esc(agreement)}</div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+        <div style="font-weight:700;color:var(--navy)">Invoice</div>
+        <div>${invoiceAttachmentHTML(inv.attachment)}</div>
+      </div>
+      ${invoiceTableHTML(inv)}
+    </div>
+    <div class="btn-row"><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Close</button><button class="btn" style="background:#EEF3FF;color:var(--navy)" onclick="closeModal();viewExpenseInstallments(${id})">Installments</button><button class="btn btn-red" onclick="closeModal();editExpense(${id})">Edit Details</button></div>
   </div>`);
+}
+function viewExpenseInstallments(id){
+  const r=expenses.find(x=>String(x.id)===String(id));if(!r)return;
+  const rows=expenseInstallments(r);
+  const t=expensePlanTotals(r);
+  const body=rows.length?rows.map(i=>{
+    const st=installmentStatus(i);
+    const badge=st==='Paid'?'badge-green':(st==='Overdue'?'badge-red':'badge-amber');
+    const expenseArg=JSON.stringify(String(r.id));
+    const instArg=JSON.stringify(String(i.id));
+    return `<tr>
+      <td>${fmt(i.due_date)}</td>
+      <td class="money-red">${BD(i.amount)}</td>
+      <td>${BD(installmentPaid(i))}</td>
+      <td class="money-red">${BD(installmentRemaining(i))}</td>
+      <td><span class="badge ${badge}">${st}</span></td>
+      <td style="white-space:normal;min-width:160px">${esc(i.note||'—')}</td>
+      <td style="white-space:normal;min-width:150px;font-size:12px">${installmentPaymentsHTML(i)}</td>
+      <td style="white-space:nowrap">
+        ${st!=='Paid'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick='payExpenseInstallment(${expenseArg},${instArg})'>&#9989; Pay</button>`:''}
+        <button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick='editExpenseInstallment(${expenseArg},${instArg})'>&#9999;&#65039;</button>
+        <button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick='deleteExpenseInstallment(${expenseArg},${instArg})'>&#128465;&#65039;</button>
+      </td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="8" style="color:var(--muted);padding:12px">No installments yet. Add variable installments below.</td></tr>';
+  openModal('Expense Installments',`<div style="display:grid;gap:12px;font-size:13px;line-height:1.6">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge badge-amber">${esc(r.category||'Expense')}</span>
+      <span><strong>Supplier:</strong> ${esc(r.supplier||'—')}</span>
+      <span><strong>Expense Remaining:</strong> ${BD(t.expenseRemaining)}</span>
+      <span><strong>Plan Remaining:</strong> ${BD(t.planRemaining)}</span>
+      <span><strong>Unplanned:</strong> ${BD(t.unplannedRemaining)}</span>
+      ${t.overPlanned>0.0004?`<span style="color:var(--red);font-weight:700">Over planned: ${BD(t.overPlanned)}</span>`:''}
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Installment Amount</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Note</th><th>Payment History</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:8px">Add Variable Installment</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Due Date *</label><input type="date" id="inst-due"></div>
+        <div class="form-group"><label>Installment Amount BD *</label><input type="number" step="0.001" id="inst-amount" placeholder="0.000"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Note</label><input type="text" id="inst-note" placeholder="Example: reimbursement deduction, supplier payment, etc."></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-red" onclick="addExpenseInstallment(${id})">Add Installment</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Close</button></div>
+    </div>
+  </div>`);
+}
+async function saveExpenseMetaPatch(expenseId,details,installments,paidOverride,invoiceOverride){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const invoice=(typeof invoiceOverride==='undefined')?expenseInvoice(r):invoiceOverride;
+  const payload={notes:buildExpenseNotes(details,installments,invoice)};
+  if(typeof paidOverride==='number'){
+    payload.paid_bd=money3(paidOverride);
+    payload.status=normalizePaidStatus(moneyNum(r.amount_bd),money3(paidOverride));
+  }
+  await sbPatch('expenses',r.id,payload);
+  await loadAll();
+}
+async function addExpenseInstallment(expenseId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const due=(document.getElementById('inst-due')?.value||'').trim();
+  const amount=money3(document.getElementById('inst-amount')?.value||0);
+  const note=(document.getElementById('inst-note')?.value||'').trim();
+  if(!due||amount<=0){alert('Fill installment due date and amount');return;}
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r);
+  rows.push({id:newExpenseInstallmentId(),due_date:due,amount,note,payments:[]});
+  const planRemaining=rows.reduce((s,i)=>s+installmentRemaining(i),0);
+  if(planRemaining-calcRemaining(r)>0.0004 && !confirm('Installment plan remaining exceeds expense remaining by '+BD(planRemaining-calcRemaining(r))+'. Add anyway?'))return;
+  try{await saveExpenseMetaPatch(expenseId,meta.details,rows);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
+}
+async function payExpenseInstallment(expenseId,instId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r);
+  const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
+  const instRem=installmentRemaining(inst);
+  const expRem=calcRemaining(r);
+  if(instRem<=0.0004){alert('This installment is already paid.');return;}
+  const amtRaw=prompt('Payment amount BD',Math.min(instRem,expRem).toFixed(3));
+  if(amtRaw===null)return;
+  const amount=money3(amtRaw);
+  if(amount<=0){alert('Payment amount must be greater than zero.');return;}
+  if(amount-instRem>0.0004){alert('Payment cannot be greater than installment remaining.');return;}
+  if(amount-expRem>0.0004){alert('Payment cannot be greater than expense remaining.');return;}
+  const date=prompt('Payment date',todayISOForInstallment());
+  if(date===null)return;
+  const payDate=(date||todayISOForInstallment()).trim();
+  inst.payments.push({date:payDate,amount,note:''});
+  const newPaid=Math.min(moneyNum(r.amount_bd),moneyNum(r.paid_bd)+amount);
+  try{await saveExpenseMetaPatch(expenseId,meta.details,rows,newPaid);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
+}
+async function editExpenseInstallment(expenseId,instId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r);
+  const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
+  const due=prompt('Due date',inst.due_date||'');if(due===null)return;
+  const amountRaw=prompt('Installment amount BD',moneyNum(inst.amount).toFixed(3));if(amountRaw===null)return;
+  const amount=money3(amountRaw);
+  const paid=installmentPaid(inst);
+  if(amount<=0){alert('Installment amount must be greater than zero.');return;}
+  if(amount-paid < -0.0004){alert('Installment amount cannot be less than already paid amount.');return;}
+  const note=prompt('Note',inst.note||'');if(note===null)return;
+  inst.due_date=(due||'').trim();inst.amount=amount;inst.note=(note||'').trim();
+  const planRemaining=rows.reduce((s,i)=>s+installmentRemaining(i),0);
+  if(planRemaining-calcRemaining(r)>0.0004 && !confirm('Installment plan remaining exceeds expense remaining by '+BD(planRemaining-calcRemaining(r))+'. Save anyway?'))return;
+  try{await saveExpenseMetaPatch(expenseId,meta.details,rows);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
+}
+async function deleteExpenseInstallment(expenseId,instId){
+  const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  const meta=expenseMeta(r);
+  const rows=expenseInstallments(r);
+  const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
+  if(installmentPaid(inst)>0.0004){alert('This installment has payments. Delete is blocked to protect the payment history.');return;}
+  if(!confirm('Delete this installment?'))return;
+  const next=rows.filter(i=>String(i.id)!==String(instId));
+  try{await saveExpenseMetaPatch(expenseId,meta.details,next);viewExpenseInstallments(expenseId);}catch(e){alert('Error: '+e.message);}
 }
 function expTblHTML(data){
   if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
-  return '<table><thead><tr><th>Date</th><th>Due</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Details</th><th>Actions</th></tr></thead><tbody>'+ 
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Category</th><th>Supplier</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Details</th><th>Installments</th><th>Actions</th></tr></thead><tbody>'+ 
     data.map(function(r){
       return '<tr>'+ 
         '<td>'+fmt(r.date)+'</td>'+ 
@@ -2527,6 +2864,7 @@ function expTblHTML(data){
         '<td>'+BD(r.paid_bd)+'</td>'+ 
         '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+ 
         '<td>'+expenseDetailsCell(r)+'</td>'+ 
+        '<td>'+expenseInstallmentsCell(r)+'</td>'+ 
         '<td style="white-space:nowrap">'+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editExpense('+r.id+')">&#9999;&#65039;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(&apos;expenses&apos;,'+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
@@ -2540,7 +2878,7 @@ function renderExpenses(){
   const q=(document.getElementById('expSearch').value||'').toLowerCase();
   const ca=document.getElementById('expCatFilter').value;
   const st=document.getElementById('expStFilter').value;
-  let data=expenses.filter(r=>{const m=!q||(r.supplier||'').toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q)||(r.notes||'').toLowerCase().includes(q);return m&&(!ca||normalizeActivityCategory(r.category)===ca)&&(!st||r.status===st);});
+  let data=expenses.filter(r=>{const m=!q||expenseSearchText(r).includes(q);return m&&(!ca||normalizeActivityCategory(r.category)===ca)&&(!st||r.status===st);});
   document.getElementById('expCount').textContent=data.length;
   // Remaining amount for filtered expense rows
   const totalExpense = data.reduce((s,r) => s + calcRemaining(r), 0);
@@ -2561,9 +2899,9 @@ async function addExpense(){
   if(!document.getElementById('exp-cat').value){alert('Fill: Category');return;}
   const btn=document.getElementById('expSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:normalizeActivityCategory(document.getElementById('exp-cat').value),supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:document.getElementById('exp-notes').value||null,status:normalizePaidStatus(total,paid)});
+    await sbPost('expenses',{date,due_date:document.getElementById('exp-due').value||null,category:normalizeActivityCategory(document.getElementById('exp-cat').value),supplier:sup,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('exp-horse').value||null,notes:buildExpenseNotes(document.getElementById('exp-notes').value||'',[],collectInvoiceData('exp')),status:normalizePaidStatus(total,paid)});
     ['exp-date','exp-due','exp-supplier','exp-amount','exp-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    document.getElementById('exp-qty').value='1';document.getElementById('exp-paid').value='0';document.getElementById('exp-total').value='';
+    document.getElementById('exp-qty').value='1';document.getElementById('exp-paid').value='0';document.getElementById('exp-total').value='';renderInvoiceEditor('exp',null);
     await loadAll();
   }catch(e){alert('Error: '+e.message);}
   finally{btn.disabled=false;btn.textContent='Save to Database';}
@@ -2707,7 +3045,7 @@ function waSendGroup(i){
 function renderOverdue(){
   const expData=expenses.filter(isOverdueRow);
   const incData=income.filter(isOverdueRow);
-  const totalExp=expData.reduce((s,r)=>s+calcRemaining(r),0);
+  const totalExp=expData.reduce((s,r)=>s+expenseOverdueAmount(r),0);
   const totalInc=incData.reduce((s,r)=>s+calcRemaining(r),0);
   let html='';
   if(!expData.length&&!incData.length){
@@ -2717,14 +3055,14 @@ function renderOverdue(){
       html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div style="font-weight:700;color:var(--navy);font-size:14px">&#128176; Overdue Income</div><button class="action-btn" style="background:#25D366;color:#fff;padding:7px 16px;font-weight:700" onclick="startWaBroadcast()">&#128172; Send to All</button></div>';
       html+='<div style="margin-bottom:10px"><span class="badge badge-amber" style="font-size:13px;padding:5px 14px">Remaining Total: '+BD(totalInc)+'</span></div>';
       html+='<div class="tbl-wrap" style="margin-bottom:20px"><table><thead><tr><th>Date</th><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Action</th></tr></thead><tbody>'+
-        incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
+        incData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${expenseOverdueDueHTML(r)}</td><td>${r.customer_name||'&#8212;'}</td><td>${r.horse_name||'&#8212;'}</td><td><span class="badge badge-amber">${r.activity||''}</span></td><td class="money-green">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td style="white-space:nowrap"><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('income',${r.id},${r.amount_bd})">&#9989; Mark Paid</button> <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px" title="Send WhatsApp reminder" onclick="sendWhatsAppReminder('${r.id}')">&#128172; Remind</button></td></tr>`).join('')+
         '</tbody></table></div>';
     }
     if(expData.length){
       html+='<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px">&#128184; Overdue Expenses</div>';
-      html+='<div style="margin-bottom:10px"><span class="badge badge-red" style="font-size:13px;padding:5px 14px">Remaining Total: '+BD(totalExp)+'</span></div>';
-      html+='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Details</th><th>Action</th></tr></thead><tbody>'+
-        expData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${fmt(r.due_date)}</td><td><span class="badge badge-amber">${esc(r.category||'')}</span></td><td>${esc(r.supplier||'&#8212;')}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td>${expenseDetailsCell(r)}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('expenses',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
+      html+='<div style="margin-bottom:10px"><span class="badge badge-red" style="font-size:13px;padding:5px 14px">Due Now Total: '+BD(totalExp)+'</span></div>';
+      html+='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Due Date</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Due Now</th><th>Details</th><th>Installments</th><th>Action</th></tr></thead><tbody>'+
+        expData.map(r=>`<tr><td>${fmt(r.date)}</td><td style="color:var(--red);font-weight:700">${expenseOverdueDueHTML(r)}</td><td><span class="badge badge-amber">${esc(r.category||'')}</span></td><td>${esc(r.supplier||'&#8212;')}</td><td class="money-red">${BD(r.amount_bd)}</td><td>${BD(r.paid_bd)}</td><td class="money-red">${BD(calcRemaining(r))}</td><td class="money-red">${BD(expenseOverdueAmount(r))}</td><td>${expenseDetailsCell(r)}</td><td>${expenseInstallmentsCell(r)}</td><td><button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:6px 12px" onclick="markPaid('expenses',${r.id},${r.amount_bd})">&#9989; Mark Paid</button></td></tr>`).join('')+
         '</tbody></table></div>';
     }
   }
@@ -3059,15 +3397,29 @@ function editExpense(id){
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ee-total" value="${r.amount_bd}" readonly></div>
     <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ee-paid" value="${r.paid_bd||0}"></div>
     <div class="form-group"><label>Horse</label><select id="ee-horse"><option value="">&#8212;</option>${hOpts(r.horse)}</select></div>
-    <div class="form-group" style="grid-column:1/-1"><label>Expense Details / Agreement / Invoice</label><textarea id="ee-notes" rows="9" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical">${esc(r.notes||'')}</textarea></div>
+    <div class="form-group" style="grid-column:1/-1"><label>Agreement / Expense Details (text)</label><textarea id="ee-notes" rows="7" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical">${esc(expenseDetailsText(r)||'')}</textarea></div>
+    <div class="form-group" style="grid-column:1/-1">
+      <label>Invoice</label>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa;display:grid;gap:10px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="action-btn" style="background:#EEF3FF;color:var(--navy);padding:8px 12px" onclick="document.getElementById('ee-invoice-file').click()">&#128206; Attach Invoice</button>
+          <input type="file" id="ee-invoice-file" accept="image/*,.pdf" style="display:none" onchange="handleInvoiceAttachment('ee',this)">
+          <span id="ee-invoice-file-name" style="font-size:12px;color:var(--muted)">No invoice attached</span>
+          <button type="button" class="action-btn" style="background:#FDECEA;color:var(--red);padding:7px 10px" onclick="clearInvoiceAttachment('ee')">Remove</button>
+        </div>
+        <div class="tbl-wrap"><table style="margin:0"><thead><tr><th>Invoice Item / Description</th><th>Amount BD</th><th></th></tr></thead><tbody id="ee-invoice-lines"></tbody><tfoot><tr><th>Total</th><th id="ee-invoice-total">BHD 0.000</th><th></th></tr></tfoot></table></div>
+        <div><button type="button" class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px" onclick="addInvoiceLine('ee')">&#10133; Add Invoice Line</button></div>
+      </div>
+    </div>
   </div><div class="btn-row"><button class="btn btn-red" onclick="saveExpense(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+  renderInvoiceEditor('ee',expenseInvoice(r));
 }
 async function saveExpense(id){
   const qty=parseFloat(document.getElementById('ee-qty').value)||1;
   const amt=parseFloat(document.getElementById('ee-amt').value)||0;
   const total=qty*amt;const paid=parseFloat(document.getElementById('ee-paid').value)||0;
   if(!validatePaymentInput(total,paid,'Expense'))return;
-  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:normalizeActivityCategory(document.getElementById('ee-cat').value),supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:document.getElementById('ee-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
+  try{await sbPatch('expenses',id,{date:document.getElementById('ee-date').value||null,due_date:document.getElementById('ee-due').value||null,category:normalizeActivityCategory(document.getElementById('ee-cat').value),supplier:document.getElementById('ee-sup').value,qty,amount_bd:total,paid_bd:paid,horse:document.getElementById('ee-horse').value||null,notes:buildExpenseNotes(document.getElementById('ee-notes').value||'',expenseInstallments(expenses.find(x=>String(x.id)===String(id))||{}),collectInvoiceData('ee')),status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){alert('Error: '+e.message);}
 }
 function editHorse(id){
   const h=horses.find(x=>x.id===id);if(!h)return;
@@ -3132,7 +3484,17 @@ async function markPaid(t,id,amt){
   // Capture record BEFORE reload (for the thank-you message)
   const rec=(t==='income')?row:null;
   try{
-    await sbPatch(t,id,{paid_bd:finalAmount,status:'Paid'});
+    const payload={paid_bd:finalAmount,status:'Paid'};
+    if(t==='expenses'&&row){
+      const meta=expenseMeta(row);
+      const plan=expenseInstallments(row);
+      if(plan.length){
+        const payDate=todayISOForInstallment();
+        plan.forEach(i=>{const rem=installmentRemaining(i);if(rem>0.0004)i.payments.push({date:payDate,amount:money3(rem),note:'Marked paid from expense'});});
+        payload.notes=buildExpenseNotes(meta.details,plan,meta.invoice);
+      }
+    }
+    await sbPatch(t,id,payload);
     await loadAll();
     // Offer a thank-you WhatsApp message (income only)
     if(rec&&confirm('✅ Marked as Paid!\n\nSend a thank-you WhatsApp message to '+(rec.customer_name||'the customer').split('|')[0].trim()+'?')){
@@ -3205,6 +3567,7 @@ function renderPag(id,total,cur,fn){
   el.innerHTML=h;
 }
 applyLanguage(currentLang);
+renderInvoiceEditor('exp',null);
 loadAll();
 
 
