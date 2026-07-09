@@ -19,8 +19,8 @@
       "purpose": "any maskable"
     }
   ],
-  "id": "./",
-  "name": "Country Club Equestrian",
-  "short_name": "CC Equestrian",
-  "start_url": "./"
+  "id": "./?app=book",
+  "name": "Country Club Equestrian — Booking Portal",
+  "short_name": "CCE Booking",
+  "start_url": "./?app=book"
 }

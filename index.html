@@ -4,7 +4,36 @@
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" id="cceManifestLink" href="manifest.json">
+  <script>
+  // Keep each Add-to-Home-Screen shortcut locked to its portal.
+  // Without this, the shared manifest.json start_url opens the full app after relaunch.
+  (function(){
+    try{
+      var mode=(new URLSearchParams(window.location.search).get('app')||'full').toLowerCase();
+      var manifestMap={
+        full:'manifest.json?v=portal-fix-20260709',
+        book:'manifest-book.json?v=portal-fix-20260709',
+        stable:'manifest-stable.json?v=portal-fix-20260709',
+        instructor:'manifest-instructor.json?v=portal-fix-20260709'
+      };
+      var titleMap={
+        full:'CC Equestrian',
+        book:'CCE Booking',
+        stable:'CCE Owners',
+        instructor:'CCE Instructor'
+      };
+      var link=document.getElementById('cceManifestLink');
+      if(link) link.setAttribute('href', manifestMap[mode]||manifestMap.full);
+      function setAppleTitle(){
+        var appleTitle=document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if(appleTitle) appleTitle.setAttribute('content', titleMap[mode]||titleMap.full);
+      }
+      setAppleTitle();
+      document.addEventListener('DOMContentLoaded', setAppleTitle);
+    }catch(e){console.warn('[CCE] manifest portal setup failed',e);}
+  })();
+  </script>
   <meta name="theme-color" content="#1A2744">
   <meta name="description" content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل.">
   <meta name="mobile-web-app-capable" content="yes">
@@ -5361,7 +5390,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=5-fix-20260707', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=6-portal-start-url-20260709', {scope:'./'})
       .then(reg => {
         console.log('[CCE] SW registered:', reg.scope);
         reg.update();

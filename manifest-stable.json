@@ -19,8 +19,8 @@
       "purpose": "any maskable"
     }
   ],
-  "id": "./",
-  "name": "Country Club Equestrian",
-  "short_name": "CC Equestrian",
-  "start_url": "./"
+  "id": "./?app=stable",
+  "name": "Country Club Equestrian — Owners Portal",
+  "short_name": "CCE Owners",
+  "start_url": "./?app=stable"
 }

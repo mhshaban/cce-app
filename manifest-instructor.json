@@ -19,8 +19,8 @@
       "purpose": "any maskable"
     }
   ],
-  "id": "./",
-  "name": "Country Club Equestrian",
-  "short_name": "CC Equestrian",
-  "start_url": "./"
+  "id": "./?app=instructor",
+  "name": "Country Club Equestrian — Instructor Portal",
+  "short_name": "CCE Instructor",
+  "start_url": "./?app=instructor"
 }
