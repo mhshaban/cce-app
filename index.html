@@ -11,7 +11,7 @@
     window.CCE_PORTAL_MODE='full';
     try{ localStorage.removeItem('cce_last_portal'); }catch(_e){}
     var link=document.getElementById('cceManifestLink');
-    if(link) link.setAttribute('href','manifest.json?v=unified-20260711-120');
+    if(link) link.setAttribute('href','manifest.json?v=unified-20260711-130');
   })();
   </script>
   <meta name="theme-color" content="#1A2744">
@@ -478,7 +478,7 @@ html[dir="rtl"] .pie-legend-item {
 }
 
 </style>
-  <link rel="stylesheet" href="member-portal.css?v=20260711-120">
+  <link rel="stylesheet" href="member-portal.css?v=20260711-130">
 </head>
 <body>
 
@@ -535,7 +535,7 @@ html[dir="rtl"] .pie-legend-item {
     <section class="public-hero">
       <div class="public-hero-content">
         <div class="public-hero-logo" aria-label="Country Club Equestrian">
-          <img src="icons/icon-192.png" alt="Country Club Equestrian logo">
+          <img src="icons/logo-transparent.png" alt="Country Club Equestrian logo">
         </div>
         <h1 data-i18n="publicHeroTitle">احجز تجربتك مع نادي الريف للفروسية<span>تدريب، جولات، وإيواء خيل في البحرين</span></h1>
         <p data-i18n="publicHeroDescription">تدريب ركوب الخيل، جولات ترفيهية، وخدمات إيواء متكاملة — اختر الخدمة المناسبة وأرسل طلبك مباشرة دون الحاجة إلى إنشاء حساب.</p>
@@ -1218,12 +1218,10 @@ html[dir="rtl"] .pie-legend-item {
 <div class="app-page" id="page-owner">
   <div class="login-wrap" id="ownerLoginWrap">
     <div class="login-box">
-      <div class="login-icon">&#128052;</div>
-      <div class="login-title">Owner Portal</div>
-      <div class="login-sub">Owner Portal — Enter password to login</div>
-      <input class="inp" type="password" id="ownerPwd" placeholder="Enter password..." onkeydown="if(event.key==='Enter')doOwnerLogin()">
-      <button class="login-btn" onclick="doOwnerLogin()">🔐 Login</button>
-      <div class="err" id="ownerErr" style="display:none">❌ Incorrect password. Contact admin.</div>
+      <div class="login-icon">🔐</div>
+      <div class="login-title">Member Login Required</div>
+      <div class="login-sub">دخول ملاك الخيل يتم من بوابة الأعضاء الموحدة</div>
+      <button class="login-btn" onclick="navigate('admin')">Open Member Login</button>
     </div>
   </div>
   <div id="ownerPortal" style="display:none;padding:20px;max-width:700px;margin:0 auto">
@@ -1309,8 +1307,8 @@ html[dir="rtl"] .pie-legend-item {
       <div class="login-icon">🔐</div>
       <div class="login-title">Member Login</div>
       <div class="login-sub">تسجيل دخول موحّد لجميع الأعضاء</div>
-      <label class="member-field-label" for="adminEmail">Email / البريد الإلكتروني</label>
-      <input class="inp" type="email" id="adminEmail" placeholder="name@example.com" autocomplete="username">
+      <label class="member-field-label" for="adminEmail">Username or Email / اسم المستخدم أو البريد</label>
+      <input class="inp" type="text" id="adminEmail" placeholder="username أو name@example.com" autocomplete="username" autocapitalize="none" spellcheck="false">
       <label class="member-field-label" for="adminPwd">Password / كلمة المرور</label>
       <input class="inp" type="password" id="adminPwd" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()">
       <button class="login-btn" id="memberLoginBtn" onclick="doAdminLogin()">🔐 Login</button>
@@ -3340,7 +3338,7 @@ function renderHorses(){
       h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Click to change status" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FEF3E2;color:var(--amber);padding:8px 10px;font-size:15px" title="Owner Password" onclick="editOwnerPwd(${hid})">&#128273;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Click to change status" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
@@ -3566,46 +3564,7 @@ function renderBookings(){
   renderPag('bookPag',pages,bookPage,p=>{bookPage=p;renderBookings();});
 }
 
-function editOwnerPwd(id){
-  const h=horses.find(x=>x.id===id);if(!h)return;
-  const horseName=h.horse_name||'';
-  const ownerName=h.owner||'';
-  const isSet=!!h.owner_pwd;
-  openModal('&#128273; Owner Password — '+horseName,`
-    <div style="margin-bottom:14px;padding:12px;background:var(--sand);border-radius:10px;font-size:13px">
-      <strong>Horse:</strong> ${esc(horseName)}<br>
-      <strong>Owner:</strong> ${esc(ownerName)}<br>
-      <strong>Password status:</strong> ${isSet?'Set / protected':'Not set'}<br>
-      <strong>Login via:</strong> Password only. The password is never displayed here.
-    </div>
-    <div class="form-grid" style="grid-template-columns:1fr">
-      <div class="form-group">
-        <label>New Password</label>
-        <input type="password" id="opwd-new" placeholder="Enter new password..." value="" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label>Confirm Password</label>
-        <input type="password" id="opwd-confirm" placeholder="Repeat new password..." autocomplete="new-password">
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Leave both fields blank to remove the owner password. New passwords are stored as SHA-256 hashes in the existing owner_pwd field.</div>
-    <div class="btn-row">
-      <button class="btn btn-amber" onclick="saveOwnerPwd(${id})">&#128190; Save / Reset Password</button>
-      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
-    </div>`);
-}
-async function saveOwnerPwd(id){
-  const np=document.getElementById('opwd-new').value.trim();
-  const cp=document.getElementById('opwd-confirm').value.trim();
-  if(np&&np!==cp){alert('Passwords do not match!');return;}
-  try{
-    const hashed=np?await hashSecret(np):null;
-    await sbPatch('horses',id,{owner_pwd:hashed});
-    const h=horses.find(x=>x.id===id);if(h)h.owner_pwd=hashed;
-    closeModal();
-    alert('✅ Owner password '+(np?'updated and protected':'removed')+' successfully!');
-  }catch(e){showError('Error',e);}
-}
+// Owner access is managed through unified member accounts; legacy horse passwords are no longer edited here.
 
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modalOverlay').classList.remove('hidden');}
 function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
@@ -4079,51 +4038,11 @@ function resetTraining(){
 // ══════════════════════════════════════════════════════════
 // OWNER PORTAL SCRIPT
 // ══════════════════════════════════════════════════════════
-let ownerHorses=[];let currentOwner='';let currentOwnerSecret=sessionStorage.getItem('owner_secret')||'';
+let ownerHorses=[];let currentOwner='';
 
 function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').trim():'';}
 
-async function doOwnerLogin(){
-  const pwd=document.getElementById('ownerPwd').value.trim();
-  if(!pwd){alert('الرجاء إدخال كلمة المرور');return;}
-  const errEl=document.getElementById('ownerErr');
-  const btn=document.querySelector('#ownerLoginWrap .login-btn');
-  btn.textContent='⏳ Checking...';btn.disabled=true;
-  try{
-    const hashed=await sha256Hex(pwd);
-    let matched=await sbRpc('cce_owner_get_horses',{p_owner_secret:hashed});
-    if(!matched.length) matched=await sbRpc('cce_owner_get_horses',{p_owner_secret:pwd});
-    if(!matched.length){
-      if(errEl) errEl.style.display='block';
-      btn.textContent='🔐 Login';btn.disabled=false;return;
-    }
-    ownerHorses=matched;currentOwner=matched[0].owner||'Owner';
-    currentOwnerSecret=String(matched[0].owner_pwd||hashed||pwd);
-    sessionStorage.setItem('owner_secret',currentOwnerSecret);
-    sessionStorage.setItem('owner_name',currentOwner);
-    sessionStorage.setItem('owner_auth','true');
-    if(errEl) errEl.style.display='none';
-    showOwnerPortal();
-  }catch(e){showError('Login Error',e);btn.textContent='🔐 Login';btn.disabled=false;}
-}
-
-function showOwnerPortal(){
-  document.getElementById('ownerLoginWrap').style.display='none';
-  document.getElementById('ownerPortal').style.display='block';
-  document.getElementById('logoutOwnerBtn').classList.remove('hidden');
-  document.getElementById('ownerNameDisplay').textContent=currentOwner;
-  renderOwnerHorses();
-}
-
-function logoutOwner(){
-  sessionStorage.removeItem('owner_phone');sessionStorage.removeItem('owner_name');sessionStorage.removeItem('owner_auth');sessionStorage.removeItem('owner_secret');
-  ownerHorses=[];currentOwner='';currentOwnerSecret='';
-  document.getElementById('ownerLoginWrap').style.display='flex';
-  document.getElementById('ownerPortal').style.display='none';
-  const ownerPwdEl=document.getElementById('ownerPwd'); if(ownerPwdEl) ownerPwdEl.value='';
-  document.getElementById('logoutOwnerBtn').classList.add('hidden');
-}
-
+// Owner authentication is handled only by the unified Supabase member session.
 function renderOwnerHorses(){
   document.getElementById('ownerHorseList').innerHTML=ownerHorses.map((h,i)=>`
     <div class="horse-card" style="flex-direction:column;align-items:flex-start;margin-bottom:14px">
@@ -4196,27 +4115,8 @@ function humanSupabaseError(e){
   return msg;
 }
 
-async function ownerUpdateHorse(id,data){
-  const secret=currentOwnerSecret||sessionStorage.getItem('owner_secret')||'';
-  if(!secret) throw new Error('Owner session expired. Please logout and login again.');
-  const payload={p_horse_id:id,p_owner_secret:secret};
-  Object.keys(data).forEach(k=>{payload['p_'+k]=data[k];});
-  const r=await fetch(`${SB_URL}/rest/v1/rpc/cce_owner_update_horse`,{
-    method:'POST',
-    headers:buildHeaders('return=representation'),
-    body:JSON.stringify(payload)
-  });
-  const txt=await r.text();
-  let json=null;try{json=txt?JSON.parse(txt):null;}catch(e){}
-  if(!r.ok){
-    const msg=(json&&(json.message||json.error))||txt||('Supabase request failed: '+r.status);
-    if(msg.includes('cce_owner_update_horse')||msg.includes('function')||msg.includes('schema cache')){
-      throw new Error('Owner update function is not installed yet. Run the included Supabase SQL file once, then try again.');
-    }
-    throw new Error(msg);
-  }
-  if(Array.isArray(json)&&json[0])return json;
-  return json||[];
+async function ownerUpdateHorse(){
+  throw new Error('Please sign in through the unified Member Login.');
 }
 
 async function saveOwnerHorse(i,id){
@@ -4255,27 +4155,11 @@ async function saveOwnerHorse(i,id){
 // ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
-// Auto-restore owner session
-const savedPhone=sessionStorage.getItem('owner_phone');
-const savedOwnerName=sessionStorage.getItem('owner_name');
-if(savedPhone){
-  // Will reload on navigate to owner page
-}
-
 // Load CC horses when booking page is shown
 const _origNavigate = window.navigate || navigate;
 window.navigate = function(page){
   _origNavigate(page);
   if(page==='booking') loadCCHorses();
-  if(page==='owner' && sessionStorage.getItem('owner_auth')==='true' && sessionStorage.getItem('owner_secret')){
-    // restore owner session without loading all horses
-    (async()=>{
-      try{
-        const matched=await sbRpc('cce_owner_get_horses',{p_owner_secret:sessionStorage.getItem('owner_secret')});
-        if(matched.length){ownerHorses=matched;currentOwner=savedOwnerName||matched[0].owner||'Owner';showOwnerPortal();}
-      }catch(e){console.log('owner restore skipped:',userSafeError(e));}
-    })();
-  }
 };
 
 setInterval(()=>{if(APP_MODE==='full'&&currentPage==='dashboard'&&isAdminAuthed())loadAll();},10*60*1000);
@@ -5650,6 +5534,6 @@ window.addEventListener('appinstalled', () => {
 });
 
 </script>
-<script src="member-portal.js?v=20260711-120"></script>
+<script src="member-portal.js?v=20260711-130"></script>
 </body>
 </html>

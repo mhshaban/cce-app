@@ -37,6 +37,8 @@
   const html = value => typeof esc === 'function' ? esc(text(value)) : text(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const attr = value => typeof escAttr === 'function' ? escAttr(text(value)) : html(value);
   const initials = name => text(name).trim().split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase() || 'U';
+  const normalizeUsername = value => text(value).trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '');
+  const isInternalMemberEmail = value => text(value).toLowerCase().endsWith('@members.countryclubequestrian.com');
 
   function normalizeAccess(raw) {
     if (Array.isArray(raw)) raw = raw[0] || null;
@@ -100,6 +102,16 @@
     return body;
   }
 
+  async function resolveLoginEmail(identifier) {
+    const value = text(identifier).trim();
+    if (!value) throw new Error('Enter username or email.');
+    if (value.includes('@')) return value.toLowerCase();
+    const resolved = await sbRpc('cce_resolve_login_identifier', {p_identifier:value});
+    const email = typeof resolved === 'string' ? resolved : '';
+    if (!email) throw new Error('Invalid username/email or password.');
+    return email;
+  }
+
   async function refreshMemberSession() {
     const refreshToken = sessionStorage.getItem(REFRESH_KEY);
     if (!refreshToken) return false;
@@ -126,17 +138,18 @@
   }
 
   window.doAdminLogin = async function doUnifiedMemberLogin() {
-    const email = text(document.getElementById('adminEmail')?.value).trim();
+    const identifier = text(document.getElementById('adminEmail')?.value).trim();
     const password = text(document.getElementById('adminPwd')?.value);
     const err = document.getElementById('adminErr');
     const button = document.getElementById('memberLoginBtn');
     if (err) err.style.display = 'none';
-    if (!email || !password) {
-      if (err) { err.textContent = '❌ Enter email and password / أدخل البريد وكلمة المرور'; err.style.display = 'block'; }
+    if (!identifier || !password) {
+      if (err) { err.textContent = '❌ Enter username/email and password / أدخل اسم المستخدم أو البريد وكلمة المرور'; err.style.display = 'block'; }
       return;
     }
     if (button) { button.disabled = true; button.textContent = '⏳ Signing in…'; }
     try {
+      const email = await resolveLoginEmail(identifier);
       await authRequest('password', {email, password});
       await fetchMyAccess(false);
       document.getElementById('adminPwd').value = '';
@@ -284,7 +297,7 @@
     hideByPermission('#breedSaveBtn,[onclick^="addBreeding"]', 'breeding.create');
     hideByPermission('[onclick^="editIncome"],[onclick^="markPaid(\'income\'"]', 'income.update');
     hideByPermission('[onclick^="editExpense"],[onclick^="markPaid(\'expenses\'"]', 'expenses.update');
-    hideByPermission('[onclick^="editHorse"],[onclick^="toggleHorse"],[onclick^="editOwnerPwd"]', 'horses.update');
+    hideByPermission('[onclick^="editHorse"],[onclick^="toggleHorse"]', 'horses.update');
     hideByPermission('[onclick^="editBreeding"]', 'breeding.update');
     hideByPermission('[onclick^="openAddSchedule"],[onclick^="saveSchedule"]', 'schedule.create');
     hideByPermission('[onclick^="editSchedule"],[onclick^="markScheduleDone"]', 'schedule.update');
@@ -496,8 +509,10 @@
     panel.innerHTML = `<div class="member-user-grid">${users.map(user => {
       const profile = userProfile(user); const role = effectiveUserRole(user);
       const mapping = profile.owner_name ? `Owner: ${html(profile.owner_name)}` : profile.instructor_id ? `Trainer linked` : '';
+      const loginEmail = user.email || profile.email || '';
+      const emailLabel = isInternalMemberEmail(loginEmail) ? 'Internal member account' : loginEmail;
       return `<article class="member-user-card">
-        <div class="member-user-head"><div class="member-avatar">${html(initials(profile.full_name || user.email))}</div><div><div class="member-user-name">${html(profile.full_name || 'Unnamed user')}</div><div class="member-user-email">${html(user.email || profile.email || '')}</div></div></div>
+        <div class="member-user-head"><div class="member-avatar">${html(initials(profile.full_name || profile.username || loginEmail))}</div><div><div class="member-user-name">${html(profile.full_name || 'Unnamed user')}</div><div class="member-user-email">${profile.username ? '@'+html(profile.username)+' · ' : ''}${html(emailLabel)}</div></div></div>
         <div class="member-user-meta"><span class="member-chip">${html(role.name_en || role.code || 'No role')}</span><span class="member-chip ${profile.is_active === false ? 'inactive':'active'}">${profile.is_active === false ? 'Inactive':'Active'}</span>${mapping ? `<span class="member-chip">${mapping}</span>`:''}</div>
         <div class="member-user-actions">
           ${hasPermission('users.manage') ? `<button onclick="openEditMember('${attr(user.id)}')">✏️ Edit</button><button class="warn" onclick="openResetMemberPassword('${attr(user.id)}','${attr(profile.full_name || user.email)}')">🔑 Password</button><button class="${profile.is_active === false ? '' : 'danger'}" onclick="toggleMemberActive('${attr(user.id)}',${profile.is_active === false})">${profile.is_active === false ? '✓ Activate':'⛔ Deactivate'}</button>` : ''}
@@ -614,24 +629,27 @@
     if (!hasPermission('users.manage')) return;
     openModal('➕ Add Member', `<div class="form-grid">
       <div class="form-group"><label>Full name *</label><input id="member-name" type="text"></div>
-      <div class="form-group"><label>Email *</label><input id="member-email" type="email" autocomplete="off"></div>
+      <div class="form-group"><label>Username *</label><input id="member-username" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. mohamed"></div>
+      <div class="form-group"><label>Email (optional)</label><input id="member-email" type="email" autocomplete="off" placeholder="Leave blank for an internal account"></div>
       <div class="form-group"><label>Temporary password *</label><input id="member-password" type="password" autocomplete="new-password"></div>
       <div class="form-group"><label>Phone</label><input id="member-phone" type="tel"></div>
       <div class="form-group"><label>Role *</label><select id="member-role">${roleOptions('')}</select></div>
       <div class="form-group"><label>Status</label><select id="member-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
       <div class="form-group"><label>Owner mapping</label>${ownerOptions('')}</div>
       <div class="form-group"><label>Instructor mapping</label><select id="member-instructor">${instructorOptions('')}</select></div>
-    </div><div class="member-login-note">For owner accounts, enter the owner name exactly as stored in the Horses table. For trainers, select the matching instructor record.</div><div class="btn-row"><button class="btn btn-green" onclick="saveNewMember()">Create account</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+    </div><div class="member-login-note">Username: 3–32 lowercase letters, numbers, dot, dash, or underscore. Email is optional; when omitted, the system creates a private internal login email. For owner accounts, enter the owner name exactly as stored in the Horses table. For trainers, select the matching instructor record.</div><div class="btn-row"><button class="btn btn-green" onclick="saveNewMember()">Create account</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
   };
 
   window.saveNewMember = async function saveNewMember() {
     const payload = {
+      username:normalizeUsername(document.getElementById('member-username')?.value),
       email:text(document.getElementById('member-email')?.value).trim(), password:text(document.getElementById('member-password')?.value),
       full_name:text(document.getElementById('member-name')?.value).trim(), phone:text(document.getElementById('member-phone')?.value).trim() || null,
       role_id:document.getElementById('member-role')?.value || null, is_active:document.getElementById('member-active')?.value !== 'false',
       owner_name:text(document.getElementById('member-owner')?.value).trim() || null, instructor_id:document.getElementById('member-instructor')?.value || null
     };
-    if (!payload.email || !payload.password || !payload.full_name || !payload.role_id) return alert('Name, email, password and role are required.');
+    if (!payload.username || !payload.password || !payload.full_name || !payload.role_id) return alert('Name, username, password and role are required.');
+    if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(payload.username)) return alert('Username must be 3–32 characters and use lowercase letters, numbers, dot, dash, or underscore.');
     try { await callAdminUsers('create_user', {user:payload}); closeModal(); accessAdminData = null; await loadAccessAdmin(true); alert('✅ User created successfully.'); }
     catch (error) { showError('Create user', error); }
   };
@@ -640,8 +658,10 @@
     if (!hasPermission('users.manage')) return;
     const user = (accessAdminData?.users || []).find(item => item.id === userId); if (!user) return;
     const profile = userProfile(user);
+    const suggestedUsername = profile.username || normalizeUsername((user.email || profile.email || '').split('@')[0]);
     openModal('✏️ Edit Member', `<div class="form-grid">
       <div class="form-group"><label>Full name *</label><input id="member-name" type="text" value="${attr(profile.full_name || '')}"></div>
+      <div class="form-group"><label>Username *</label><input id="member-username" type="text" value="${attr(suggestedUsername)}" autocapitalize="none" spellcheck="false"></div>
       <div class="form-group"><label>Email</label><input id="member-email" type="email" value="${attr(user.email || profile.email || '')}"></div>
       <div class="form-group"><label>Phone</label><input id="member-phone" type="tel" value="${attr(profile.phone || '')}"></div>
       <div class="form-group"><label>Role *</label><select id="member-role" onchange="applySelectedRolePermissions()">${roleOptions(profile.role_id)}</select></div>
@@ -661,12 +681,14 @@
 
   window.saveEditedMember = async function saveEditedMember(userId) {
     const user = {
+      username:normalizeUsername(document.getElementById('member-username')?.value),
       email:text(document.getElementById('member-email')?.value).trim(), full_name:text(document.getElementById('member-name')?.value).trim(),
       phone:text(document.getElementById('member-phone')?.value).trim() || null, role_id:document.getElementById('member-role')?.value || null,
       is_active:document.getElementById('member-active')?.value !== 'false', owner_name:text(document.getElementById('member-owner')?.value).trim() || null,
       instructor_id:document.getElementById('member-instructor')?.value || null, permission_overrides:collectOverrides()
     };
-    if (!user.full_name || !user.role_id) return alert('Name and role are required.');
+    if (!user.full_name || !user.username || !user.role_id) return alert('Name, username and role are required.');
+    if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(user.username)) return alert('Username must be 3–32 characters and use lowercase letters, numbers, dot, dash, or underscore.');
     try { await callAdminUsers('update_user', {user_id:userId,user}); closeModal(); accessAdminData = null; await loadAccessAdmin(true); alert('✅ User updated.'); }
     catch (error) { showError('Update user', error); }
   };
