@@ -187,7 +187,7 @@
         pill.className = 'member-session-pill';
         headerRight.prepend(pill);
       }
-      pill.textContent = `● ${memberAccess.profile?.full_name || memberAccess.profile?.email || 'Member'} · ${memberAccess.role?.name_en || memberAccess.role?.code || ''}`;
+      pill.textContent = `● ${memberAccess.profile?.full_name || memberAccess.profile?.email || 'Member'} · ${memberAccess.role?.name_en || memberAccess.role?.code || ''} · ${permissionSet.size} permissions`;
       pill.title = memberAccess.profile?.email || '';
       pill.style.display = '';
     } else if (pill) pill.style.display = 'none';
@@ -202,8 +202,13 @@
 
   function routeForMember() {
     const portal = memberAccess?.portal || memberAccess?.role?.code;
-    if (portal === 'owner') return 'owner';
-    if (portal === 'trainer') return 'instructor';
+    const permissions = [...permissionSet];
+    const trainerOnly = permissions.length > 0 && permissions.every(code => ['schedule.view','schedule.update'].includes(code));
+    const ownerOnly = permissions.length > 0 && permissions.every(code => ['horses.view','horses.update'].includes(code));
+    // A linked owner or trainer can still have broader permissions. In that case the
+    // unified dashboard must be used so every authorized section remains visible.
+    if (portal === 'owner' && ownerOnly) return 'owner';
+    if (portal === 'trainer' && trainerOnly) return 'instructor';
     return 'dashboard';
   }
 

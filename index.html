@@ -478,7 +478,7 @@ html[dir="rtl"] .pie-legend-item {
 }
 
 </style>
-  <link rel="stylesheet" href="member-portal.css?v=20260711-200">
+  <link rel="stylesheet" href="member-portal.css?v=20260711-202">
 </head>
 <body>
 
@@ -1520,13 +1520,15 @@ html[dir="rtl"] .pie-legend-item {
 
 
     <div class="section" id="page-reports">
-      <div class="card">
-        <div class="card-title">&#128200; Advanced Financial Reports</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
-          Uses the same accounting rules as Dashboard: revenue is received cash, paid expenses are deducted from cash profit, and pending amounts are shown separately.
+      <div class="report-page-head">
+        <div>
+          <span class="report-kicker">Finance intelligence</span>
+          <h2>Advanced Financial Reports</h2>
+          <p>Cash performance, collection, expenses, customers and services in one clear view.</p>
         </div>
-        <div id="advancedReports"></div>
+        <span class="report-period-chip">Current month</span>
       </div>
+      <div id="advancedReports" class="advanced-reports"></div>
     </div>
 
     <div class="section" id="page-receipts">
@@ -5252,22 +5254,25 @@ function renderAdvancedReports(){
   const topServices=topBy(income,r=>r.activity,r=>moneyNum(r.paid_bd),10);
   const topExpenses=topBy(expenses,r=>r.category,r=>calcPaidExpenseAmount(r),10);
   const svcProfit=Object.entries(income.reduce((m,r)=>{const k=normalizeActivityCategory(r.activity);m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>normalizeActivityCategory(x.category)===k).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const metric=(tone,label,value,sub,icon)=>`<article class="report-metric ${tone}"><div class="report-metric-icon">${icon}</div><div class="report-metric-copy"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div></article>`;
   el.innerHTML=`
-    <div class="stats-grid" style="margin-bottom:14px">
-      <div class="stat-card green"><div class="stat-label">This Month Cash Profit</div><div class="stat-value">${BD(cur.netCash)}</div><div class="stat-sub">vs last month ${pctDelta(cur.netCash,prev.netCash)}</div></div>
-      <div class="stat-card navy"><div class="stat-label">Expected Profit</div><div class="stat-value">${BD(cur.expected)}</div><div class="stat-sub">includes pending/unpaid totals</div></div>
-      <div class="stat-card amber"><div class="stat-label">Collection Rate</div><div class="stat-value">${cur.collectionRate.toFixed(1)}%</div><div class="stat-sub">cash received / invoices</div></div>
-      <div class="stat-card red"><div class="stat-label">Expense Ratio</div><div class="stat-value">${cur.expenseRatio.toFixed(1)}%</div><div class="stat-sub">paid expenses / cash revenue</div></div>
-      <div class="stat-card"><div class="stat-label">Pending Income</div><div class="stat-value">${BD(cur.pendingIncome)}</div><div class="stat-sub">remaining to collect</div></div>
-      <div class="stat-card"><div class="stat-label">Unpaid Expenses</div><div class="stat-value">${BD(cur.unpaidExp)}</div><div class="stat-sub">remaining to pay</div></div>
+    <div class="report-metrics">
+      ${metric('positive','Cash profit',BD(cur.netCash),`vs last month ${pctDelta(cur.netCash,prev.netCash)}`,'↗')}
+      ${metric('navy','Expected profit',BD(cur.expected),'Includes pending and unpaid totals','◎')}
+      ${metric('gold','Collection rate',cur.collectionRate.toFixed(1)+'%','Cash received from invoiced value','✓')}
+      ${metric('danger','Expense ratio',cur.expenseRatio.toFixed(1)+'%','Paid expenses against cash revenue','%')}
+      ${metric('soft','Pending income',BD(cur.pendingIncome),'Remaining to collect','◷')}
+      ${metric('soft','Unpaid expenses',BD(cur.unpaidExp),'Remaining to pay','!')}
     </div>
-    <div class="two-col" style="margin-bottom:14px">
-      ${renderMiniTable(topCustomers,'Top Customers — Paid','var(--green)')}
-      ${renderMiniTable(topServices,'Top Services — Revenue','var(--amber)')}
+    <div class="report-insight-strip">
+      <div><span>Current month</span><strong>${curK}</strong></div>
+      <p>Prioritize collections when pending income rises, and review service profitability before expanding costs.</p>
     </div>
-    <div class="two-col">
-      ${renderMiniTable(topExpenses,'Top Expense Categories','var(--red)')}
-      ${renderMiniTable(svcProfit,'Estimated Service Profit','var(--navy)')}
+    <div class="report-grid">
+      <section class="report-panel">${renderMiniTable(topCustomers,'Top Customers — Paid','var(--green)')}</section>
+      <section class="report-panel">${renderMiniTable(topServices,'Top Services — Revenue','var(--amber)')}</section>
+      <section class="report-panel">${renderMiniTable(topExpenses,'Top Expense Categories','var(--red)')}</section>
+      <section class="report-panel">${renderMiniTable(svcProfit,'Estimated Service Profit','var(--navy)')}</section>
     </div>`;
 }
 function receiptNo(r){return 'CCE-'+String(r.date||'0000-00-00').replace(/-/g,'')+'-'+String(r.id||'').padStart(5,'0');}
@@ -5531,6 +5536,19 @@ window.addEventListener('appinstalled', () => {
 });
 
 </script>
-<script src="member-portal.js?v=20260711-200"></script>
+<script>
+(function(){
+  function normalizePortalBranding(){
+    document.querySelectorAll('.header-brand img').forEach(function(img){
+      img.src='icons/logo-transparent.png';
+      img.alt='Country Club Equestrian';
+      img.onerror=function(){this.onerror=null;this.src='icons/icon-192.png';};
+    });
+  }
+  document.addEventListener('DOMContentLoaded',normalizePortalBranding);
+  window.addEventListener('load',normalizePortalBranding);
+})();
+</script>
+<script src="member-portal.js?v=20260711-202"></script>
 </body>
 </html>
