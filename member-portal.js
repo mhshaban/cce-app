@@ -197,7 +197,13 @@
       pill.innerHTML = `<strong>${html(displayName)}</strong><small>${html(roleLabel)}</small>`;
       pill.title = memberAccess.profile?.email || '';
       pill.style.display = '';
-    } else if (pill) pill.style.display = 'none';
+      const publicBtn=document.getElementById('publicMemberButton');
+      if(publicBtn){publicBtn.textContent='My Portal';publicBtn.onclick=()=>routeMemberHome();}
+    } else {
+      if(pill) pill.style.display='none';
+      const publicBtn=document.getElementById('publicMemberButton');
+      if(publicBtn){publicBtn.textContent='🔐 Member Login';publicBtn.onclick=()=>window.navigate('admin');}
+    }
   }
 
   function resetProtectedPortals() {
@@ -410,8 +416,9 @@
     currentOwner = memberAccess.profile?.owner_name || memberAccess.profile?.full_name || 'Owner';
     const display = document.getElementById('ownerNameDisplay'); if (display) display.textContent = currentOwner;
     try {
-      const rows = await sbRpc('cce_member_owner_horses', {});
+      let rows = await sbRpc('cce_member_owner_horses', {});
       ownerHorses = Array.isArray(rows) ? rows : [];
+      if(!ownerHorses.length && currentOwner){try{ownerHorses=await sbGet('horses',`owner=ilike.${encodeURIComponent(currentOwner)}&select=*`);}catch(_e){}}
       renderOwnerHorses();
       const list = document.getElementById('ownerHorseList');
       if (list && !ownerHorses.length) {
