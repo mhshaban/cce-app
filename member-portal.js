@@ -187,7 +187,14 @@
         pill.className = 'member-session-pill';
         headerRight.prepend(pill);
       }
-      pill.textContent = `● ${memberAccess.profile?.full_name || memberAccess.profile?.email || 'Member'} · ${memberAccess.role?.name_en || memberAccess.role?.code || ''} · ${permissionSet.size} permissions`;
+      const roleCode = memberAccess.role?.code || '';
+      const roleLabels = {
+        super_admin:'Administrator', admin:'Administrator', manager:'Manager', accountant:'Accountant',
+        reception:'Reception', trainer:'Trainer', instructor:'Trainer', owner:'Horse Owner', horse_owner:'Horse Owner', staff:'Staff'
+      };
+      const roleLabel = roleLabels[roleCode] || memberAccess.role?.name_en || roleCode || 'Member';
+      const displayName = memberAccess.profile?.full_name || memberAccess.profile?.username || memberAccess.profile?.email || 'Member';
+      pill.innerHTML = `<strong>${html(displayName)}</strong><small>${html(roleLabel)}</small>`;
       pill.title = memberAccess.profile?.email || '';
       pill.style.display = '';
     } else if (pill) pill.style.display = 'none';
@@ -201,14 +208,16 @@
   }
 
   function routeForMember() {
-    const portal = memberAccess?.portal || memberAccess?.role?.code;
+    const portal = String(memberAccess?.portal || memberAccess?.role?.code || '').toLowerCase();
     const permissions = [...permissionSet];
-    const trainerOnly = permissions.length > 0 && permissions.every(code => ['schedule.view','schedule.update'].includes(code));
-    const ownerOnly = permissions.length > 0 && permissions.every(code => ['horses.view','horses.update'].includes(code));
-    // A linked owner or trainer can still have broader permissions. In that case the
-    // unified dashboard must be used so every authorized section remains visible.
-    if (portal === 'owner' && ownerOnly) return 'owner';
-    if (portal === 'trainer' && trainerOnly) return 'instructor';
+    const ownerCodes = new Set(['owner.horses.view','owner.horses.update','horses.view','horses.update']);
+    const trainerCodes = new Set(['schedule.view_own','schedule.update_own','schedule.view','schedule.update']);
+    const ownerOnly = permissions.length > 0 && permissions.every(code => ownerCodes.has(code));
+    const trainerOnly = permissions.length > 0 && permissions.every(code => trainerCodes.has(code));
+    // Linked owner/trainer accounts use their dedicated portal only when their
+    // effective permissions are limited to that portal. Broader accounts use Dashboard.
+    if ((portal === 'owner' || portal === 'horse_owner') && ownerOnly) return 'owner';
+    if ((portal === 'trainer' || portal === 'instructor') && trainerOnly) return 'instructor';
     return 'dashboard';
   }
 
@@ -250,8 +259,15 @@
   function permissionForPage(id) { return pagePermission[id] || []; }
   function canOpenDashPage(id) { return hasAny(permissionForPage(id)); }
 
+  function prefersSchedule() {
+    const role = String(memberAccess?.role?.code || memberAccess?.portal || '').toLowerCase();
+    return ['trainer','instructor','staff','operations'].includes(role) && canOpenDashPage('schedule');
+  }
+
   function firstAllowedDashboardPage() {
-    const order = ['dashboard','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+    const order = prefersSchedule()
+      ? ['schedule','bookings','horses','dashboard','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
+      : ['dashboard','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
@@ -267,7 +283,10 @@
   };
 
   window.showDashGroup = function guardedDashGroup(group) {
-    const pages = (window.DASH_GROUPS || DASH_GROUPS)[group] || [];
+    let pages = [...((window.DASH_GROUPS || DASH_GROUPS)[group] || [])];
+    if (group === 'operations' && prefersSchedule()) {
+      pages = ['schedule', ...pages.filter(page => page !== 'schedule')];
+    }
     const first = pages.find(canOpenDashPage);
     if (first) window.showDashPage(first, document.getElementById('nav-' + first));
     else legacyShowDashGroup(group);
@@ -394,8 +413,14 @@
       const rows = await sbRpc('cce_member_owner_horses', {});
       ownerHorses = Array.isArray(rows) ? rows : [];
       renderOwnerHorses();
-      if (!hasPermission('owner.horses.update')) document.querySelectorAll('#ownerHorseList .edit-toggle').forEach(x => x.style.display = 'none');
+      const list = document.getElementById('ownerHorseList');
+      if (list && !ownerHorses.length) {
+        list.innerHTML = '<div class="member-empty owner-empty-state"><strong>No horses linked to this account.</strong><span>Please ask the administrator to link the owner account to the correct horse record.</span></div>';
+      }
+      if (!hasPermission('owner.horses.update') && !hasPermission('horses.update')) document.querySelectorAll('#ownerHorseList .edit-toggle').forEach(x => x.style.display = 'none');
     } catch (error) {
+      const list = document.getElementById('ownerHorseList');
+      if (list) list.innerHTML = `<div class="permission-denied"><strong>Unable to load owner horses.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
       if (typeof showError === 'function') showError('Owner portal', error);
     }
   }

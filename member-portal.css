@@ -689,3 +689,162 @@ html[dir="rtl"] .report-metric:after{inset:0 0 0 auto}
   body.member-authenticated .header-brand{max-width:52vw!important}.report-metrics{grid-template-columns:1fr}.report-metric{min-height:98px}.report-page-head h2{font-size:1.3rem}.report-grid{gap:10px}
   body.member-authenticated .stats-grid{grid-template-columns:1fr!important}
 }
+
+/* =========================================================
+   CCE v2.0.3 — Release Candidate polish
+   Unified header, mobile reports, forms and portal defaults
+   ========================================================= */
+
+/* One header language across dashboard, owner, trainer and guest flows */
+#globalHeader{
+  min-height:82px!important;
+  padding:12px clamp(14px,3vw,28px)!important;
+  display:grid!important;
+  grid-template-columns:minmax(260px,auto) 1fr!important;
+  grid-template-areas:"brand actions"!important;
+  gap:18px!important;
+  align-items:center!important;
+  background:linear-gradient(135deg,#12213c,#1b3154)!important;
+  border-bottom:1px solid rgba(255,255,255,.1)!important;
+  box-shadow:0 8px 26px rgba(10,24,48,.14)!important;
+  direction:ltr!important;
+}
+#globalHeader .header-brand{
+  grid-area:brand!important;
+  justify-self:start!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  gap:12px!important;
+  min-width:0!important;
+  padding:8px 12px!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.055)!important;
+  direction:ltr!important;
+}
+#globalHeader .header-brand img{
+  width:48px!important;height:48px!important;object-fit:contain!important;
+  border-radius:0!important;padding:2px!important;background:transparent!important;
+  filter:brightness(0) invert(1)!important;opacity:.96!important;
+}
+#globalHeader .header-brand>div{min-width:0!important;text-align:left!important}
+#globalHeader .header-title{font-size:15px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#fff!important}
+#globalHeader .header-sub{font-size:11px!important;line-height:1.3!important;margin-top:3px!important;color:#D6A444!important}
+#globalHeader .header-right{
+  grid-area:actions!important;justify-self:end!important;display:flex!important;
+  align-items:center!important;justify-content:flex-end!important;gap:8px!important;
+  min-width:0!important;direction:ltr!important;
+}
+#globalHeader .member-session-pill{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  justify-content:center!important;min-height:44px!important;max-width:220px!important;
+  padding:7px 13px!important;border-radius:14px!important;background:#fff!important;
+  color:#162440!important;line-height:1.15!important;white-space:normal!important;
+}
+#globalHeader .member-session-pill strong{font-size:12px!important;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#globalHeader .member-session-pill small{font-size:10px!important;color:#6C7890!important;margin-top:3px!important}
+#globalHeader .sync-btn,#globalHeader .home-btn{
+  min-height:42px!important;padding:9px 12px!important;border-radius:12px!important;
+  font-size:11px!important;line-height:1!important;white-space:nowrap!important;
+}
+
+/* Typography balance throughout authenticated portal */
+body.member-authenticated{font-size:15px!important;line-height:1.5!important}
+body.member-authenticated .card-title{font-size:16px!important;line-height:1.35!important}
+body.member-authenticated .stat-label{font-size:11px!important;letter-spacing:.2px!important}
+body.member-authenticated .stat-value{font-size:clamp(21px,2.2vw,30px)!important;line-height:1.15!important}
+body.member-authenticated .stat-sub{font-size:12px!important}
+body.member-authenticated table{font-size:13px!important}
+body.member-authenticated th{font-size:11px!important}
+body.member-authenticated td{font-size:13px!important}
+
+/* All forms share one visual control size, including Safari date/time inputs */
+.app-page .form-group label,.app-page label.form-label{
+  display:block!important;font-size:14px!important;line-height:1.35!important;
+  font-weight:700!important;color:#66738C!important;margin:0 0 8px!important;
+}
+.app-page .form-group input,.app-page .form-group select,.app-page .form-group textarea,
+.app-page input[type="text"],.app-page input[type="email"],.app-page input[type="tel"],
+.app-page input[type="number"],.app-page input[type="date"],.app-page input[type="time"],
+.app-page input[type="password"],.app-page select,.app-page textarea{
+  box-sizing:border-box!important;width:100%;min-height:56px!important;height:56px;
+  padding:13px 15px!important;border:1px solid #DDD3BF!important;border-radius:14px!important;
+  background:#FFFCF7!important;color:#192844!important;font-size:16px!important;line-height:1.25!important;
+  appearance:none;-webkit-appearance:none!important;
+}
+.app-page textarea{height:auto!important;min-height:112px!important;resize:vertical}
+.app-page input[type="date"],.app-page input[type="time"]{display:block!important;text-align:start!important;color-scheme:light}
+.app-page input[type="date"]::-webkit-date-and-time-value,.app-page input[type="time"]::-webkit-date-and-time-value{text-align:start!important;min-height:24px}
+.app-page input::placeholder,.app-page textarea::placeholder{font-size:16px!important;color:#A3A5AA!important;opacity:1}
+
+/* Advanced reports: no wide clipped tables, clear rank cards */
+.report-grid{align-items:start!important}
+.report-panel{min-width:0!important;overflow:hidden!important}
+.report-list-card{background:#fff;border:1px solid #E0E5ED;border-radius:18px;padding:18px;box-shadow:0 7px 22px rgba(26,39,68,.05)}
+.report-list-title{font-size:16px;font-weight:900;color:var(--report-accent);padding-bottom:12px;margin-bottom:4px;border-bottom:2px solid #E6D6B4}
+.report-rank-list{display:grid;gap:0}
+.report-rank-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #EDF0F4;min-width:0}
+.report-rank-row:last-child{border-bottom:0}
+.report-rank{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:#F1F4F8;color:#68758A;font-size:11px;font-weight:900}
+.report-rank-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:#35435B}
+.report-rank-value{direction:ltr;unicode-bidi:isolate;white-space:nowrap;font-size:13px;color:#17243E}
+.report-no-data{padding:22px;text-align:center;color:#78849A}
+.owner-empty-state,.permission-denied{display:flex!important;flex-direction:column;gap:6px;align-items:center;justify-content:center;min-height:180px;text-align:center;padding:24px!important}
+.owner-empty-state span,.permission-denied span{font-size:13px;color:#78849A}
+
+@media(max-width:760px){
+  #globalHeader{
+    min-height:auto!important;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 11px!important;
+    grid-template-columns:1fr!important;grid-template-areas:"brand" "actions"!important;
+    gap:10px!important;position:relative!important;
+  }
+  #globalHeader .header-brand{width:100%!important;justify-self:stretch!important;padding:8px 10px!important}
+  #globalHeader .header-brand img{width:42px!important;height:42px!important}
+  #globalHeader .header-title{font-size:14px!important}
+  #globalHeader .header-sub{font-size:10px!important}
+  #globalHeader .header-right{
+    width:100%!important;justify-self:stretch!important;justify-content:flex-start!important;
+    overflow-x:auto!important;overscroll-behavior-x:contain!important;padding-bottom:2px!important;
+    scrollbar-width:none!important;
+  }
+  #globalHeader .header-right::-webkit-scrollbar{display:none}
+  #globalHeader .member-session-pill{order:-1;flex:0 0 auto;max-width:190px!important;min-height:42px!important}
+  #globalHeader .member-session-pill strong{font-size:11px!important;max-width:165px}
+  #globalHeader .member-session-pill small{font-size:9px!important}
+  #globalHeader .sync-btn,#globalHeader .home-btn{flex:0 0 auto!important;min-height:42px!important;font-size:10px!important;padding:8px 11px!important}
+
+  body.member-authenticated .content{padding:12px 10px 28px!important}
+  body.member-authenticated .card-title{font-size:15px!important}
+  body.member-authenticated .stat-value{font-size:20px!important}
+  body.member-authenticated .stat-label{font-size:10px!important}
+  body.member-authenticated table{font-size:12px!important}
+
+  .report-metrics{grid-template-columns:1fr 1fr!important;gap:10px!important}
+  .report-metric{min-height:112px!important;padding:14px!important}
+  .report-metric-copy strong{font-size:20px!important}
+  .report-metric-copy span{font-size:10px!important}
+  .report-metric-copy small{font-size:11px!important}
+  .report-insight-strip{padding:16px!important;gap:10px!important}
+  .report-insight-strip p{font-size:13px!important;line-height:1.6!important}
+  .report-grid{grid-template-columns:1fr!important;gap:12px!important}
+  .report-list-card{padding:14px;border-radius:16px}
+  .report-list-title{font-size:15px}
+  .report-rank-row{grid-template-columns:26px minmax(0,1fr);grid-template-areas:"rank name" ". value";gap:3px 9px;padding:11px 0}
+  .report-rank{grid-area:rank}.report-rank-name{grid-area:name;font-size:14px}.report-rank-value{grid-area:value;justify-self:start;font-size:13px;color:#647087}
+
+  .app-page .form-group label,.app-page label.form-label{font-size:13px!important}
+  .app-page .form-group input,.app-page .form-group select,.app-page .form-group textarea,
+  .app-page input[type="text"],.app-page input[type="email"],.app-page input[type="tel"],
+  .app-page input[type="number"],.app-page input[type="date"],.app-page input[type="time"],
+  .app-page input[type="password"],.app-page select,.app-page textarea{
+    min-height:54px!important;height:54px;font-size:16px!important;padding:12px 14px!important;border-radius:13px!important;
+  }
+  .app-page textarea{height:auto!important;min-height:105px!important}
+}
+
+@media(max-width:420px){
+  .report-metrics{grid-template-columns:1fr!important}
+  #globalHeader .header-brand{gap:9px!important}
+  #globalHeader .member-session-pill{max-width:170px!important}
+}
