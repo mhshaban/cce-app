@@ -644,24 +644,25 @@ html[dir="rtl"] .pie-legend-item {
         </div>
       </section>
 
-      <section class="public-contact" aria-labelledby="public-contact-title">
+      <section class="public-contact public-contact-compact" aria-labelledby="public-contact-title">
         <div class="public-contact-copy">
           <span class="public-section-kicker" data-i18n="publicContactKicker">تواصل معنا</span>
-          <h2 id="public-contact-title" data-i18n="publicContactTitle">نادي الريف للفروسية — جنوسان</h2>
-          <p data-i18n="publicContactText">للاستفسار عن الحجوزات والخدمات، تواصل معنا مباشرة أو افتح موقع النادي على الخريطة.</p>
-          <div class="public-contact-details">
-            <a href="tel:+97332266061" class="public-contact-line" aria-label="Call Country Club Equestrian">
-              <span>☎️</span><div><small data-i18n="publicPhoneLabel">رقم التواصل</small><strong dir="ltr">+973 3226 6061</strong></div>
-            </a>
-            <a href="https://share.google/HWnOzuiIoMzfFLtbb" target="_blank" rel="noopener noreferrer" class="public-contact-line" aria-label="Open Country Club Equestrian on Google Maps">
-              <span>📍</span><div><small data-i18n="publicLocationLabel">الموقع</small><strong data-i18n="publicLocationValue">نادي الريف — جنوسان، البحرين</strong></div>
-            </a>
-          </div>
+          <h2 id="public-contact-title" data-i18n="publicContactTitle">نادي الريف للفروسية</h2>
+          <p class="public-contact-location" data-i18n="publicLocationValue">جنوسان · مملكة البحرين</p>
         </div>
-        <div class="public-contact-actions">
-          <a class="public-contact-btn primary" href="https://wa.me/97332266061" target="_blank" rel="noopener noreferrer" data-i18n="publicWhatsApp">واتساب</a>
-          <a class="public-contact-btn" href="tel:+97332266061" data-i18n="publicCall">اتصال</a>
-          <a class="public-contact-btn" href="https://share.google/HWnOzuiIoMzfFLtbb" target="_blank" rel="noopener noreferrer" data-i18n="publicOpenMap">فتح الموقع</a>
+        <div class="public-contact-actions public-contact-actions-rich">
+          <a class="public-contact-btn primary public-contact-action" href="https://wa.me/97332266061" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp +973 3226 6061">
+            <span class="public-contact-action-icon" aria-hidden="true">💬</span>
+            <span><small data-i18n="publicWhatsApp">واتساب</small><strong dir="ltr">+973 3226 6061</strong></span>
+          </a>
+          <a class="public-contact-btn public-contact-action" href="https://www.instagram.com/countryclub__equestrian/" target="_blank" rel="noopener noreferrer" aria-label="Instagram countryclub__equestrian">
+            <span class="public-contact-action-icon" aria-hidden="true">◎</span>
+            <span><small data-i18n="publicInstagram">إنستغرام</small><strong dir="ltr">@countryclub__equestrian</strong></span>
+          </a>
+          <a class="public-contact-btn public-contact-action" href="https://maps.google.com/?q=26.230785,50.497482" target="_blank" rel="noopener noreferrer" aria-label="Open Country Club Equestrian location on Google Maps">
+            <span class="public-contact-action-icon" aria-hidden="true">📍</span>
+            <span><small data-i18n="publicOpenMap">فتح الموقع</small><strong data-i18n="publicLocationShort">خرائط Google</strong></span>
+          </a>
         </div>
       </section>
     </main>
@@ -1824,10 +1825,8 @@ const CCE_I18N={
     publicBenefit2Title:'Specialized training',publicBenefit2Text:'Options for beginners and advanced riders',
     publicBenefit3Title:'Selected horses',publicBenefit3Text:'A suitable horse is selected for each service',
     publicBenefit4Title:'Direct booking',publicBenefit4Text:'Send a guest request without signing in',
-    publicContactKicker:'Contact us',publicContactTitle:'Country Club Equestrian — Janusan',
-    publicContactText:'For bookings and service enquiries, contact us directly or open the club location on the map.',
-    publicPhoneLabel:'Contact number',publicLocationLabel:'Location',publicLocationValue:'Country Club Equestrian — Janusan, Bahrain',
-    publicWhatsApp:'WhatsApp',publicCall:'Call',publicOpenMap:'Open location',
+    publicContactKicker:'Contact us',publicContactTitle:'Country Club Equestrian',
+    publicLocationValue:'Janusan · Kingdom of Bahrain',publicWhatsApp:'WhatsApp',publicInstagram:'Instagram',publicOpenMap:'Open location',publicLocationShort:'Google Maps',
     publicFooter:'Country Club Equestrian · Bahrain'
   },
   ar:{
@@ -1864,10 +1863,8 @@ const CCE_I18N={
     publicBenefit2Title:'تدريب متخصص',publicBenefit2Text:'خيارات تدريب للمبتدئ والمتقدم',
     publicBenefit3Title:'خيول مختارة',publicBenefit3Text:'اختيار الخيل المناسب حسب الخدمة',
     publicBenefit4Title:'حجز مباشر',publicBenefit4Text:'أرسل طلبك كزائر دون تسجيل دخول',
-    publicContactKicker:'تواصل معنا',publicContactTitle:'نادي الريف للفروسية — جنوسان',
-    publicContactText:'للاستفسار عن الحجوزات والخدمات، تواصل معنا مباشرة أو افتح موقع النادي على الخريطة.',
-    publicPhoneLabel:'رقم التواصل',publicLocationLabel:'الموقع',publicLocationValue:'نادي الريف — جنوسان، البحرين',
-    publicWhatsApp:'واتساب',publicCall:'اتصال',publicOpenMap:'فتح الموقع',
+    publicContactKicker:'تواصل معنا',publicContactTitle:'نادي الريف للفروسية',
+    publicLocationValue:'جنوسان · مملكة البحرين',publicWhatsApp:'واتساب',publicInstagram:'إنستغرام',publicOpenMap:'فتح الموقع',publicLocationShort:'خرائط Google',
     publicFooter:'نادي الريف للفروسية · البحرين'
   }
 }

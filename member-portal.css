@@ -576,3 +576,18 @@ body.member-authenticated .member-permission-copy small{font-size:9px}
   .public-benefit-grid{grid-template-columns:1fr}
   body.member-authenticated .stats-grid{grid-template-columns:1fr}
 }
+
+
+/* CCE 2.0.1 — compact contact card */
+.public-contact.public-contact-compact{grid-template-columns:minmax(220px,.72fr) minmax(0,1.28fr);gap:28px;padding:28px 30px}
+.public-contact-compact .public-contact-copy>p.public-contact-location{margin-top:4px;font-size:14px;font-weight:700;color:#667086}
+.public-contact-actions-rich{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.public-contact-action{justify-content:flex-start;gap:11px;padding:11px 13px;min-height:64px;text-align:start}
+.public-contact-action>span:last-child{display:flex;min-width:0;flex-direction:column;line-height:1.35}
+.public-contact-action small{font-size:10px;font-weight:800;opacity:.82}
+.public-contact-action strong{margin-top:3px;font-size:12px;font-weight:900;white-space:nowrap;unicode-bidi:isolate}
+.public-contact-action-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#FFF3DC;font-size:18px;flex:0 0 auto}
+.public-contact-action.primary .public-contact-action-icon{background:rgba(255,255,255,.17)}
+html[dir="rtl"] .public-contact-action strong[dir="ltr"]{direction:ltr;text-align:left;unicode-bidi:isolate}
+@media(max-width:900px){.public-contact.public-contact-compact{grid-template-columns:1fr}.public-contact-actions-rich{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.public-contact.public-contact-compact{padding:22px 15px}.public-contact-actions-rich{grid-template-columns:1fr}.public-contact-action{min-height:60px}}
