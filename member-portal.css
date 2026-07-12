@@ -875,3 +875,134 @@ input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date
 .form-group label{font-size:14px!important;line-height:1.45;margin-bottom:7px!important}
 .health-stat-grid button span{font-size:12px}
 @media(max-width:600px){body.member-authenticated #globalHeader{grid-template-columns:1fr!important;gap:9px!important;min-height:auto!important}body.member-authenticated #globalHeader .header-right{width:100%;overflow-x:auto;padding-bottom:2px;gap:7px;order:2}body.member-authenticated #globalHeader .header-brand{order:1}#page-admin .member-field-label{font-size:13px!important}.form-group input,.form-group select,.form-group textarea,.inp,input[type="date"],input[type="time"],select{min-height:54px;font-size:16px!important}.health-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* ========================================================================== 
+   CCE v3.1.0 — unified typography, mobile chrome and persistence feedback
+   ========================================================================== */
+:root{
+  --cce-text-xs:12px;
+  --cce-text-sm:14px;
+  --cce-text-md:16px;
+  --cce-text-lg:18px;
+  --cce-text-xl:22px;
+  --cce-text-2xl:28px;
+  --cce-control-h:50px;
+}
+
+/* Public pages own their single navbar; the workspace header must never leak in. */
+body.page-home #globalHeader,
+body.page-booking #globalHeader,
+body.page-training #globalHeader,
+body.page-livery #globalHeader{display:none!important}
+
+/* Login composition */
+#page-admin .login-box{text-align:center}
+#page-admin .login-title{display:block;width:100%;text-align:center!important;font-size:var(--cce-text-xl)!important;line-height:1.25;margin:0 auto 18px}
+#page-admin .login-icon{margin-inline:auto!important}
+#page-admin .member-field-label{width:100%;text-align:center!important;font-size:var(--cce-text-sm)!important;line-height:1.35;margin:18px auto 8px!important}
+#page-admin .inp{font-size:var(--cce-text-md)!important;min-height:var(--cce-control-h)!important;text-align:center}
+#page-admin .member-back-btn{display:none!important}
+
+/* One stable action row. Home always sits immediately before Logout. */
+#globalHeader .header-right{display:flex;align-items:center;gap:8px}
+#globalHeader #backBtn{order:80}
+#globalHeader #refreshBtn{order:40}
+#globalHeader #backupBtn{order:50}
+#globalHeader #alertBell{order:60}
+#globalHeader #logoutAdminBtn,#globalHeader #logoutOwnerBtn{order:90}
+#globalHeader .member-session-pill{order:10}
+#globalHeader .sync-status{order:20}
+
+/* Global type hierarchy */
+body.member-authenticated .header-title{font-size:var(--cce-text-md)!important;line-height:1.25}
+body.member-authenticated .header-sub{font-size:var(--cce-text-xs)!important;line-height:1.3}
+body.member-authenticated .member-session-pill strong{font-size:var(--cce-text-sm)!important;line-height:1.2}
+body.member-authenticated .member-session-pill small{font-size:var(--cce-text-xs)!important;line-height:1.2}
+body.member-authenticated .nav-group-btn,
+body.member-authenticated .nav-subtabs .nav-btn{font-size:var(--cce-text-sm)!important;line-height:1.2;min-height:44px}
+body.member-authenticated .card-title{font-size:var(--cce-text-lg)!important;line-height:1.3}
+body.member-authenticated .stat-label{font-size:var(--cce-text-xs)!important;line-height:1.35}
+body.member-authenticated .stat-value{font-size:clamp(22px,2.4vw,30px)!important;line-height:1.15}
+body.member-authenticated .form-group label{font-size:var(--cce-text-sm)!important;line-height:1.35}
+body.member-authenticated input,
+body.member-authenticated select,
+body.member-authenticated textarea,
+body.member-authenticated button{font-family:inherit}
+body.member-authenticated input,
+body.member-authenticated select,
+body.member-authenticated textarea{font-size:var(--cce-text-md)!important;line-height:1.35}
+body.member-authenticated .btn,
+body.member-authenticated .action-btn,
+body.member-authenticated .sync-btn,
+body.member-authenticated .home-btn{font-size:var(--cce-text-sm)!important;line-height:1.2;font-weight:800}
+body.member-authenticated .badge{font-size:var(--cce-text-xs)!important}
+body.member-authenticated table{font-size:var(--cce-text-sm)!important}
+body.member-authenticated th{font-size:var(--cce-text-xs)!important}
+
+/* Filters and date controls should not dominate their section. */
+body.member-authenticated select,
+body.member-authenticated input[type="date"],
+body.member-authenticated input[type="time"]{
+  min-height:var(--cce-control-h)!important;
+  height:var(--cce-control-h)!important;
+  padding:0 14px!important;
+  font-size:var(--cce-text-md)!important;
+}
+body.member-authenticated textarea{min-height:116px!important;padding:14px!important}
+
+/* Stable health typography */
+.stable-health-head h2{font-size:clamp(24px,3vw,32px)!important;line-height:1.2}
+.stable-health-head p{font-size:var(--cce-text-md)!important;line-height:1.65}
+.stable-kicker,.health-panel-title span{font-size:var(--cce-text-xs)!important}
+.health-stat-grid b{font-size:clamp(30px,4vw,42px)!important;line-height:1}
+.health-stat-grid span{font-size:var(--cce-text-sm)!important;line-height:1.35}
+.health-panel-title b{font-size:var(--cce-text-md)!important}
+.health-empty{font-size:var(--cce-text-sm)!important}
+
+/* Confirmation toast used only after a verified database round-trip. */
+.cce-save-confirmation{position:fixed;z-index:100000;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);background:#14794a;color:#fff;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:800;box-shadow:0 12px 35px rgba(10,40,28,.28);animation:cceToastIn .2s ease}
+@keyframes cceToastIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+@media(max-width:700px){
+  :root{--cce-text-xs:12px;--cce-text-sm:14px;--cce-text-md:16px;--cce-text-lg:19px;--cce-text-xl:24px;--cce-text-2xl:30px;--cce-control-h:54px}
+
+  /* Compact, consistent two-row workspace header. */
+  body.member-authenticated #globalHeader{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:12px 14px!important;min-height:0!important}
+  body.member-authenticated #globalHeader .header-brand{width:100%;box-sizing:border-box;justify-content:flex-start;min-width:0;order:1}
+  body.member-authenticated #globalHeader .header-brand>div{min-width:0;flex:1}
+  body.member-authenticated #globalHeader .header-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.member-authenticated #globalHeader .header-right{order:2;width:100%;display:flex!important;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  body.member-authenticated #globalHeader .header-right::-webkit-scrollbar{display:none}
+  body.member-authenticated #globalHeader .member-session-pill{flex:0 0 auto;max-width:190px;min-height:44px;border-radius:14px;display:grid;align-content:center;padding:7px 12px}
+  body.member-authenticated #globalHeader .sync-btn,
+  body.member-authenticated #globalHeader .home-btn,
+  body.member-authenticated #globalHeader .alert-bell{flex:0 0 auto;min-width:48px;min-height:44px;padding:9px 12px!important;border-radius:12px!important}
+
+  /* Mobile navigation is a compact scroll strip, never five giant stacked cards. */
+  body.member-authenticated .dash-nav-wrap{top:auto!important;padding:10px 12px!important}
+  body.member-authenticated .nav-groups,
+  body.member-authenticated .nav-subtabs{display:flex!important;grid-template-columns:none!important;flex-direction:row!important;flex-wrap:nowrap!important;overflow-x:auto!important;gap:8px!important;width:100%;scroll-snap-type:x proximity;scrollbar-width:none}
+  body.member-authenticated .nav-groups::-webkit-scrollbar,
+  body.member-authenticated .nav-subtabs::-webkit-scrollbar{display:none}
+  body.member-authenticated .nav-group-btn,
+  body.member-authenticated .nav-subtabs .nav-btn{flex:0 0 auto!important;width:auto!important;min-width:132px!important;min-height:46px!important;padding:10px 16px!important;border-radius:13px!important;scroll-snap-align:start}
+  body.member-authenticated .nav-subtabs{margin-top:8px!important;padding:7px!important}
+  body.member-authenticated .nav-subtabs .nav-btn{min-width:112px!important}
+
+  /* Mobile sections and period filters */
+  body.member-authenticated .content{padding:16px 12px 34px!important}
+  body.member-authenticated .card{padding:16px!important;border-radius:18px!important}
+  body.member-authenticated .stats-grid{grid-template-columns:1fr!important;gap:12px!important}
+  body.member-authenticated .stat-box{min-height:112px;padding:18px!important}
+  body.member-authenticated .search-bar{gap:10px!important}
+  body.member-authenticated .search-bar input,
+  body.member-authenticated .search-bar select{width:100%!important;max-width:none!important}
+
+  .health-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  .health-stat-grid button{min-height:136px;padding:18px!important}
+  .health-stat-grid button:last-child:nth-child(odd){grid-column:1/-1;max-width:calc(50% - 5px)}
+  .stable-health-head .btn{width:100%;min-height:52px;font-size:var(--cce-text-md)!important}
+
+  #page-admin .login-wrap{padding:20px 16px max(28px,env(safe-area-inset-bottom))!important}
+  #page-admin .login-box{width:100%;max-width:430px;padding:26px 22px!important;border-radius:24px!important}
+}

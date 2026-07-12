@@ -17,7 +17,7 @@
     schedule: ['schedule.view'],
     instructors: ['instructors.view'],
     horses: ['horses.view'],
-    health: ['horses.view'],
+    health: ['horse_health.view', 'horses.view'],
     breeding: ['breeding.view'],
     notifications: ['settings.manage'],
     audit: ['audit.view'],
@@ -371,6 +371,7 @@
       const needBreeding = hasPermission('breeding.view');
       const needSchedule = hasPermission('schedule.view');
       const needInstructors = hasAny(['instructors.view','schedule.view']);
+      const needHealth = hasAny(['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view']);
       [income, expenses, horses, breeding, schedule_data, instructors_data] = await Promise.all([
         safeGet('income','select=*&limit=2000',needIncome),
         safeGet('expenses','select=*&limit=1000',needExpenses),
@@ -384,6 +385,15 @@
       }
       expenses.forEach(r => { if (typeof normalizeActivityCategory === 'function') r.category = normalizeActivityCategory(r.category); });
       income.forEach(r => { if (typeof normalizeActivityCategory === 'function') r.activity = normalizeActivityCategory(r.activity); });
+      if (needHealth) {
+        [horse_health_profiles, horse_health_events] = await Promise.all([
+          safeGet('horse_health_profiles','select=*&limit=500',true),
+          safeGet('horse_health_events','select=*&order=event_date.desc,id.desc&limit=4000',true)
+        ]);
+        if (typeof deriveHealthCollections === 'function') deriveHealthCollections();
+      } else {
+        horse_health_profiles=[];horse_health_events=[];horse_medical_records=[];horse_vaccinations=[];horse_care_tasks=[];
+      }
       const sync = document.getElementById('syncStatus'); if (sync) sync.textContent = '✓ ' + new Date().toLocaleTimeString('en-GB');
       if (hasPermission('dashboard.view')) safeInvoke('buildDash');
       if (hasPermission('income.view')) safeInvoke('renderIncome');
