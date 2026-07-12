@@ -2036,59 +2036,86 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(APP_MODE==='stable'){document.body.classList.add('mode-stable');navigate('owner');}
   else if(APP_MODE==='instructor'){document.body.classList.add('mode-instructor');navigate('instructor');}
   else if(APP_MODE==='book'){document.body.classList.add('mode-book');}
-  loadCCHorses();
+  initializeRideAvailability();
 });
 
-async function loadCCHorses() {
-  try {
-    let list=[];
+let currentRideCapacity={total:0,reserved:0,available:0};
+
+function rideDurationMinutes(service){return /1 Hour/i.test(service||'')?60:30;}
+function setRideCardsDisabled(disabled){
+  document.querySelectorAll('#rideOptions .ride-card').forEach(card=>{
+    card.classList.toggle('is-disabled',!!disabled);
+    card.setAttribute('aria-disabled',disabled?'true':'false');
+  });
+  const btn=document.getElementById('bookBtn');
+  if(btn) btn.disabled=!!disabled;
+}
+function renderRideCapacity(data){
+  const total=Number(data?.total_horses??data?.total??0);
+  const reserved=Number(data?.reserved_horses??data?.reserved??0);
+  const available=Math.max(0,Number(data?.available_horses??data?.available??total-reserved));
+  currentRideCapacity={total,reserved,available};
+  const num=document.getElementById('rideCapacityNumber');
+  const label=document.getElementById('rideCapacityLabel');
+  const details=document.getElementById('rideCapacityDetails');
+  const sold=document.getElementById('rideSoldOut');
+  if(num)num.textContent=String(available);
+  if(label)label.textContent=available===1?'1 horse available for this time':available+' horses available for this time';
+  if(details)details.textContent=total+' eligible CC horses · '+reserved+' already reserved';
+  if(sold)sold.classList.toggle('hidden',available>0);
+  setRideCardsDisabled(available<=0);
+  return currentRideCapacity;
+}
+async function refreshRideAvailability(){
+  const date=document.getElementById('b-date')?.value||null;
+  const time=document.getElementById('b-time')?.value||null;
+  const service=document.getElementById('b-service')?.value||'';
+  const label=document.getElementById('rideCapacityLabel');
+  if(label)label.textContent='Checking availability…';
+  try{
+    const result=await sbRpc('cce_public_ride_capacity',{
+      p_date:date||null,p_start_time:time||null,p_duration_minutes:rideDurationMinutes(service)
+    });
+    const row=Array.isArray(result)?result[0]:result;
+    return renderRideCapacity(row||{});
+  }catch(e){
+    // Compatibility fallback before the v4.3 SQL is installed: count public CC horses only.
     try{
-      list=await sbRpc('cce_public_available_horses',{});
-    }catch(rpcErr){
-      // Temporary fallback until the Supabase security SQL is run. Only this public list is loaded.
-      const r = await fetch(`${SB_URL}/rest/v1/horses?owner=eq.CC&status=eq.Available&select=id,horse_name`,{headers:HDR});
-      const json = await r.json().catch(()=>[]);
-      if(!r.ok) throw new Error((json&&json.message)||rpcErr.message);
-      list = Array.isArray(json)?json:[];
+      const list=await sbRpc('cce_public_available_horses',{});
+      return renderRideCapacity({total_horses:(list||[]).length,reserved_horses:0,available_horses:(list||[]).length});
+    }catch(fallbackError){
+      if(label)label.textContent='Availability could not be checked. Please contact the stable.';
+      const details=document.getElementById('rideCapacityDetails');if(details)details.textContent=userSafeError(fallbackError||e);
+      setRideCardsDisabled(true);
+      return {total:0,reserved:0,available:0};
     }
-    const grid = document.getElementById('horseGrid');
-    if(!grid) return;
-    if(!list.length){grid.innerHTML='<p style="color:#7A8399;font-size:13px">No horses available.</p>';return;}
-    grid.innerHTML = list.map(h=>`<div class="booking-horse-card" onclick="selectHorse(${jsStr(h.horse_name)},this)"><div class="h-icon">&#128052;</div><div class="h-name">${esc(h.horse_name)}</div></div>`).join('');
-  }catch(e){const g=document.getElementById('horseGrid');if(g)g.innerHTML='<p style="color:#C0392B">'+esc(userSafeError(e))+'</p>';}
-}
-
-function selectHorse(name,el){
-  document.querySelectorAll('.booking-horse-card').forEach(c=>c.classList.remove('selected'));
-  if(el)el.classList.add('selected');
-  const bh=document.getElementById('b-horse');if(bh)bh.value=name;
-}
-
-function getSelectedBookingHorse(){
-  const hidden=document.getElementById('b-horse');
-  let horse=(hidden?.value||'').trim();
-  if(!horse){
-    const selected=document.querySelector('.booking-horse-card.selected .h-name');
-    horse=(selected?.textContent||'').trim();
-    if(horse&&hidden)hidden.value=horse;
   }
-  return horse;
 }
+function initializeRideAvailability(){
+  ['b-date','b-time'].forEach(id=>document.getElementById(id)?.addEventListener('change',refreshRideAvailability));
+  refreshRideAvailability();
+}
+
 
 function showBookingMissingAlert(missing){
   const labels={
     name:'الاسم', phone:'رقم الهاتف', personalId:'الرقم الشخصي', date:'التاريخ', time:'الوقت',
-    riderLevel:'مستوى الراكب', service:'نوع الجولة', horse:'الحصان'
+    riderLevel:'مستوى الراكب', service:'نوع الجولة'
   };
   alert('⚠️ يرجى تعبئة البيانات التالية:\n\n- '+missing.map(k=>labels[k]||k).join('\n- '));
 }
 
 
 function selectRideService(el,service,price){
+  if(currentRideCapacity.available<=0){
+    document.getElementById('rideSoldOut')?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   document.querySelectorAll('.ride-card').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');
   document.getElementById('b-service').value=service;
   document.getElementById('b-price').value=price;
+  refreshRideAvailability();
 }
 
 function selectRiderLevel(el,level){
@@ -2111,7 +2138,6 @@ async function submitBooking(){
   const time=document.getElementById('b-time').value;
   const riderLevel=document.getElementById('b-rider-level').value;
   const service=document.getElementById('b-service').value;
-  const horse=getSelectedBookingHorse();
   const price=parseFloat(document.getElementById('b-price').value)||0;
   const missing=[];
   if(!name)missing.push('name');
@@ -2121,15 +2147,15 @@ async function submitBooking(){
   if(!time)missing.push('time');
   if(!riderLevel)missing.push('riderLevel');
   if(!service)missing.push('service');
-  if(!horse)missing.push('horse');
   if(missing.length){showBookingMissingAlert(missing);return;}
-  const duration=/1 Hour/i.test(service)?60:30;
-  if(alertConflicts(findBookingConflicts({date,start:time,duration,horse})))return;
+  const duration=rideDurationMinutes(service);
+  const capacity=await refreshRideAvailability();
+  if(capacity.available<=0){document.getElementById('rideSoldOut')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
   if(!validBahrainPhone(phone)){alert('⚠️ رقم الهاتف يجب أن يتكون من 8 أرقام.');return;}
   if(!document.getElementById('b-terms').checked){alert('⚠️ يرجى قراءة اتفاقية تأجير ركوب الخيل والموافقة عليها للمتابعة.');return;}
   const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
   try{
-    await publicPostIncome({date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:horse,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
+    await publicPostIncome({date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:null,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Horse assigned internally | Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
     document.getElementById('bookingForm').style.display='none';
     document.getElementById('bookSuccess').style.display='block';
   }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';}
@@ -2140,10 +2166,9 @@ function resetBooking(){
   document.getElementById('bookSuccess').style.display='none';
   const bt=document.getElementById('b-terms');if(bt)bt.checked=false;
   ['b-name','b-phone','b-personal-id','b-emergency','b-health','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
-  const bh=document.getElementById('b-horse');if(bh)bh.value='';document.querySelectorAll('.booking-horse-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('b-rider-level').value='';
   document.querySelectorAll('input[name="rider-level"]').forEach(r=>r.checked=false);
-  const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';
+  const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';refreshRideAvailability();
 }
 
 // ══════════════════════════════════════════════════════════

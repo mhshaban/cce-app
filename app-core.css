@@ -441,3 +441,41 @@ html[dir="rtl"] .pie-legend-item {
 * {
   direction: inherit;
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   CCE StableOS v4.3 — Mobile polish and ride capacity
+   ══════════════════════════════════════════════════════════ */
+html,body{min-height:100%;overflow-x:hidden}
+body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.service-header{position:relative;top:auto;min-height:72px;padding-top:calc(12px + env(safe-area-inset-top,0px))!important}
+.service-header .header-brand img{width:44px;height:44px;object-fit:contain}
+.service-hero{padding-top:clamp(38px,8vw,72px)!important}
+.ride-capacity-summary{display:flex;align-items:center;gap:16px;padding:16px;border-radius:14px;background:#f5f8ff;border:1px solid #dbe3f1}
+.capacity-number{display:grid;place-items:center;min-width:68px;height:68px;border-radius:50%;background:var(--navy);color:#fff;font-size:1.8rem;font-weight:800}
+.ride-capacity-summary strong{display:block;font-size:1rem;color:var(--navy)}
+.ride-capacity-summary small{display:block;margin-top:4px;color:var(--muted);font-size:.82rem}
+.ride-sold-out{margin-top:14px;padding:16px;border:1px solid #efc36f;border-radius:14px;background:#fff7e6;text-align:center}
+.ride-sold-out strong,.ride-sold-out span{display:block}.ride-sold-out span{margin:5px 0 10px;color:#6b5a3b}
+.ride-sold-out a{display:inline-flex;gap:8px;align-items:center;justify-content:center;background:#1e7d4e;color:#fff;text-decoration:none;border-radius:12px;padding:11px 16px;font-weight:700}
+.ride-card.is-disabled{opacity:.45;filter:grayscale(.35);cursor:not-allowed;transform:none!important}
+
+@media(max-width:640px){
+  body{font-size:15px}
+  .header{padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top,0px))!important;gap:8px;flex-wrap:wrap}
+  .header-brand{min-width:0;gap:8px}.header-brand>div{min-width:0}.header-title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}.header-sub{font-size:12px}
+  .home-btn,.sync-btn,.logout-btn{min-height:44px;padding:9px 13px;font-size:14px;border-radius:13px}
+  .hero-title{font-size:clamp(1.65rem,7vw,2.15rem);line-height:1.25}.hero-sub{font-size:1rem}.hero-icon{font-size:42px}
+  .container{padding:18px 14px!important}.card{padding:18px;margin-bottom:14px}.card-title{font-size:1.05rem}
+  .steps{gap:8px}.step{min-height:96px;padding:12px 8px;font-size:.9rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.45}.step strong{font-size:1rem}
+  .form-group label{font-size:.95rem}.form-group input,.form-group select,.form-group textarea{font-size:1rem;min-height:54px;padding:13px 15px}
+  .ride-options{grid-template-columns:1fr 1fr}.ride-card{min-height:132px;display:flex;flex-direction:column;justify-content:center}.ride-card .ride-name{font-size:1rem}.ride-card .ride-desc{font-size:.82rem}.ride-card .ride-price{font-size:1.35rem}
+  .nav-groups{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;gap:8px}.nav-group-btn{width:auto!important;min-width:145px;flex:0 0 auto;scroll-snap-align:start;font-size:1rem;padding:13px 16px}
+  .nav-subtabs{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch}.nav-subtabs .nav-btn{width:auto!important;min-width:130px;flex:0 0 auto;font-size:.95rem;padding:12px}
+  .stat-box{min-height:132px;padding:18px;text-align:start}.stat-label{font-size:.85rem}.stat-value{font-size:1.65rem}
+  .dash-period-card select{font-size:1rem!important}
+  .portal{padding:14px}.welcome{padding:18px}.welcome-name{font-size:1.35rem}.horse-card{padding:16px}.horse-header{align-items:flex-start;flex-wrap:wrap}.horse-name{font-size:1.2rem}.edit-toggle{min-height:44px;font-size:.95rem}
+  .info-grid{grid-template-columns:1fr 1fr!important;gap:9px}.info-item{padding:13px!important;min-height:84px}.info-label{font-size:.78rem!important}.info-value{font-size:.98rem!important;overflow-wrap:anywhere}
+  .schedule-toolbar{gap:8px!important}.schedule-toolbar button{font-size:.95rem!important}
+}
+@media(max-width:390px){.ride-options{grid-template-columns:1fr}.info-grid{grid-template-columns:1fr!important}.header-title{max-width:180px}}

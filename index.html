@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260712-420"></script>
+<script src="app-bootstrap.js?v=20260712-430"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,9 +23,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260712-420" rel="stylesheet"/>
-<link href="member-portal.css?v=20260712-420" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260712-420" rel="stylesheet"/>
+<link href="app-core.css?v=20260712-430" rel="stylesheet"/>
+<link href="member-portal.css?v=20260712-430" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260712-430" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -207,7 +207,14 @@
 </div>
 <!-- ════════════════════════════ BOOKING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-booking">
-<div class="hero" style="padding:30px 20px">
+<div class="header service-header">
+<button class="home-btn" onclick="navigate('home')">← Home</button>
+<div class="header-brand">
+<div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Horse Ride Booking</div></div>
+<img alt="CCE" src="icons/logo-transparent.png"/>
+</div>
+</div>
+<div class="hero service-hero" style="padding:30px 20px">
 <div class="hero-icon">🐴</div>
 <div class="hero-title">Book a Horse Ride</div>
 <div class="hero-sub" style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">حجز جولة ركوب الخيل</div>
@@ -216,7 +223,7 @@
 <div id="bookingForm">
 <div aria-label="Booking Steps" class="steps">
 <div class="step active"><strong>1</strong>Your Info — بيانات العميل</div>
-<div class="step"><strong>2</strong>Service &amp; Horse — الخدمة والحصان</div>
+<div class="step"><strong>2</strong>Service — الخدمة</div>
 <div class="step"><strong>3</strong>Terms — الموافقة على الشروط</div>
 <div class="step"><strong>4</strong>Payment — الدفع والتأكيد</div>
 </div>
@@ -242,11 +249,17 @@
 <input id="b-service" type="hidden"/><input id="b-price" type="hidden"/>
 <div class="required-hint">Please select a service before submitting your booking.</div>
 </div>
-<div class="card">
-<div class="card-title">🐴 Select Horse — اختر الحصان *</div>
-<div class="booking-horse-grid" id="horseGrid"><p style="color:#7A8399;font-size:13px">Loading horses...</p></div>
-<input id="b-horse" type="hidden"/>
-<div class="required-hint">Selecting a horse helps prevent double-booking.</div>
+<div class="card ride-capacity-card" id="rideCapacityCard">
+<div class="card-title">🐎 Ride Availability — توفر خيول الجولات</div>
+<div class="ride-capacity-summary" id="rideCapacitySummary" aria-live="polite">
+<div class="capacity-number" id="rideCapacityNumber">—</div>
+<div><strong id="rideCapacityLabel">Checking available CC horses…</strong><small id="rideCapacityDetails">The club assigns the most suitable horse after booking.</small></div>
+</div>
+<div class="ride-sold-out hidden" id="rideSoldOut">
+<strong>جميع خيول الجولات محجوزة حاليًا 🐎</strong>
+<span>يمكنك التواصل مع الإسطبل للتأكد من توفر موعد بديل.</span>
+<a href="https://wa.me/97332266061" target="_blank" rel="noopener noreferrer">واتساب <b dir="ltr">+973 3226 6061</b></a>
+</div>
 </div>
 <!-- Rider Level Assessment -->
 <div class="card">
@@ -361,7 +374,14 @@
 </div>
 <!-- ════════════════════════════ TRAINING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-training">
-<div class="hero" style="padding:30px 20px">
+<div class="header service-header">
+<button class="home-btn" onclick="navigate('home')">← Home</button>
+<div class="header-brand">
+<div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Training Packages</div></div>
+<img alt="CCE" src="icons/logo-transparent.png"/>
+</div>
+</div>
+<div class="hero service-hero" style="padding:30px 20px">
 <div class="hero-icon">🎯</div>
 <div class="hero-title">Training Packages</div>
 <div class="hero-sub" style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">باقات التدريب</div>
@@ -1142,22 +1162,22 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260712-420"></script>
-<script src="src/core/config.js?v=20260712-420"></script>
-<script src="src/core/store.js?v=20260712-420"></script>
-<script src="src/services/supabase-runtime.js?v=20260712-420"></script>
-<script src="src/modules/horses/horse-service.js?v=20260712-420"></script>
-<script src="src/modules/health/health-service.js?v=20260712-420"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260712-420"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260712-420"></script>
-<script src="app-core.js?v=20260712-420"></script>
-<script src="app-branding.js?v=20260712-420"></script>
-<script src="horse-health.js?v=20260712-420"></script>
-<script src="member-portal.js?v=20260712-420"></script>
+<script src="src/core/events.js?v=20260712-430"></script>
+<script src="src/core/config.js?v=20260712-430"></script>
+<script src="src/core/store.js?v=20260712-430"></script>
+<script src="src/services/supabase-runtime.js?v=20260712-430"></script>
+<script src="src/modules/horses/horse-service.js?v=20260712-430"></script>
+<script src="src/modules/health/health-service.js?v=20260712-430"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260712-430"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260712-430"></script>
+<script src="app-core.js?v=20260712-430"></script>
+<script src="app-branding.js?v=20260712-430"></script>
+<script src="horse-health.js?v=20260712-430"></script>
+<script src="member-portal.js?v=20260712-430"></script>
 </body>
 </html>

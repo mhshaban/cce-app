@@ -36,3 +36,35 @@ button,.btn,[role=button]{min-height:var(--cce-touch-target)}
   .card{border-radius:var(--cce-radius-md)}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* CCE StableOS v4.3 mobile consistency layer (loaded last) */
+html,body{overflow-x:hidden}
+body{padding-inline-start:env(safe-area-inset-left,0px);padding-inline-end:env(safe-area-inset-right,0px)}
+.service-header{position:relative!important;top:auto!important;min-height:72px;padding-top:calc(.75rem + env(safe-area-inset-top,0px))!important}
+.service-header .header-brand img{width:44px;height:44px;object-fit:contain}
+.ride-capacity-summary{display:flex;align-items:center;gap:1rem;padding:1rem;border-radius:var(--cce-radius-md);background:#f5f8ff;border:1px solid #dbe3f1}
+.capacity-number{display:grid;place-items:center;min-width:68px;height:68px;border-radius:50%;background:var(--navy);color:#fff;font-size:1.8rem;font-weight:800}
+.ride-capacity-summary strong{display:block;font-size:var(--cce-text-md)}
+.ride-capacity-summary small{display:block;margin-top:.25rem;color:var(--muted);font-size:var(--cce-text-sm)}
+.ride-sold-out{margin-top:1rem;padding:1rem;border:1px solid #efc36f;border-radius:var(--cce-radius-md);background:#fff7e6;text-align:center}
+.ride-sold-out strong,.ride-sold-out span{display:block}.ride-sold-out span{margin:.35rem 0 .75rem;color:#6b5a3b}
+.ride-sold-out a{display:inline-flex;gap:.5rem;align-items:center;justify-content:center;background:#1e7d4e;color:#fff;text-decoration:none;border-radius:.75rem;padding:.7rem 1rem;font-weight:700}
+.ride-card.is-disabled{opacity:.45;filter:grayscale(.35);cursor:not-allowed;transform:none!important}
+@media(max-width:640px){
+  body{font-size:.9375rem}
+  .header{padding:.625rem .75rem;padding-top:calc(.625rem + env(safe-area-inset-top,0px))!important;gap:.5rem;flex-wrap:wrap}
+  .header-brand{min-width:0;gap:.5rem}.header-brand>div{min-width:0}.header-title{font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:14.5rem}.header-sub{font-size:.75rem}
+  .home-btn,.sync-btn,.logout-btn{min-height:44px;padding:.55rem .8rem;font-size:.875rem;border-radius:.8rem}
+  .hero-title{font-size:clamp(1.65rem,7vw,2.15rem);line-height:1.25}.hero-sub{font-size:1rem}.hero-icon{font-size:2.625rem}
+  .container{padding:1.125rem .875rem!important}.card{padding:1.125rem;margin-bottom:.875rem}.card-title{font-size:1.0625rem}
+  .steps{gap:.5rem}.step{min-height:6rem;padding:.75rem .5rem;font-size:.9rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.45}.step strong{font-size:1rem}
+  .form-group label{font-size:.95rem}.form-group input,.form-group select,.form-group textarea{font-size:1rem;min-height:54px;padding:.8rem .95rem}
+  .ride-options{grid-template-columns:1fr 1fr}.ride-card{min-height:8.25rem;display:flex;flex-direction:column;justify-content:center}.ride-card .ride-name{font-size:1rem}.ride-card .ride-desc{font-size:.82rem}.ride-card .ride-price{font-size:1.35rem}
+  .nav-groups{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;gap:.5rem}.nav-group-btn{width:auto!important;min-width:9rem;flex:0 0 auto;scroll-snap-align:start;font-size:1rem;padding:.8rem 1rem}
+  .nav-subtabs{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch}.nav-subtabs .nav-btn{width:auto!important;min-width:8rem;flex:0 0 auto;font-size:.95rem;padding:.75rem}
+  .stat-box{min-height:8.25rem;padding:1.125rem;text-align:start}.stat-label{font-size:.85rem}.stat-value{font-size:1.65rem}
+  .portal{padding:.875rem}.welcome{padding:1.125rem}.welcome-name{font-size:1.35rem}.horse-card{padding:1rem}.horse-header{align-items:flex-start;flex-wrap:wrap}.horse-name{font-size:1.2rem}.edit-toggle{min-height:44px;font-size:.95rem}
+  .info-grid{grid-template-columns:1fr 1fr!important;gap:.55rem}.info-item{padding:.8rem!important;min-height:5.25rem}.info-label{font-size:.78rem!important}.info-value{font-size:.98rem!important;overflow-wrap:anywhere}
+  .schedule-toolbar{gap:.5rem!important}.schedule-toolbar button{font-size:.95rem!important}
+}
+@media(max-width:390px){.ride-options{grid-template-columns:1fr}.info-grid{grid-template-columns:1fr!important}.header-title{max-width:11rem}}
