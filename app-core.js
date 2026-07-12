@@ -308,9 +308,11 @@ if(document.readyState==='loading'){
 let income=[],expenses=[],horses=[],breeding=[],schedule_data=[],instructors_data=[];
 let horse_health_profiles=[],horse_health_events=[],horse_medical_records=[],horse_vaccinations=[],horse_care_tasks=[];
 function deriveHealthCollections(){
-  horse_medical_records=horse_health_events.filter(x=>x.event_scope==='medical').map(x=>({...x,record_type:x.event_type,next_review_date:x.due_date}));
-  horse_vaccinations=horse_health_events.filter(x=>x.event_scope==='vaccination').map(x=>({...x,vaccine_name:x.title,administered_date:x.status==='Completed'?x.event_date:null,due_date:x.due_date||x.event_date}));
-  horse_care_tasks=horse_health_events.filter(x=>x.event_scope==='care').map(x=>({...x,task_type:x.event_type==='Veterinary Visit'?'Veterinary':x.event_type,due_date:x.due_date||x.event_date}));
+  const derived=(window.CCE&&CCE.health)?CCE.health.derive(horse_health_events):{medical:[],vaccinations:[],care:[]};
+  horse_medical_records=derived.medical;
+  horse_vaccinations=derived.vaccinations;
+  horse_care_tasks=derived.care;
+  if(window.CCE&&CCE.store)CCE.store.setMany({horses,horseHealthProfiles:horse_health_profiles,horseHealthEvents:horse_health_events});
 }
 const CCE_CATEGORIES=['Hack','Lesson','Livery','Breeding','Shuwar','Salary','Wood Shavings','Hay','Maintenance','Farrier','Medicant','Trash Container','Leading','Rent','Others'];
 let incPage=1,expPage=1,bookPage=1;
@@ -707,6 +709,7 @@ async function loadAll(){
     setMsg('Step 4: Loading horses...',expenses.length+' expenses loaded');
     
     horses   = await sbGet('horses',  'select=*&limit=200');
+    if(window.CCE&&CCE.store)CCE.store.set('horses',horses);
     setMsg('Step 5: Loading breeding...',horses.length+' horses loaded');
     
     breeding = await sbGet('breeding','select=*&limit=200');
@@ -717,8 +720,9 @@ async function loadAll(){
 
     instructors_data = await sbGet('instructors','select=*&order=name.asc');
     setMsg('Step 8: Loading horse health...',instructors_data.length+' instructors loaded');
-    horse_health_profiles = await sbGet('horse_health_profiles','select=*&limit=500');
-    horse_health_events = await sbGet('horse_health_events','select=*&order=event_date.desc,id.desc&limit=4000');
+    const healthLoaded=await CCE.health.load();
+    horse_health_profiles=healthLoaded.profiles;
+    horse_health_events=healthLoaded.events;
     deriveHealthCollections();
     setMsg('Done!',horse_health_profiles.length+' health profiles and '+horse_health_events.length+' events loaded');
 
