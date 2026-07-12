@@ -1,0 +1,5 @@
+// Horse profile medical-records component.
+(function(){
+  window.CCE=window.CCE||{}; CCE.horseProfile=CCE.horseProfile||{}; CCE.horseProfile.panels=CCE.horseProfile.panels||{};
+  CCE.horseProfile.panels.medical=function(h){const rows=horseRecords(h.id);return `<div class="profile-toolbar"><div><h4>Medical records</h4><p>Injuries, treatments, veterinary visits and procedures.</p></div><button class="btn btn-amber" onclick="openAddMedical(${h.id})">+ Add record</button></div><div class="record-list">${rows.map(r=>`<article class="record-card"><div class="record-date">${fmt(r.event_date)}</div><div><b>${esc(r.title)}</b><span>${esc(r.record_type)} · ${esc(r.status)} · ${esc(r.severity||'')}</span><p>${esc(r.diagnosis||r.treatment||r.notes||'No details')}</p>${r.next_review_date?`<small>Next review: ${fmt(r.next_review_date)}</small>`:''}</div><button onclick="deleteHealthRecord('horse_medical_records',${r.id},${h.id})">Delete</button></article>`).join('')||'<div class="health-empty">No medical records yet.</div>'}</div>`;};
+})();

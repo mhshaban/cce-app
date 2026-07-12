@@ -1,0 +1,5 @@
+// Horse profile care-and-alerts component.
+(function(){
+  window.CCE=window.CCE||{}; CCE.horseProfile=CCE.horseProfile||{}; CCE.horseProfile.panels=CCE.horseProfile.panels||{};
+  CCE.horseProfile.panels.care=function(h){const rows=horseTasks(h.id);return `<div class="profile-toolbar"><div><h4>Care tasks & alerts</h4><p>Veterinary reviews, medications, farrier, dental and observations.</p></div><button class="btn btn-amber" onclick="openAddCare(${h.id})">+ Add task</button></div><div class="record-list">${rows.map(t=>`<article class="record-card task ${String(t.priority).toLowerCase()}"><div class="record-date">${fmt(t.due_date)}</div><div><b>${esc(t.title)}</b><span>${esc(t.task_type)} · ${esc(t.priority)} · ${esc(t.status)}</span><p>${esc(t.notes||t.assigned_to||'')}</p></div><div class="record-actions">${t.status==='Pending'?`<button onclick="completeCare(${t.id},${h.id})">Complete</button>`:''}<button onclick="deleteHealthRecord('horse_care_tasks',${t.id},${h.id})">Delete</button></div></article>`).join('')||'<div class="health-empty">No care tasks yet.</div>'}</div>`;};
+})();
