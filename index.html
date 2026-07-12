@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260712-430"></script>
+<script src="app-bootstrap.js?v=20260712-440"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,9 +23,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260712-430" rel="stylesheet"/>
-<link href="member-portal.css?v=20260712-430" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260712-430" rel="stylesheet"/>
+<link href="app-core.css?v=20260712-440" rel="stylesheet"/>
+<link href="member-portal.css?v=20260712-440" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260712-440" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -252,8 +252,9 @@
 <div class="card ride-capacity-card" id="rideCapacityCard">
 <div class="card-title">🐎 Ride Availability — توفر خيول الجولات</div>
 <div class="ride-capacity-summary" id="rideCapacitySummary" aria-live="polite">
+<div class="capacity-copy"><span class="capacity-icon" aria-hidden="true">🐎</span><strong id="rideCapacityLabel">Available horses</strong></div>
 <div class="capacity-number" id="rideCapacityNumber">—</div>
-<div><strong id="rideCapacityLabel">Checking available CC horses…</strong><small id="rideCapacityDetails">The club assigns the most suitable horse after booking.</small></div>
+<small class="sr-only" id="rideCapacityDetails"></small>
 </div>
 <div class="ride-sold-out hidden" id="rideSoldOut">
 <strong>جميع خيول الجولات محجوزة حاليًا 🐎</strong>
@@ -794,21 +795,21 @@
 </div>
 </div>
 </div>
-<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-<div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+<div class="instructor-schedule-toolbar">
+<div class="instructor-view-switch">
 <button id="instrViewActive" onclick="setInstrView('active')" style="padding:7px 16px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">📅 Active</button>
 <button id="instrViewWeek" onclick="setInstrView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">📆 Week</button>
 </div>
-<div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+<div class="instructor-scope-switch">
 <button id="instrScopeAll" onclick="setInstrScope('all')" style="padding:7px 14px;border:none;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer">All Trainers</button>
 <button id="instrScopeMine" onclick="setInstrScope('mine')" style="padding:7px 14px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">My Sessions</button>
 </div>
-<button onclick="instrNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">‹</button>
-<span id="instrDateLabel" style="font-weight:700;font-size:14px;color:var(--navy);flex:1;text-align:center"></span>
-<button onclick="instrNav(1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">›</button>
-<button onclick="instrGoToday()" style="padding:7px 14px;border:1px solid var(--green);border-radius:8px;background:#fff;color:var(--green);font-weight:700;font-size:13px;cursor:pointer">Today</button>
+<button class="schedule-nav-btn" onclick="instrNav(-1)" aria-label="Previous">‹</button>
+<span class="schedule-date-label" id="instrDateLabel"></span>
+<button class="schedule-nav-btn" onclick="instrNav(1)" aria-label="Next">›</button>
+<button class="schedule-today-btn" onclick="instrGoToday()">Today</button>
 </div>
-<div id="instrSessions"></div>
+<div id="instrSessions" class="instructor-sessions"></div>
 </div>
 </div>
 <div class="app-page" id="page-admin">
@@ -970,23 +971,23 @@
 </div>
 <div class="section" id="page-schedule">
 <!-- View Toggle + Date Nav -->
-<div class="card" style="padding:12px 18px">
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-<div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+<div class="card schedule-card-shell">
+<div class="schedule-toolbar">
+<div class="schedule-segmented">
 <button id="schedViewActive" onclick="setSchedView('active')" style="padding:7px 16px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:13px;cursor:pointer">🟢 Active</button>
 <button id="schedViewDay" onclick="setSchedView('day')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">📅 Day</button>
 <button id="schedViewWeek" onclick="setSchedView('week')" style="padding:7px 16px;border:none;background:#f0f0f0;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer">📆 Week</button>
 </div>
-<button onclick="schedNav(-1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">‹</button>
-<span id="schedDateLabel" style="font-weight:700;font-size:15px;color:var(--navy);min-width:180px;text-align:center"></span>
-<button onclick="schedNav(1)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px">›</button>
-<button onclick="schedGoToday()" style="padding:7px 14px;border:1px solid var(--amber);border-radius:8px;background:#fff;color:var(--amber);font-weight:700;font-size:13px;cursor:pointer">Today</button>
-<button onclick="openAddSchedule()" style="padding:7px 16px;border:none;border-radius:8px;background:var(--green);color:#fff;font-weight:700;font-size:13px;cursor:pointer;margin-left:auto">➕ Add Session</button>
+<button class="schedule-nav-btn" onclick="schedNav(-1)" aria-label="Previous">‹</button>
+<span class="schedule-date-label" id="schedDateLabel"></span>
+<button class="schedule-nav-btn" onclick="schedNav(1)" aria-label="Next">›</button>
+<button class="schedule-today-btn" onclick="schedGoToday()">Today</button>
+<button class="schedule-add-btn" onclick="openAddSchedule()">＋ Add Session</button>
 </div>
 </div>
 <!-- Calendar View -->
-<div class="card" style="padding:0;overflow:hidden">
-<div id="schedCalendar" style="min-height:400px"></div>
+<div class="card schedule-calendar-card">
+<div id="schedCalendar" class="schedule-calendar"></div>
 </div>
 <!-- Legend -->
 <div style="display:flex;gap:12px;flex-wrap:wrap;padding:6px 4px">
@@ -1162,22 +1163,22 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260712-430"></script>
-<script src="src/core/config.js?v=20260712-430"></script>
-<script src="src/core/store.js?v=20260712-430"></script>
-<script src="src/services/supabase-runtime.js?v=20260712-430"></script>
-<script src="src/modules/horses/horse-service.js?v=20260712-430"></script>
-<script src="src/modules/health/health-service.js?v=20260712-430"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260712-430"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260712-430"></script>
-<script src="app-core.js?v=20260712-430"></script>
-<script src="app-branding.js?v=20260712-430"></script>
-<script src="horse-health.js?v=20260712-430"></script>
-<script src="member-portal.js?v=20260712-430"></script>
+<script src="src/core/events.js?v=20260712-440"></script>
+<script src="src/core/config.js?v=20260712-440"></script>
+<script src="src/core/store.js?v=20260712-440"></script>
+<script src="src/services/supabase-runtime.js?v=20260712-440"></script>
+<script src="src/modules/horses/horse-service.js?v=20260712-440"></script>
+<script src="src/modules/health/health-service.js?v=20260712-440"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260712-440"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260712-440"></script>
+<script src="app-core.js?v=20260712-440"></script>
+<script src="app-branding.js?v=20260712-440"></script>
+<script src="horse-health.js?v=20260712-440"></script>
+<script src="member-portal.js?v=20260712-440"></script>
 </body>
 </html>

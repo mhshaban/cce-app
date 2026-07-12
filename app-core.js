@@ -2060,8 +2060,8 @@ function renderRideCapacity(data){
   const details=document.getElementById('rideCapacityDetails');
   const sold=document.getElementById('rideSoldOut');
   if(num)num.textContent=String(available);
-  if(label)label.textContent=available===1?'1 horse available for this time':available+' horses available for this time';
-  if(details)details.textContent=total+' eligible CC horses · '+reserved+' already reserved';
+  if(label)label.textContent='Available horses';
+  if(details)details.textContent='';
   if(sold)sold.classList.toggle('hidden',available>0);
   setRideCardsDisabled(available<=0);
   return currentRideCapacity;
@@ -2302,8 +2302,8 @@ function cleanPhone(p){return p?String(p).replace('.0','').replace(/\s/g,'').tri
 // Owner authentication is handled only by the unified Supabase member session.
 function renderOwnerHorses(){
   document.getElementById('ownerHorseList').innerHTML=ownerHorses.map((h,i)=>`
-    <div class="horse-card" style="flex-direction:column;align-items:flex-start;margin-bottom:14px">
-      <div class="horse-header">
+    <div class="horse-card owner-horse-card">
+      <div class="horse-header owner-horse-header">
         <div class="horse-avatar">&#128052;</div>
         <div style="flex:1">
           <div class="horse-name">${esc(h.horse_name)}</div>
@@ -3171,30 +3171,32 @@ function renderInstrSchedule(){
 function instrSessionCard(s){
   const statusColor=s.status==='Done'?'var(--green)':s.status==='Cancelled'?'var(--red)':'var(--amber)';
   const statusBg=s.status==='Done'?'#E8F5EE':s.status==='Cancelled'?'#FDECEA':'#FEF3E2';
-  return `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid ${actColor(s.activity)}">
-    <div style="display:flex;align-items:flex-start;gap:12px">
-      <div style="font-size:28px">🐴</div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-          <span style="font-weight:700;font-size:15px;color:var(--navy)">${esc(fmtTimeShort(s.start_time||''))} ${esc(s.activity||'')}</span>
-          <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${esc(s.status)}</span>
+  const startTime=fmtTimeShort(s.start_time||'');
+  const endTime=s.end_time?fmtTimeShort(s.end_time):'';
+  return `<article class="instructor-session-card" style="--session-accent:${actColor(s.activity)}">
+    <div class="instructor-session-main">
+      <div class="instructor-session-avatar" aria-hidden="true">🐴</div>
+      <div class="instructor-session-content">
+        <div class="instructor-session-heading">
+          <strong>${esc(s.activity||'Session')} ${esc(startTime)}</strong>
+          <span class="instructor-session-status" style="background:${statusBg};color:${statusColor}">${esc(s.status)}</span>
         </div>
-        <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+        <div class="instructor-session-meta">
           ${s.horse_name?`<span>🐴 ${esc(s.horse_name)}</span>`:''}
           ${s.customer_name?`<span>👤 ${esc(s.customer_name)}</span>`:''}
           ${s.instructor?`<span>🎓 ${esc(s.instructor)}</span>`:''}
-          ${(s.date||s.start_time)?`<span>📅 ${esc(fmtDisplayDate(s.date))} &nbsp; ⏱ ${esc(fmtTimeShort(s.start_time))}${s.end_time?' → '+esc(fmtTimeShort(s.end_time)):''}</span>`:''}
+          ${s.date?`<span>📅 ${esc(fmtDisplayDate(s.date))}</span>`:''}
+          ${startTime?`<span dir="ltr">⏱ ${esc(startTime)}${endTime?' → '+esc(endTime):''}</span>`:''}
         </div>
-        ${s.notes?`<div style="margin-top:8px;background:var(--sand);border-radius:8px;padding:8px 10px;font-size:12px">${esc(s.notes)}</div>`:''}
-        <!-- Horse Info -->
+        ${s.notes?`<div class="instructor-session-note">${esc(s.notes)}</div>`:''}
         ${instrHorseInfo(s.horse_name)}
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${normText(s.instructor)===normText(currentInstructor.name)&&s.status!=='Done'&&s.status!=='Cancelled'?`<button class="action-btn" style="background:#E8F5EE;color:var(--green);padding:8px 12px;font-size:13px" onclick="instrMarkDone(${s.id})">✅</button>`:''}
-        ${normText(s.instructor)===normText(currentInstructor.name)?`<button class="action-btn" style="background:#EEF2FF;color:var(--navy);padding:8px 12px;font-size:13px" onclick="instrAddNote(${s.id},${jsStr(s.notes||'')})">📝</button>`:''}
+      <div class="instructor-session-actions">
+        ${normText(s.instructor)===normText(currentInstructor.name)&&s.status!=='Done'&&s.status!=='Cancelled'?`<button class="session-icon-btn done" onclick="instrMarkDone(${s.id})" aria-label="Mark done">✓</button>`:''}
+        ${normText(s.instructor)===normText(currentInstructor.name)?`<button class="session-icon-btn note" onclick="instrAddNote(${s.id},${jsStr(s.notes||'')})" aria-label="Add note">✎</button>`:''}
       </div>
     </div>
-  </div>`;
+  </article>`;
 }
 
 function instrHorseInfo(horseName){

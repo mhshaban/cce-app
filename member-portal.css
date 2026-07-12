@@ -1006,3 +1006,13 @@ body.member-authenticated textarea{min-height:116px!important;padding:14px!impor
   #page-admin .login-wrap{padding:20px 16px max(28px,env(safe-area-inset-bottom))!important}
   #page-admin .login-box{width:100%;max-width:430px;padding:26px 22px!important;border-radius:24px!important}
 }
+
+/* StableOS 4.4.0 — portal mobile scale corrections */
+@media(max-width:600px){
+  .member-session-pill{max-width:150px!important;padding:7px 10px!important;line-height:1.2!important}
+  .member-session-pill strong{font-size:.78rem!important}
+  .member-session-pill small{font-size:.66rem!important}
+  body.member-authenticated #globalHeader .header-right{align-items:center!important}
+  body.member-authenticated #globalHeader .sync-btn,
+  body.member-authenticated #globalHeader .home-btn{min-height:40px!important;font-size:.78rem!important;padding:8px 11px!important}
+}
