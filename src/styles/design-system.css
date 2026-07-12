@@ -1,0 +1,38 @@
+/* CCE StableOS Design System v4 — shared visual primitives */
+:root{
+  --cce-font-family:'Cairo',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --cce-text-xs:.75rem;
+  --cce-text-sm:.875rem;
+  --cce-text-md:1rem;
+  --cce-text-lg:1.125rem;
+  --cce-text-xl:1.375rem;
+  --cce-text-2xl:clamp(1.5rem,2vw,2rem);
+  --cce-space-1:.25rem;
+  --cce-space-2:.5rem;
+  --cce-space-3:.75rem;
+  --cce-space-4:1rem;
+  --cce-space-5:1.5rem;
+  --cce-space-6:2rem;
+  --cce-radius-sm:.625rem;
+  --cce-radius-md:.875rem;
+  --cce-radius-lg:1.25rem;
+  --cce-control-height:3rem;
+  --cce-touch-target:2.75rem;
+  --cce-shadow-card:0 8px 28px rgba(18,28,48,.08);
+}
+html{font-family:var(--cce-font-family);text-size-adjust:100%;-webkit-text-size-adjust:100%}
+body,button,input,select,textarea{font-family:var(--cce-font-family)}
+button,.btn,input,select,textarea{font-size:var(--cce-text-md)}
+input:not([type=checkbox]):not([type=radio]),select,textarea{min-height:var(--cce-control-height);line-height:1.35}
+button,.btn,[role=button]{min-height:var(--cce-touch-target)}
+.card{border-radius:var(--cce-radius-lg);box-shadow:var(--cce-shadow-card)}
+.card-title{font-size:var(--cce-text-lg);line-height:1.45}
+.modal{border-radius:var(--cce-radius-lg)}
+.tbl-wrap{scrollbar-gutter:stable both-edges}
+@media(max-width:640px){
+  :root{--cce-text-md:.9375rem;--cce-text-lg:1.0625rem;--cce-text-xl:1.25rem;--cce-control-height:3.125rem}
+  body{font-size:var(--cce-text-md)}
+  button,.btn,input,select,textarea{font-size:1rem}
+  .card{border-radius:var(--cce-radius-md)}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

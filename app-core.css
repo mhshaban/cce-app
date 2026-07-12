@@ -1,0 +1,443 @@
+/* ══ Professional bilingual fonts ══ */
+:root{
+  --font-latin: 'Cairo', "Segoe UI", Roboto, Arial, sans-serif;
+  --font-arabic: 'Cairo', "Segoe UI", Tahoma, Arial, sans-serif;
+}
+*, *::before, *::after, input, select, textarea, button {
+  font-family: var(--font-latin) !important;
+}
+html[lang="ar"] *,
+[lang="ar"], .ar, .arabic-text {
+  font-family: var(--font-arabic) !important;
+}
+
+/* ── Base ── */
+
+:root{--navy:#1A2744;--amber:#C8923A;--sand:#F5EDD8;--cream:#FDFAF4;--green:#1E7D4E;--red:#C0392B;--muted:#7A8399;--border:#E3D9C6;--white:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
+.header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,39,68,.25)}
+/* iPhone/PWA safe area — keep header buttons below the status bar on ALL pages */
+.header{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important}
+.home-btn{background:#444;color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit}
+.header-brand{margin-left:auto !important;display:flex;align-items:center;gap:10px;text-align:right}
+body.mode-stable .home-btn,body.mode-instructor .home-btn{display:none !important}
+body.mode-book .portal-link{display:none !important}
+.hero{padding-top:calc(40px + env(safe-area-inset-top,0px)) !important}
+.header-logo{font-size:26px}.header-title{font-size:17px;font-weight:700}.header-sub{font-size:12px;color:var(--amber)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.sync-btn{background:var(--amber);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.sync-status{font-size:11px;color:var(--amber)}
+.overdue-badge{background:var(--red);color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.loading-overlay{position:fixed;inset:0;background:rgba(26,39,68,.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--amber);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:16px;font-weight:600}.loading-sub{color:var(--amber);font-size:13px}
+.nav{display:flex;background:#fff;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;position:sticky;top:62px;z-index:99}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{flex-shrink:0;border:none;background:none;cursor:pointer;padding:12px 16px;font-size:13px;color:var(--muted);border-bottom:3px solid transparent;font-weight:500;white-space:nowrap;transition:all .2s;border-radius:8px 8px 0 0}
+.nav-btn.active{color:#fff;background:var(--amber);border-bottom-color:var(--amber);font-weight:700;border-radius:12px 12px 0 0}
+.nav{flex-wrap:wrap;gap:6px;padding:8px;background:#fff;align-items:center;justify-content:flex-start;overflow-x:visible}
+.nav-btn{border:1px solid var(--border);border-bottom-width:1px;border-radius:12px;background:#fff;padding:10px 14px}
+.nav-btn.active{border-color:var(--amber);box-shadow:0 2px 8px rgba(200,146,58,.18)}
+@media(max-width:640px){.nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}.nav-btn{width:100%;padding:10px 6px;font-size:12px;text-align:center}.nav-btn.active{border-radius:12px}}
+/* Dashboard grouped navigation: Dashboard | Finance | Operations | Horses | Management */
+.dash-nav-wrap{position:sticky;top:62px;z-index:99;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 2px 10px rgba(26,39,68,.04)}
+.dash-nav-wrap .nav{position:static;top:auto;z-index:auto;border-bottom:0;overflow-x:visible;scrollbar-width:none}
+.dash-nav-wrap .nav::-webkit-scrollbar{display:none}
+.nav-groups{display:flex;flex-wrap:wrap;gap:8px;padding:8px 8px 4px;background:#fff;align-items:center}
+.nav-group-btn{border:1px solid var(--border);background:#fff;color:var(--navy);cursor:pointer;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:800;white-space:nowrap;transition:all .2s;box-shadow:0 1px 0 rgba(26,39,68,.02)}
+.nav-group-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,39,68,.08)}
+.nav-group-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 4px 14px rgba(26,39,68,.18)}
+.nav-subtabs{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px 8px;background:#fffaf0;border-top:1px solid #f0e4cd;align-items:center}
+.nav-subtabs .nav-btn{background:#fff;border:1px solid var(--border);border-radius:12px;padding:9px 13px;font-size:12px}
+.nav-subtabs .nav-btn.active{background:var(--amber);color:#fff;border-color:var(--amber);box-shadow:0 2px 8px rgba(200,146,58,.18)}
+.nav-btn.sub-hidden{display:none!important}
+@media(max-width:640px){.dash-nav-wrap{position:static}.nav-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px}.nav-group-btn{width:100%;padding:10px 8px;text-align:center}.nav-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px 8px 8px}.nav-subtabs .nav-btn{width:100%;padding:9px 5px;font-size:11px;text-align:center}}
+
+.content{padding:16px;max-width:1400px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}
+.stat-label{font-size:11px;color:var(--muted);margin-bottom:6px}.stat-value{font-size:19px;font-weight:700}
+.bar-chart{display:flex;gap:8px;align-items:flex-end;height:130px;overflow-x:auto;padding-bottom:4px}
+.bar-group{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:44px}
+.bar-pair{display:flex;gap:3px;align-items:flex-end}
+.bar{border-radius:4px 4px 0 0;min-height:4px;cursor:pointer;transition:height .5s}.bar:hover{opacity:.8}
+.bar-label{font-size:10px;color:var(--muted);text-align:center}
+.chart-legend{display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--muted)}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.pie-legend{display:flex;flex-direction:column;gap:7px}
+.pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.pie-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--sand);padding:10px 8px;text-align:left;color:var(--navy);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:#fafaf8}
+.badge{border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-green{background:#E8F5EE;color:var(--green)}.badge-red{background:#FDECEA;color:var(--red)}
+.badge-amber{background:#FEF3E2;color:var(--amber)}.badge-navy{background:#E8EAF0;color:var(--navy)}
+.badge-muted{background:#F0F1F4;color:var(--muted)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+.form-group label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:14px;background:var(--cream);font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--amber)}
+.form-group input[readonly]{background:#f0f0f0;cursor:not-allowed}
+.btn{border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:opacity .2s;width:100%}
+.btn:hover{opacity:.88}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-navy{background:var(--navy);color:#fff}.btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red);color:#fff}.btn-amber{background:var(--amber);color:#fff}
+.search-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-bar input{flex:1;min-width:180px;border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:14px;background:#fff;outline:none}
+.search-bar select{border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;background:#fff;outline:none}
+.horse-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.horse-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;gap:14px}
+.horse-name{font-weight:700;font-size:15px;color:var(--navy)}.horse-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.breed-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
+.breed-days{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.breed-day{background:var(--sand);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+.action-btn{border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;white-space:nowrap}
+.pin-btn{border:none;border-radius:10px;padding:14px;font-size:20px;font-weight:700;cursor:pointer;background:var(--sand);color:var(--navy);transition:all .15s;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.pin-btn:active{transform:scale(.92);background:var(--amber);color:#fff}
+.action-btn:hover{opacity:.85}
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.page-btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+.page-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.overdue-banner{background:linear-gradient(135deg,#C0392B,#96281B);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.alert-bell{position:relative;cursor:pointer;font-size:22px;flex-shrink:0}
+.alert-bell-badge{position:absolute;top:-6px;right:-6px;background:#C0392B;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.alerts-panel{position:fixed;top:64px;right:12px;width:320px;max-width:95vw;background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:999;overflow:hidden;display:none}
+.alerts-panel.open{display:block}
+.alerts-panel-header{background:var(--navy);color:#fff;padding:12px 16px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.alert-item{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.alert-item:last-child{border-bottom:none}
+.alert-item.alert-red{border-left:3px solid var(--red)}
+.alert-item.alert-amber{border-left:3px solid var(--amber)}
+.alert-item.alert-blue{border-left:3px solid #3B82F6}
+.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.alert-text{flex:1}
+.alert-title{font-weight:700;color:var(--navy);margin-bottom:2px}
+.alert-desc{color:var(--muted);font-size:12px}
+.money-green{color:var(--green);font-weight:700}.money-red{color:var(--red);font-weight:700}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.hidden{display:none!important}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr}.horse-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
+
+
+/* ── Booking ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#C8923A}
+.booking-horse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:6px}
+.booking-horse-card{border:2px solid #E3D9C6;border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.booking-horse-card:hover{border-color:#C8923A;background:#FEF3E2}
+.booking-horse-card.selected{border-color:#C8923A;background:#FEF3E2}
+.booking-horse-card .h-icon{font-size:28px;margin-bottom:6px}
+.booking-horse-card .h-name{font-size:13px;font-weight:700;color:#1A2744}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.6}
+
+
+/* ── Training ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.hero{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;padding:40px 20px;text-align:center}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.hero-sub{font-size:14px;color:#C8923A}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.packages{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:400px){.packages{grid-template-columns:1fr}}
+.pkg-card{border:2px solid #E3D9C6;border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
+.pkg-card:hover{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.selected{border-color:#C8923A;background:#FEF3E2}
+.pkg-card.popular::before{content:'⭐ Popular';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#C8923A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.pkg-icon{font-size:32px;margin-bottom:8px}
+.pkg-name{font-size:14px;font-weight:700;color:#1A2744;margin-bottom:4px}
+.pkg-sessions{font-size:12px;color:#7A8399;margin-bottom:8px}
+.pkg-price{font-size:22px;font-weight:700;color:#C8923A}
+.pkg-price span{font-size:12px;color:#7A8399;font-weight:400}
+.card{background:#fff;border:1px solid #E3D9C6;border-radius:16px;padding:24px;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:700;color:#1A2744;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.form-group{margin-bottom:16px}
+.form-group label{font-size:12px;color:#7A8399;display:block;margin-bottom:5px;font-weight:600}
+.form-group input{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;outline:none}
+.form-group input:focus{border-color:#C8923A}
+.selected-pkg-box{background:#FEF3E2;border:1px solid #C8923A;border-radius:10px;padding:14px;margin-bottom:16px;display:none;text-align:center}
+.selected-pkg-box .pkg-label{font-size:13px;color:#7A8399}
+.selected-pkg-box .pkg-value{font-size:16px;font-weight:700;color:#C8923A;margin-top:2px}
+.note-box{background:linear-gradient(135deg,#FEF3E2,#FFF8ED);border:1px solid #C8923A;border-radius:12px;padding:18px;margin-bottom:20px}
+.note-title{font-size:13px;font-weight:700;color:#C8923A;margin-bottom:8px}
+.note-text{font-size:13px;color:#1A2744;line-height:1.6}
+.iban{font-family:monospace;font-size:15px;font-weight:700;color:#1A2744;background:#fff;padding:8px 14px;border-radius:8px;display:inline-block;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;transition:background .2s}
+.btn:hover{background:#C8923A}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success-box{background:#E8F5EE;border:1px solid #1E7D4E;border-radius:12px;padding:24px;text-align:center;display:none}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:#1E7D4E;margin-bottom:8px}
+.success-text{font-size:14px;color:#1A2744;line-height:1.8}
+
+
+/* ── Owner ── */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:#FDFAF4;color:#1A2744}
+.header{background:#1A2744;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header a{color:#C8923A;text-decoration:none;font-size:13px;margin-left:auto}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
+
+/* Login */
+.login-wrap{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.1);text-align:center}
+.login-icon{font-size:48px;margin-bottom:12px}
+.login-title{font-size:20px;font-weight:700;color:#1A2744;margin-bottom:6px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.login-sub{font-size:13px;color:#7A8399;margin-bottom:24px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;direction:rtl;text-align:right}
+.inp{width:100%;border:1px solid #E3D9C6;border-radius:10px;padding:12px 16px;font-size:15px;background:#FDFAF4;outline:none;margin-bottom:12px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;text-align:center}
+.inp:focus{border-color:#C8923A}
+.login-btn{width:100%;background:#1A2744;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.login-btn:hover{background:#C8923A}
+.err{color:#C0392B;font-size:13px;margin-top:8px;display:none}
+
+/* Portal */
+.portal{display:none;padding:20px;max-width:700px;margin:0 auto}
+.welcome{background:linear-gradient(135deg,#1A2744,#2C3E6B);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:20px}
+.welcome-name{font-size:20px;font-weight:700;margin-bottom:4px}
+.welcome-sub{font-size:13px;color:#C8923A}
+
+/* Horse cards */
+.horse-section{margin-bottom:20px}
+.section-title{font-size:15px;font-weight:700;color:#1A2744;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.horse-card{background:#fff;border:1px solid #E3D9C6;border-radius:14px;padding:18px;margin-bottom:12px}
+.horse-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.horse-avatar{font-size:36px}
+.horse-name{font-size:17px;font-weight:700;color:#1A2744}
+.horse-meta{font-size:12px;color:#7A8399;margin-top:2px}
+.badge{border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700}
+.badge-green{background:#E8F5EE;color:#1E7D4E}
+.badge-red{background:#FDECEA;color:#C0392B}
+.badge-amber{background:#FEF3E2;color:#C8923A}
+
+/* Edit form */
+.edit-toggle{background:#E8EAF0;color:#1A2744;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.edit-toggle:hover{background:#C8923A;color:#fff}
+.edit-form{display:none;margin-top:16px;border-top:1px solid #E3D9C6;padding-top:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr}}
+.form-group label{font-size:11px;color:#7A8399;display:block;margin-bottom:4px;font-weight:600}
+.form-group input,.form-group select{width:100%;border:1px solid #E3D9C6;border-radius:8px;padding:9px 11px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#C8923A}
+.form-group input[readonly]{background:#f5f5f5;color:#999;cursor:not-allowed}
+.save-btn{background:#1E7D4E;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.save-btn:hover{opacity:.88}
+.save-btn:disabled{opacity:.5;cursor:not-allowed}
+.cancel-btn{background:#f0f0f0;color:#1A2744;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;margin-left:8px}
+
+/* Horse info display */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.info-grid{grid-template-columns:1fr}}
+.info-item{background:#FDFAF4;border-radius:8px;padding:10px 12px}
+.info-label{font-size:10px;color:#7A8399;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.info-value{font-size:13px;font-weight:600;color:#1A2744}
+
+
+
+
+/* Cairo Arabic Font */
+[lang="ar"], .ar, *:lang(ar) { font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif; }
+.header-sub, [dir="rtl"] { font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif; }
+
+.ar{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+/* ── App Router ── */
+.app-page{display:none}
+.app-page.active{display:block}
+
+/* ── Public Home ── */
+.home-wrap{background:#1A2744;min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:900px;width:100%}
+.home-card{background:#fff;border-radius:20px;padding:30px 24px;text-align:center;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.home-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.home-card .hc-icon{font-size:44px;margin-bottom:14px}
+.home-card .hc-title{font-size:18px;font-weight:700;color:#1A2744;margin-bottom:6px}
+.home-card .hc-desc{font-size:13px;color:#7A8399;line-height:1.5;margin-bottom:16px}
+.home-card .hc-btn{display:inline-block;background:#C8923A;color:#fff;border:none;border-radius:10px;padding:9px 24px;font-size:13px;font-weight:700;cursor:pointer}
+.back-btn{background:none;border:none;color:#C8923A;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;margin:0}
+.back-btn:hover{text-decoration:underline}
+
+/* ── Login Box (admin + owner) ── */
+.login-wrap{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px;background:#1A2744}
+.login-box{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.4);text-align:center}
+.login-icon{font-size:48px;margin-bottom:12px}
+.login-title{font-size:20px;font-weight:700;color:#1A2744;margin-bottom:6px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif}
+.login-sub{font-size:13px;color:#7A8399;margin-bottom:24px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;direction:rtl;text-align:right}
+
+
+/* ══ Arabic-first UX improvements ══ */
+html{direction:rtl;scroll-behavior:smooth}
+body{text-align:right;line-height:1.65}
+.header{direction:rtl}.header-right{margin-right:auto;margin-left:0}.back-btn{direction:ltr}
+input,select,textarea{direction:rtl;text-align:right}
+input[type="tel"],input[type="time"],input[type="date"],.iban{direction:ltr;text-align:left;unicode-bidi:embed}
+.card,.note-box,.success-box,.login-box{direction:rtl;text-align:right}
+.hero,.home-card,.success-box{text-align:center}
+.btn,.login-btn,.sync-btn{transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+.btn:hover,.login-btn:hover,.sync-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.12)}
+.security-note{background:#fff7e6;border:1px solid #f0c36d;color:#775400;border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.7;margin:0 0 14px;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;direction:rtl;text-align:right}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.step{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;font-size:11px;color:var(--muted)}
+.step strong{display:block;color:var(--navy);font-size:12px;margin-bottom:2px}
+.step.active{border-color:var(--amber);background:#fffbf5;color:var(--navy)}
+.ride-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.ride-card{border:2px solid var(--border);background:#fff;border-radius:12px;padding:12px 10px;text-align:center;cursor:pointer;transition:all .18s ease}
+.ride-card:hover{border-color:var(--amber);transform:translateY(-2px)}
+.ride-card.selected{border-color:var(--amber);background:#fffbf5;box-shadow:0 8px 20px rgba(200,146,58,.18)}
+.ride-card .ride-name{font-weight:700;color:var(--navy);font-size:13px}
+.ride-card .ride-desc{font-size:11px;color:var(--muted);margin:4px 0}
+.ride-card .ride-price{font-size:18px;font-weight:800;color:var(--amber)}
+.whatsapp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#1E7D4E!important;color:#fff!important;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;width:100%;margin-top:10px}
+.whatsapp-btn.secondary{background:#128C7E!important}
+.required-hint{font-size:11px;color:var(--muted);margin-top:6px}
+@media(max-width:640px){.steps{grid-template-columns:1fr 1fr}.header{padding:12px 14px}.header-title{font-size:15px}.sync-btn{padding:6px 10px;font-size:11px}}
+
+
+
+/* ══ Professional bilingual direction controls ══ */
+html[dir="ltr"] body{direction:ltr;text-align:left}
+html[dir="rtl"] body{direction:rtl;text-align:right}
+html[dir="rtl"] .header-right{margin-left:0;margin-right:auto}
+html[dir="ltr"] .header-right{margin-left:auto;margin-right:0}
+html[dir="rtl"] th, html[dir="rtl"] td{text-align:right}
+html[dir="ltr"] th, html[dir="ltr"] td{text-align:left}
+html[dir="rtl"] .alerts-panel{right:auto;left:12px}
+html[dir="rtl"] .alert-bell-badge{right:auto;left:-6px}
+html[dir="rtl"] .alert-item.alert-red{border-left:0;border-right:3px solid var(--red)}
+html[dir="rtl"] .alert-item.alert-amber{border-left:0;border-right:3px solid var(--amber)}
+html[dir="rtl"] .alert-item.alert-blue{border-left:0;border-right:3px solid #3B82F6}
+[lang="ar"], .arabic-text{direction:rtl;unicode-bidi:isolate;text-align:inherit}
+[lang="en"], .english-text{direction:ltr;unicode-bidi:isolate}
+input, textarea{unicode-bidi:plaintext}
+html[dir="rtl"] .home-grid, html[dir="rtl"] .form-grid, html[dir="rtl"] .stats-grid{direction:rtl}
+html[dir="ltr"] .home-grid, html[dir="ltr"] .form-grid, html[dir="ltr"] .stats-grid{direction:ltr}
+
+
+/* ══════════════════════════════════════════════════════════
+   RTL & LTR Direction Support - Applied Globally
+   ══════════════════════════════════════════════════════════ */
+
+/* Root direction */
+html[dir="rtl"], html[lang="ar"] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="ltr"], html[lang="en"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Body direction */
+body[dir="rtl"], body.rtl-mode {
+  direction: rtl;
+  text-align: right;
+}
+
+body[dir="ltr"], body.ltr-mode {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Header alignment */
+html[dir="rtl"] .header-right {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html[dir="ltr"] .header-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Table text alignment */
+html[dir="rtl"] th,
+html[dir="rtl"] td {
+  text-align: right;
+}
+
+html[dir="ltr"] th,
+html[dir="ltr"] td {
+  text-align: left;
+}
+
+/* Form padding */
+html[dir="rtl"] .form-group input,
+html[dir="rtl"] .form-group select,
+html[dir="rtl"] .form-group label {
+  text-align: right;
+  direction: rtl;
+}
+
+html[dir="ltr"] .form-group input,
+html[dir="ltr"] .form-group select,
+html[dir="ltr"] .form-group label {
+  text-align: left;
+  direction: ltr;
+}
+
+/* Flex alignment for RTL */
+html[dir="rtl"] .header {
+  flex-direction: row-reverse;
+}
+
+/* Modal and overlays */
+html[dir="rtl"] .modal-title {
+  flex-direction: row-reverse;
+}
+
+/* Badge and labels */
+html[dir="rtl"] .badge {
+  display: inline-block;
+}
+
+html[dir="rtl"] .pie-legend-item {
+  flex-direction: row-reverse;
+}
+
+/* Ensure all text respects direction */
+* {
+  direction: inherit;
+}
