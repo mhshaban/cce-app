@@ -310,8 +310,19 @@
       const pages = (window.DASH_GROUPS || DASH_GROUPS)[group] || [];
       groupButton.style.display = pages.some(canOpenDashPage) ? '' : 'none';
     });
-    const backup = document.getElementById('backupBtn'); if (backup) backup.style.display = hasPermission('settings.manage') ? '' : 'none';
-    const alertBell = document.getElementById('alertBell'); if (alertBell) alertBell.style.display = hasPermission('notifications.view') ? '' : 'none';
+    const roleCode = String(memberAccess?.role?.code || '').toLowerCase();
+    const backup = document.getElementById('backupBtn');
+    if (backup) {
+      const canBackup = roleCode === 'super_admin';
+      backup.style.display = canBackup ? '' : 'none';
+      backup.classList.toggle('hidden', !canBackup);
+    }
+    const alertBell = document.getElementById('alertBell');
+    if (alertBell) {
+      alertBell.style.display = hasMemberSession() ? '' : 'none';
+      alertBell.classList.toggle('hidden', !hasMemberSession());
+    }
+    if (typeof buildAlerts === 'function') window.setTimeout(buildAlerts, 0);
     const addUser = document.getElementById('addMemberBtn'); if (addUser) addUser.style.display = hasPermission('users.manage') ? '' : 'none';
     const addRole = document.getElementById('addRoleBtn'); if (addRole) addRole.style.display = hasPermission('roles.manage') ? '' : 'none';
     stripDisallowedActions();
@@ -436,6 +447,7 @@
         list.innerHTML = '<div class="member-empty owner-empty-state"><strong>No horses linked to this account.</strong><span>Please ask the administrator to link the owner account to the correct horse record.</span></div>';
       }
       if (!hasPermission('owner.horses.update') && !hasPermission('horses.update')) document.querySelectorAll('#ownerHorseList .edit-toggle').forEach(x => x.style.display = 'none');
+      if (typeof buildAlerts === 'function') buildAlerts();
     } catch (error) {
       const list = document.getElementById('ownerHorseList');
       if (list) list.innerHTML = `<div class="permission-denied"><strong>Unable to load owner horses.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
@@ -478,11 +490,13 @@
       document.getElementById('instrTodayCount').textContent = todaySessions.length;
       document.getElementById('instrMonthCount').textContent = monthSessions.length;
       document.getElementById('instrMonthStats').textContent = `${MONTHS_AR[month]} ${year} — ${monthSessions.length} sessions`;
+      schedule_data = sessions;
       window._instrAllSessions = sessions;
       window._instrMySessions = sessions;
       window._instrSessions = sessions;
       instrScope = 'mine';
       renderInstrSchedule();
+      if (typeof buildAlerts === 'function') buildAlerts();
     } catch (error) {
       window._instrSessions = [];
       renderInstrSchedule();

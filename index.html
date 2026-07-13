@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260713-450"></script>
+<script src="app-bootstrap.js?v=20260713-460"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,10 +23,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260713-450" rel="stylesheet"/>
-<link href="member-portal.css?v=20260713-450" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260713-450" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260713-450" rel="stylesheet"/>
+<link href="app-core.css?v=20260713-460" rel="stylesheet"/>
+<link href="member-portal.css?v=20260713-460" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260713-460" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260713-460" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -537,14 +537,14 @@
 </div>
 <!-- ════════════════════════════ LIVERY PAGE ════════════════════════════ -->
 <div class="app-page" id="page-livery">
-<div class="header">
+<div class="header service-header">
 <button class="home-btn" onclick="navigate('home')">← Home</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Livery Booking</div></div>
-<img alt="CCE" src="icons/logo-transparent.png" style="height:44px;width:44px;object-fit:contain;flex-shrink:0"/>
+<img alt="CCE" src="icons/logo-transparent.png"/>
 </div>
 </div>
-<div class="hero" style="padding:30px 20px">
+<div class="hero service-hero" style="padding:30px 20px">
 <div class="hero-icon">🏠</div>
 <div class="hero-title">Book Livery</div>
 <div class="hero-sub" style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">حجز إيواء الخيل</div>
@@ -757,7 +757,7 @@
 <button class="sync-btn hidden" id="instrLogoutBtn" onclick="logoutInstructor()" style="background:var(--red)">🔒 Logout</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub" id="instrHeaderSub">Instructor Portal</div></div>
-<img alt="CCE" src="icons/logo-transparent.png" style="height:44px;width:44px;object-fit:contain;flex-shrink:0"/>
+<img alt="CCE" src="icons/logo-transparent.png"/>
 </div>
 </div>
 <!-- LOGIN -->
@@ -1164,23 +1164,23 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260713-450"></script>
-<script src="src/core/config.js?v=20260713-450"></script>
-<script src="src/core/store.js?v=20260713-450"></script>
-<script src="src/services/supabase-runtime.js?v=20260713-450"></script>
-<script src="src/modules/horses/horse-service.js?v=20260713-450"></script>
-<script src="src/modules/health/health-service.js?v=20260713-450"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-450"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260713-450"></script>
-<script src="app-core.js?v=20260713-450"></script>
-<script src="app-branding.js?v=20260713-450"></script>
-<script src="horse-health.js?v=20260713-450"></script>
-<script src="member-portal.js?v=20260713-450"></script>
-<script src="src/components/header/header-system.js?v=20260713-450"></script>
+<script src="src/core/events.js?v=20260713-460"></script>
+<script src="src/core/config.js?v=20260713-460"></script>
+<script src="src/core/store.js?v=20260713-460"></script>
+<script src="src/services/supabase-runtime.js?v=20260713-460"></script>
+<script src="src/modules/horses/horse-service.js?v=20260713-460"></script>
+<script src="src/modules/health/health-service.js?v=20260713-460"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-460"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260713-460"></script>
+<script src="app-core.js?v=20260713-460"></script>
+<script src="app-branding.js?v=20260713-460"></script>
+<script src="horse-health.js?v=20260713-460"></script>
+<script src="member-portal.js?v=20260713-460"></script>
+<script src="src/components/header/header-system.js?v=20260713-460"></script>
 </body>
 </html>

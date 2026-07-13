@@ -193,13 +193,18 @@ function navigate(page) {
   if(page==='dashboard') {
     syncStatus.classList.remove('hidden');
     refreshBtn.classList.remove('hidden');
-    backupBtn.classList.remove('hidden');
+    const roleCode=String(window.CCE_MEMBER?.role?.code||'').toLowerCase();
+    if(roleCode==='super_admin') backupBtn.classList.remove('hidden');
     logoutAdmin.classList.remove('hidden');
     overdueBadge.classList.remove('hidden');
     document.getElementById('alertBell').classList.remove('hidden');
   }
-  if(page==='owner' && sessionStorage.getItem('owner_phone')) {
+  if(page==='owner' && (sessionStorage.getItem('owner_phone') || window.CCE_MEMBER)) {
     logoutOwner.classList.remove('hidden');
+    document.getElementById('alertBell').classList.remove('hidden');
+  }
+  if(page==='instructor' && window.CCE_MEMBER) {
+    document.getElementById('alertBell').classList.remove('hidden');
   }
   if(window.CCEHeaderSystem) window.CCEHeaderSystem.refresh();
 }
@@ -1595,119 +1600,134 @@ async function toggleHorse(id,cur){
   await sbPatch('horses',id,{status:ns});await loadAll();
 }
 function buildAlerts(){
-  // Don't show admin alerts on home page
-  if(currentPage==='home'){
-    document.getElementById('alertsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">&#10003; All clear — no alerts!</div>';
-    return;
-  }
-  
-  const today=new Date(); today.setHours(0,0,0,0);
-  const alerts=[];
-
-  // 1. Pending bookings (income with BOOKING REQUEST or TRAINING REQUEST in notes)
-  const pendingBooks=income.filter(r=>{
-    const n=r.notes||'';
-    return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
-  });
-  if(pendingBooks.length){
-    alerts.push({
-      type:'blue',icon:'&#128203;',
-      title:`${pendingBooks.length} Pending Booking${pendingBooks.length>1?'s':''}`,
-      desc:pendingBooks.map(r=>(r.customer_name||'Unknown')+' — '+(r.horse_name||'?')+' ('+(r.start_time||fmt(r.date))+')').join('\n'),
-      action:()=>showDashPage('bookings',null)
-    });
-  }
-
-  // 2. Horse health alerts - Only for Available horses
-  horses.filter(h=>h.status==='Available').forEach(h=>{
-    const name=h.horse_name||'Unknown';
-
-    // Farrier > 30 days
-    if(h.farrier_date){
-      const d=new Date(h.farrier_date); d.setHours(0,0,0,0);
-      const days=Math.floor((today-d)/(1000*60*60*24));
-      if(days>30) alerts.push({
-        type:'red',icon:'&#128295;',
-        title:`Farrier overdue — ${name}`,
-        desc:`Last: ${fmt(h.farrier_date)} (${days} days ago)${h.farrier_name?' · '+h.farrier_name:''}`,
-        action:()=>{showDashPage('horses',null);}
-      });
-    }
-
-    // Worm > 90 days (3 months)
-    if(h.deworm_date){
-      const d=new Date(h.deworm_date); d.setHours(0,0,0,0);
-      const days=Math.floor((today-d)/(1000*60*60*24));
-      if(days>90) alerts.push({
-        type:'amber',icon:'&#128027;',
-        title:`Worming overdue — ${name}`,
-        desc:`Last: ${fmt(h.deworm_date)} (${days} days ago)`,
-        action:()=>{showDashPage('horses',null);}
-      });
-    }
-
-    // Vaccine > 150 days (5 months)
-    if(h.vaccine_date){
-      const d=new Date(h.vaccine_date); d.setHours(0,0,0,0);
-      const days=Math.floor((today-d)/(1000*60*60*24));
-      if(days>150) alerts.push({
-        type:'red',icon:'&#128137;',
-        title:`Vaccine overdue — ${name}`,
-        desc:`Last: ${fmt(h.vaccine_date)} (${days} days ago)${h.vaccine_dr?' · Dr. '+h.vaccine_dr:''}`,
-        action:()=>{showDashPage('horses',null);}
-      });
-    }
-
-    // Teeth > 180 days (6 months)
-    if(h.teeth_date){
-      const d=new Date(h.teeth_date); d.setHours(0,0,0,0);
-      const days=Math.floor((today-d)/(1000*60*60*24));
-      if(days>180) alerts.push({
-        type:'amber',icon:'&#129463;',
-        title:`Teeth check overdue — ${name}`,
-        desc:`Last: ${fmt(h.teeth_date)} (${days} days ago)`,
-        action:()=>{showDashPage('horses',null);}
-      });
-    }
-
-    // Missing health dates — only for Available horses
-    if(h.status==='Available'){
-      const missing=[];
-      if(!h.farrier_date)  missing.push('🔧 Farrier');
-      if(!h.deworm_date)   missing.push('🐛 Deworm');
-      if(!h.vaccine_date)  missing.push('💉 Vaccine');
-      if(!h.teeth_date)    missing.push('🦷 Teeth');
-      if(missing.length) alerts.push({
-        type:'amber',icon:'&#9888;&#65039;',
-        title:`Missing health dates — ${name}`,
-        desc:missing.join('  ·  '),
-        action:()=>{showDashPage('horses',null);}
-      });
-    }
-  });
-
-  // Update bell badge
   const bell=document.getElementById('alertBell');
   const count=document.getElementById('alertBellCount');
   const list=document.getElementById('alertsList');
-  count.textContent=alerts.length;
-  bell.style.color=alerts.length>0?'var(--red)':'var(--muted)';
+  if(!bell||!count||!list)return;
 
+  if(currentPage==='home'&&!window.CCE_MEMBER){
+    count.textContent='0';
+    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">✓ All clear — no alerts!</div>';
+    return;
+  }
+
+  const access=window.CCE_MEMBER||null;
+  const role=String(access?.role?.code||access?.portal||'').toLowerCase();
+  const isOwner=['owner','horse_owner'].includes(role);
+  const isTrainer=['trainer','instructor','staff','operations'].includes(role);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const alerts=[];
+
+  const normalize=v=>String(v||'').trim().toLowerCase();
+  const ownerName=access?.profile?.owner_name||access?.profile?.full_name||'';
+  const ownerProfileId=access?.profile?.id||access?.profile?.owner_profile_id||null;
+  const trainerName=access?.instructor_name||access?.profile?.full_name||currentInstructor?.name||'';
+  const trainerId=access?.profile?.instructor_id||currentInstructor?.id||null;
+
+  const openOwner=()=>navigate('owner');
+  const openTrainer=()=>navigate('instructor');
+  const openAdmin=page=>showDashPage(page,null);
+
+  const myHorses=isOwner
+    ? horses.filter(h=>(ownerProfileId&&String(h.owner_profile_id||'')===String(ownerProfileId))||normalize(h.owner)===normalize(ownerName))
+    : horses;
+
+  // Administration receives all unprocessed booking and training requests.
+  if(!isOwner&&!isTrainer){
+    const pendingBooks=income.filter(r=>{
+      const n=r.notes||'';
+      return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
+    });
+    if(pendingBooks.length){
+      alerts.push({
+        type:'blue',icon:'📋',
+        title:`${pendingBooks.length} pending booking request${pendingBooks.length>1?'s':''}`,
+        desc:pendingBooks.map(r=>(r.customer_name||'Unknown')+' — '+(r.activity||r.horse_name||'Booking')+' ('+(r.start_time||fmt(r.date))+')').join('\n'),
+        action:()=>openAdmin('bookings')
+      });
+    }
+  }
+
+  // Trainers receive their upcoming lessons and rides, plus newly pending ride/training requests.
+  if(isTrainer){
+    const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()+7);
+    const mySessions=schedule_data.filter(r=>{
+      const date=new Date(r.date); date.setHours(0,0,0,0);
+      const assigned=(trainerId&&String(r.instructor_id||'')===String(trainerId))||normalize(r.instructor)===normalize(trainerName);
+      return assigned&&date>=today&&date<=cutoff&&!['Done','Cancelled'].includes(r.status);
+    });
+    if(mySessions.length){
+      alerts.push({
+        type:'blue',icon:'📅',
+        title:`${mySessions.length} upcoming session${mySessions.length>1?'s':''}`,
+        desc:mySessions.slice(0,8).map(r=>`${fmt(r.date)} ${r.start_time||''} — ${r.activity||'Session'}${r.horse?' · '+r.horse:''}`).join('\n'),
+        action:openTrainer
+      });
+    }
+    const pendingRides=income.filter(r=>{
+      const n=String(r.notes||'');
+      return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
+    });
+    if(pendingRides.length){
+      alerts.push({
+        type:'amber',icon:'🏇',
+        title:`${pendingRides.length} ride/training request${pendingRides.length>1?'s':''} awaiting scheduling`,
+        desc:'Open Operations to review the latest requests.',
+        action:openTrainer
+      });
+    }
+  }
+
+  // Health alerts: administration sees every active horse; owners see only their own horses.
+  if(!isTrainer){
+    myHorses.filter(h=>h.status==='Available').forEach(h=>{
+      const name=h.horse_name||'Unknown';
+      const destination=isOwner?openOwner:()=>openAdmin('horses');
+      const dateAlert=(field,daysLimit,type,icon,title,extra='')=>{
+        if(!h[field])return;
+        const d=new Date(h[field]);d.setHours(0,0,0,0);
+        const days=Math.floor((today-d)/(1000*60*60*24));
+        if(days>daysLimit)alerts.push({type,icon,title:`${title} — ${name}`,desc:`Last: ${fmt(h[field])} (${days} days ago)${extra}`,action:destination});
+      };
+      dateAlert('farrier_date',30,'red','🔧','Farrier overdue',h.farrier_name?' · '+h.farrier_name:'');
+      dateAlert('deworm_date',90,'amber','◉','Deworming overdue');
+      dateAlert('vaccine_date',150,'red','✚','Vaccine overdue',h.vaccine_dr?' · Dr. '+h.vaccine_dr:'');
+      dateAlert('teeth_date',180,'amber','◇','Teeth check overdue');
+
+      const missing=[];
+      if(!h.farrier_date)missing.push('Farrier');
+      if(!h.deworm_date)missing.push('Deworming');
+      if(!h.vaccine_date)missing.push('Vaccine');
+      if(!h.teeth_date)missing.push('Teeth');
+      if(missing.length)alerts.push({type:'amber',icon:'!',title:`Missing health dates — ${name}`,desc:missing.join(' · '),action:destination});
+    });
+  }
+
+  // Owners also receive unpaid financial items that match their profile name.
+  if(isOwner){
+    const unpaid=income.filter(r=>normalize(r.customer_name)===normalize(ownerName)&&r.status!=='Paid');
+    if(unpaid.length){
+      const total=unpaid.reduce((sum,r)=>sum+(parseFloat(r.amount_bd)||0),0);
+      alerts.push({type:'amber',icon:'BD',title:`${unpaid.length} pending payment${unpaid.length>1?'s':''}`,desc:`Pending total: ${BD(total)}`,action:openOwner});
+    }
+  }
+
+  count.textContent=String(alerts.length);
+  bell.classList.toggle('has-alerts',alerts.length>0);
   if(!alerts.length){
-    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">&#10003; All clear — no alerts!</div>';
+    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">✓ All clear — no alerts!</div>';
+    window._alertActions=[];
     return;
   }
 
   list.innerHTML=alerts.map((a,i)=>`
     <div class="alert-item alert-${a.type}" style="cursor:pointer" onclick="handleAlertClick(${i})">
-      <div class="alert-icon">${a.icon}</div>
+      <div class="alert-icon">${esc(a.icon)}</div>
       <div class="alert-text">
         <div class="alert-title">${esc(a.title)}</div>
         <div class="alert-desc" style="white-space:pre-line">${esc(a.desc)}</div>
       </div>
     </div>`).join('');
-
-  // Store actions for click handler
   window._alertActions=alerts.map(a=>a.action);
 }
 
