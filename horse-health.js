@@ -66,6 +66,17 @@ async function saveVaccine(id){const name=document.getElementById('vx-name').val
 async function completeVaccine(vId,hId){try{const today=new Date().toISOString().slice(0,10);await CCE.health.updateEvent(vId,{status:'Completed',event_date:today,completed_at:new Date().toISOString()});await reloadHorseHealth();openHorseHealthProfile(hId);setTimeout(()=>profileTab(hId,'vaccines'),0);}catch(e){showError('Vaccination',e);}}
 function openAddCare(id){const h=horses.find(x=>String(x.id)===String(id));openModal('Add care task — '+h.horse_name,`<div class="profile-form"><div class="form-group"><label>Type</label><select id="ct-type">${['Veterinary','Medication','Farrier','Dental','Deworming','Vaccination','Rest','Observation','Other'].map(x=>`<option>${x}</option>`).join('')}</select></div><div class="form-group"><label>Due date</label><input type="date" id="ct-due" value="${new Date().toISOString().slice(0,10)}"></div><div class="form-group wide"><label>Title *</label><input id="ct-title"></div><div class="form-group"><label>Priority</label><select id="ct-priority">${['Low','Normal','High','Urgent'].map(x=>`<option>${x}</option>`).join('')}</select></div><div class="form-group"><label>Assigned to</label><input id="ct-assigned"></div><div class="form-group wide"><label>Notes</label><textarea id="ct-notes"></textarea></div></div><div class="profile-actions"><button class="btn btn-green" onclick="saveCareTask(${id})">Save task</button></div>`);}
 async function saveCareTask(id){const title=document.getElementById('ct-title').value.trim();if(!title){alert('Title is required');return;}try{const rawType=document.getElementById('ct-type').value;const type=rawType==='Veterinary'?'Veterinary Visit':rawType;const due=document.getElementById('ct-due').value;await CCE.health.createEvent({horse_id:id,event_scope:'care',event_type:type,event_date:due,due_date:due,title,priority:document.getElementById('ct-priority').value,severity:'None',status:'Pending',assigned_to:document.getElementById('ct-assigned').value||null,notes:document.getElementById('ct-notes').value||null});await reloadHorseHealth();openHorseHealthProfile(id);setTimeout(()=>profileTab(id,'care'),0);}catch(e){showError('Care task',e);}}
-async function completeCare(id,hId){try{await CCE.health.updateEvent(id,{status:'Completed',completed_at:new Date().toISOString()});await reloadHorseHealth();openHorseHealthProfile(hId);setTimeout(()=>profileTab(hId,'care'),0);}catch(e){showError('Care task',e);}}
+async function completeCare(id,hId){try{await CCE.health.updateEvent(id,{status:'Completed',completed_at:new Date().toISOString()});await reloadHorseHealth();openHorseHealthProfile(hId);setTimeout(()=>profileTab(hId,'care'),0);setTimeout(()=>{const ok=document.createElement('div');ok.className='cce-save-confirmation';ok.textContent='✓ Care task completed and horse record updated';document.body.appendChild(ok);setTimeout(()=>ok.remove(),2600);},20);}catch(e){showError('Care task',e);}}
 async function deleteHealthRecord(table,id,hId){if(!confirm('Delete this record?'))return;try{await CCE.health.deleteEvent(id);await reloadHorseHealth();openHorseHealthProfile(hId);}catch(e){showError('Delete record',e);}}
-async function reloadHorseHealth(){const loaded=await CCE.health.load();horse_health_profiles=loaded.profiles;horse_health_events=loaded.events;deriveHealthCollections();renderHorseHealth();renderHorses();}
+async function reloadHorseHealth(){
+  const loaded=await CCE.health.load();
+  let latestHorses=horses;
+  try{latestHorses=await sbGet('horses','select=*&limit=500');}catch(error){console.warn('[CCE] Horse summary reload skipped',error);}
+  horse_health_profiles=loaded.profiles;
+  horse_health_events=loaded.events;
+  horses=CCE.health.mergeCompletedSummaries(latestHorses,horse_health_events);
+  deriveHealthCollections();
+  renderHorseHealth();
+  renderHorses();
+  if(typeof buildAlerts==='function')buildAlerts();
+}

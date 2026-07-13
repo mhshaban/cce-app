@@ -1,4 +1,4 @@
-/* CCE StableOS 4.6.3 — final responsive reusable header system */
+/* CCE StableOS 4.6.4 — responsive reusable header system */
 :root{
   --cce-header-navy:#152744;
   --cce-header-navy-2:#20385f;
@@ -6,6 +6,7 @@
   --cce-header-gap:10px;
   --cce-safe-top:env(safe-area-inset-top,0px);
   --cce-safe-bottom:env(safe-area-inset-bottom,0px);
+  --cce-header-safe-gap:8px;
   --cce-header-bottom:0px;
 }
 
@@ -25,7 +26,7 @@
   top:0!important;
   z-index:3000!important;
   min-height:76px!important;
-  padding:10px clamp(16px,3vw,30px)!important;
+  padding:calc(var(--cce-safe-top) + 10px) clamp(16px,3vw,30px) 10px!important;
   display:grid!important;
   grid-template-columns:minmax(245px,auto) minmax(0,1fr)!important;
   grid-template-areas:"brand actions"!important;
@@ -88,21 +89,23 @@
 }
 html[dir="rtl"] #alertsPanel.alerts-panel{right:auto!important;left:12px!important}
 #alertsPanel .alerts-panel-header{position:sticky!important;top:0!important;z-index:2!important}
+#alertsPanel .alerts-panel-header button{width:36px;height:36px;padding:0;border:0;border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font:800 18px/1 inherit;cursor:pointer}
+#alertsPanel .alerts-panel-header button:hover{background:rgba(255,255,255,.2)}
 #alertsPanel #alertsList{max-height:calc(100dvh - var(--cce-header-bottom,0px) - 76px - var(--cce-safe-bottom))!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
 
 @media (min-width:701px) and (max-width:1023px){
-  #globalHeader.cce-workspace-header{padding:calc(9px + var(--cce-safe-top)) 14px 10px!important;grid-template-columns:minmax(210px,42%) minmax(0,1fr)!important;gap:12px!important}
+  #globalHeader.cce-workspace-header{padding:calc(10px + var(--cce-safe-top)) 14px 10px!important;grid-template-columns:minmax(210px,42%) minmax(0,1fr)!important;gap:12px!important}
   .cce-header-actions{gap:6px!important}.cce-header-action{padding:8px 9px!important}.cce-header-action-label{font-size:10px!important}.cce-header-user{max-width:150px!important}
 }
 
-/* Mobile: explicit status-bar lane + brand row + actions row. */
+/* Mobile: every portal uses the same safe-area gap as the public home page. */
 @media (max-width:700px){
   #globalHeader.cce-workspace-header,
   body.member-authenticated #globalHeader.cce-workspace-header{
     position:relative!important;
     top:auto!important;
     min-height:0!important;
-    padding-top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+    padding-top:calc(var(--cce-safe-top) + var(--cce-header-safe-gap))!important;
     padding-right:12px!important;
     padding-bottom:14px!important;
     padding-left:12px!important;
@@ -127,19 +130,21 @@ html[dir="rtl"] #alertsPanel.alerts-panel{right:auto!important;left:12px!importa
 }
 
 @media (max-width:430px){
-  #globalHeader.cce-workspace-header,
-  body.member-authenticated #globalHeader.cce-workspace-header{padding-top:calc(env(safe-area-inset-top,0px) + 72px)!important}
   #globalHeader .cce-header-actions{gap:6px!important}
   #globalHeader .cce-header-action,#globalHeader .cce-header-bell{flex-basis:40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:40px!important;min-height:40px!important}
   #globalHeader .cce-header-user{min-height:40px!important}
 }
 
 /* Guest/service pages share one exact header structure. */
+.cce-public-responsive-header,.cce-legacy-header{padding-top:calc(var(--cce-safe-top) + 10px)!important}
 .cce-service-responsive-header{position:relative!important;top:auto!important;min-height:70px!important;padding:calc(10px + var(--cce-safe-top)) 16px 10px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}
 .cce-service-responsive-header .cce-header-brand{order:1;max-width:min(70%,520px)!important}
 .cce-service-responsive-header .cce-header-action{order:2!important}
 @media(max-width:700px){
-  .cce-service-responsive-header{min-height:0!important;padding-top:calc(env(safe-area-inset-top,0px) + 10px)!important;padding-right:14px!important;padding-bottom:12px!important;padding-left:14px!important}
+  .cce-public-responsive-header,
+  .cce-service-responsive-header,
+  .cce-legacy-header{padding-top:calc(var(--cce-safe-top) + var(--cce-header-safe-gap))!important}
+  .cce-service-responsive-header{min-height:0!important;padding-right:14px!important;padding-bottom:12px!important;padding-left:14px!important}
   .cce-service-responsive-header .cce-header-brand{max-width:calc(100% - 54px)!important;padding:6px 8px!important;border:0!important;background:transparent!important}
   .cce-service-responsive-header .cce-header-brand img{width:36px!important;height:36px!important}
   .cce-service-responsive-header .cce-header-brand .header-title{font-size:12px!important}

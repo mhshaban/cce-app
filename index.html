@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260713-463"></script>
+<script src="app-bootstrap.js?v=20260713-464"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,10 +23,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260713-463" rel="stylesheet"/>
-<link href="member-portal.css?v=20260713-463" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260713-463" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260713-463" rel="stylesheet"/>
+<link href="app-core.css?v=20260713-464" rel="stylesheet"/>
+<link href="member-portal.css?v=20260713-464" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260713-464" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260713-464" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -47,7 +47,7 @@
 <button class="sync-btn hidden" data-i18n="logout" id="logoutOwnerBtn" onclick="logoutOwner()" style="background:#C0392B">Logout</button>
 <button class="home-btn hidden" id="backBtn" onclick="goHome()">Home</button>
 <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)" style="display:none !important;">⚠️ <span id="overdueCount">0</span></span>
-<div class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()"><div class="alert-bell-badge" id="alertBellCount">0</div></div>
+<button aria-controls="alertsPanel" aria-expanded="false" aria-label="Notifications: 0" class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()" type="button"><span class="alert-bell-badge" id="alertBellCount">0</span></button>
 </div>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub" id="headerSub">Dashboard</div></div>
@@ -55,10 +55,10 @@
 </div>
 </div>
 <!-- ALERTS PANEL -->
-<div class="alerts-panel" id="alertsPanel">
+<div aria-hidden="true" aria-label="Notifications" class="alerts-panel" id="alertsPanel" role="region">
 <div class="alerts-panel-header">
 <span data-i18n="alerts">🔔 Alerts</span>
-<span onclick="toggleAlertsPanel()" style="cursor:pointer;font-size:18px">✕</span>
+<button aria-label="Close notifications" onclick="toggleAlertsPanel()" type="button">✕</button>
 </div>
 <div id="alertsList" style="max-height:60vh;overflow-y:auto"></div>
 </div>
@@ -1077,15 +1077,15 @@
 <div class="section" id="page-notifications">
 <!-- Browser Push Card -->
 <div class="card">
-<div class="card-title">📲 Browser Push Notifications</div>
+<div class="card-title">📲 Browser Notifications</div>
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
 <div id="pushStatus" style="font-size:13px;color:var(--muted)">● Status: Checking...</div>
 <button class="btn btn-amber" id="pushEnableBtn" onclick="enablePush()" style="width:auto;padding:8px 20px">🔔 Enable Notifications</button>
 <button class="btn" id="pushTestBtn" onclick="testPush()" style="width:auto;padding:8px 20px;background:#f0f0f0;color:var(--navy)">▶ Test Notification</button>
 </div>
 <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.8">
-          ⓘ <strong>كيف تعمل:</strong> اضغط Enable وسمح للمتصفح بالإشعارات — ستصلك تنبيهات مباشرة على شاشتك حتى لو التطبيق في الخلفية.<br/>
-          ⚠️ تعمل على Chrome وEdge وFirefox وSafari (iOS 16.4+)
+          ⓘ <strong>كيف تعمل:</strong> اضغط Enable واسمح للمتصفح بالإشعارات. تُرسل التذكيرات عندما يكون StableOS مفتوحًا، وقد يسمح نظام التشغيل باستمرارها عند تثبيت التطبيق حسب المتصفح.<br/>
+          ⚠️ الإشعارات الخلفية الدائمة بين الأجهزة تحتاج خدمة Web Push خادمية منفصلة.
         </div>
 </div>
 <!-- Notification Schedule Card -->
@@ -1164,23 +1164,23 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260713-463"></script>
-<script src="src/core/config.js?v=20260713-463"></script>
-<script src="src/core/store.js?v=20260713-463"></script>
-<script src="src/services/supabase-runtime.js?v=20260713-463"></script>
-<script src="src/modules/horses/horse-service.js?v=20260713-463"></script>
-<script src="src/modules/health/health-service.js?v=20260713-463"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-463"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260713-463"></script>
-<script src="app-core.js?v=20260713-463"></script>
-<script src="app-branding.js?v=20260713-463"></script>
-<script src="horse-health.js?v=20260713-463"></script>
-<script src="member-portal.js?v=20260713-463"></script>
-<script src="src/components/header/header-system.js?v=20260713-463"></script>
+<script src="src/core/events.js?v=20260713-464"></script>
+<script src="src/core/config.js?v=20260713-464"></script>
+<script src="src/core/store.js?v=20260713-464"></script>
+<script src="src/services/supabase-runtime.js?v=20260713-464"></script>
+<script src="src/modules/horses/horse-service.js?v=20260713-464"></script>
+<script src="src/modules/health/health-service.js?v=20260713-464"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-464"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260713-464"></script>
+<script src="app-core.js?v=20260713-464"></script>
+<script src="app-branding.js?v=20260713-464"></script>
+<script src="horse-health.js?v=20260713-464"></script>
+<script src="member-portal.js?v=20260713-464"></script>
+<script src="src/components/header/header-system.js?v=20260713-464"></script>
 </body>
 </html>

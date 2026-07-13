@@ -729,6 +729,7 @@ async function loadAll(){
     const healthLoaded=await CCE.health.load();
     horse_health_profiles=healthLoaded.profiles;
     horse_health_events=healthLoaded.events;
+    horses=CCE.health.mergeCompletedSummaries(horses,horse_health_events);
     deriveHealthCollections();
     setMsg('Done!',horse_health_profiles.length+' health profiles and '+horse_health_events.length+' events loaded');
 
@@ -1564,6 +1565,8 @@ function renderHorses(){
     const hid=h.id;
     const st=h.status||'';
     const stBadge=st==='Available'?'badge-green':st==='Out'?'badge-amber':st==='Sold'?'badge-navy':'badge-red';
+    const healthProfile=typeof healthProfileFor==='function'?healthProfileFor(hid):null;
+    const healthChip=healthProfile&&typeof healthStatusHTML==='function'?healthStatusHTML(healthProfile.health_status||'Healthy'):'';
     const today=new Date(); today.setHours(0,0,0,0);
     function daysSince(d){if(!d)return null;const dt=new Date(d);dt.setHours(0,0,0,0);return Math.floor((today-dt)/(86400000));}
     const fDays=daysSince(h.farrier_date); const wDays=daysSince(h.deworm_date); const vDays=daysSince(h.vaccine_date);
@@ -1576,7 +1579,7 @@ function renderHorses(){
       h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Click to change status" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
@@ -1620,17 +1623,22 @@ function buildAlerts(){
 
   const normalize=v=>String(v||'').trim().toLowerCase();
   const ownerName=access?.profile?.owner_name||access?.profile?.full_name||'';
-  const ownerProfileId=access?.profile?.id||access?.profile?.owner_profile_id||null;
   const trainerName=access?.instructor_name||access?.profile?.full_name||currentInstructor?.name||'';
   const trainerId=access?.profile?.instructor_id||currentInstructor?.id||null;
+  const summaryLines=(rows,format,limit=6)=>{
+    const visible=rows.slice(0,limit).map(format);
+    if(rows.length>limit)visible.push(`+ ${rows.length-limit} more`);
+    return visible.join('\n');
+  };
 
   const openOwner=()=>navigate('owner');
   const openTrainer=()=>navigate('instructor');
   const openAdmin=page=>showDashPage(page,null);
 
-  const myHorses=isOwner
-    ? horses.filter(h=>(ownerProfileId&&String(h.owner_profile_id||'')===String(ownerProfileId))||normalize(h.owner)===normalize(ownerName))
-    : horses;
+  const scopedHorseRows=isOwner?(Array.isArray(ownerHorses)?ownerHorses:[]):horses;
+  const myHorses=window.CCE?.health?.mergeCompletedSummaries
+    ? CCE.health.mergeCompletedSummaries(scopedHorseRows,horse_health_events)
+    : scopedHorseRows;
 
   // Administration receives all unprocessed booking and training requests.
   if(!isOwner&&!isTrainer){
@@ -1642,7 +1650,8 @@ function buildAlerts(){
       alerts.push({
         type:'blue',icon:'📋',
         title:`${pendingBooks.length} pending booking request${pendingBooks.length>1?'s':''}`,
-        desc:pendingBooks.map(r=>(r.customer_name||'Unknown')+' — '+(r.activity||r.horse_name||'Booking')+' ('+(r.start_time||fmt(r.date))+')').join('\n'),
+        desc:summaryLines(pendingBooks,r=>(r.customer_name||'Unknown')+' — '+(r.activity||r.horse_name||'Booking')+' ('+(r.start_time||fmt(r.date))+')'),
+        count:pendingBooks.length,
         action:()=>openAdmin('bookings')
       });
     }
@@ -1660,19 +1669,22 @@ function buildAlerts(){
       alerts.push({
         type:'blue',icon:'📅',
         title:`${mySessions.length} upcoming session${mySessions.length>1?'s':''}`,
-        desc:mySessions.slice(0,8).map(r=>`${fmt(r.date)} ${r.start_time||''} — ${r.activity||'Session'}${r.horse?' · '+r.horse:''}`).join('\n'),
+        desc:summaryLines(mySessions,r=>`${fmt(r.date)} ${r.start_time||''} — ${r.activity||'Session'}${r.horse_name?' · '+r.horse_name:''}`,8),
+        count:mySessions.length,
         action:openTrainer
       });
     }
-    const pendingRides=income.filter(r=>{
+    const canViewBookings=typeof window.canUser!=='function'||window.canUser('bookings.view')||window.canUser('income.view');
+    const pendingRides=canViewBookings?income.filter(r=>{
       const n=String(r.notes||'');
       return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
-    });
+    }):[];
     if(pendingRides.length){
       alerts.push({
         type:'amber',icon:'🏇',
         title:`${pendingRides.length} ride/training request${pendingRides.length>1?'s':''} awaiting scheduling`,
         desc:'Open Operations to review the latest requests.',
+        count:pendingRides.length,
         action:openTrainer
       });
     }
@@ -1680,6 +1692,42 @@ function buildAlerts(){
 
   // Health alerts: administration sees every active horse; owners see only their own horses.
   if(!isTrainer){
+    const visibleHorseIds=new Set(myHorses.map(h=>String(h.id)));
+    const canViewHealthDetails=typeof window.canUser!=='function'||['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view'].some(permission=>window.canUser(permission));
+    const visibleHealthProfiles=canViewHealthDetails?(horse_health_profiles||[]):[];
+    const visibleHealthEvents=canViewHealthDetails?(horse_health_events||[]):[];
+    const healthDestination=horse=>isOwner?openOwner:()=>{
+      if(typeof window.canUser==='function'&&window.canUser('horse_health.view'))showDashPage('health',null);
+      else openAdmin('horses');
+      if(typeof openHorseHealthProfile==='function'&&horse)setTimeout(()=>openHorseHealthProfile(horse.id),0);
+    };
+    visibleHealthProfiles.filter(profile=>visibleHorseIds.has(String(profile.horse_id))&&['Critical','Injured','Under Treatment','Isolation'].includes(profile.health_status)).forEach(profile=>{
+      const horse=myHorses.find(item=>String(item.id)===String(profile.horse_id));
+      if(!horse)return;
+      alerts.push({
+        type:profile.health_status==='Critical'?'red':'amber',icon:'✚',
+        title:`${profile.health_status} — ${horse.horse_name||'Unknown'}`,
+        desc:profile.diagnosis||profile.medical_notes||'Health follow-up required',
+        action:healthDestination(horse)
+      });
+    });
+    visibleHealthEvents.filter(event=>{
+      if(!visibleHorseIds.has(String(event.horse_id))||['Completed','Cancelled'].includes(event.status)||!event.due_date)return false;
+      const due=new Date(event.due_date+'T00:00:00');
+      return !Number.isNaN(due.getTime())&&Math.ceil((due-today)/86400000)<=14;
+    }).forEach(event=>{
+      const horse=myHorses.find(item=>String(item.id)===String(event.horse_id));
+      if(!horse)return;
+      const due=new Date(event.due_date+'T00:00:00');
+      const days=Math.ceil((due-today)/86400000);
+      const overdue=days<0||event.status==='Overdue';
+      alerts.push({
+        type:overdue||event.priority==='Urgent'?'red':'amber',icon:event.event_type==='Farrier'?'🔧':'✚',
+        title:`${overdue?'Overdue':'Due soon'}: ${event.title||event.event_type} — ${horse.horse_name||'Unknown'}`,
+        desc:`${event.event_type} · ${fmt(event.due_date)}${event.assigned_to?' · '+event.assigned_to:''}`,
+        action:healthDestination(horse)
+      });
+    });
     myHorses.filter(h=>h.status==='Available').forEach(h=>{
       const name=h.horse_name||'Unknown';
       const destination=isOwner?openOwner:()=>openAdmin('horses');
@@ -1704,7 +1752,7 @@ function buildAlerts(){
   }
 
   // Owners also receive unpaid financial items that match their profile name.
-  if(isOwner){
+  if(isOwner&&(typeof window.canUser!=='function'||window.canUser('income.view'))){
     const unpaid=income.filter(r=>normalize(r.customer_name)===normalize(ownerName)&&r.status!=='Paid');
     if(unpaid.length){
       const total=unpaid.reduce((sum,r)=>sum+(parseFloat(r.amount_bd)||0),0);
@@ -1712,7 +1760,9 @@ function buildAlerts(){
     }
   }
 
-  count.textContent=String(alerts.length);
+  const actionableCount=alerts.reduce((sum,alert)=>sum+(Number(alert.count)||1),0);
+  count.textContent=String(actionableCount);
+  bell.setAttribute('aria-label',`Notifications: ${actionableCount}`);
   bell.classList.toggle('has-alerts',alerts.length>0);
   if(!alerts.length){
     list.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:700">✓ All clear — no alerts!</div>';
@@ -1740,20 +1790,22 @@ function toggleAlertsPanel(){
   const panel=document.getElementById('alertsPanel');
   if(!panel)return;
   if(window.CCEHeaderSystem?.syncHeaderMetrics) window.CCEHeaderSystem.syncHeaderMetrics();
-  panel.classList.toggle('open');
-  panel.setAttribute('aria-hidden',panel.classList.contains('open')?'false':'true');
+  const bell=document.getElementById('alertBell');
+  const isOpen=panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden',isOpen?'false':'true');
+  if(bell)bell.setAttribute('aria-expanded',isOpen?'true':'false');
   // Close when clicking outside without hiding the panel behind the header.
   if(window._cceAlertsOutsideHandler){
     document.removeEventListener('pointerdown',window._cceAlertsOutsideHandler,true);
     window._cceAlertsOutsideHandler=null;
   }
-  if(panel.classList.contains('open')){
+  if(isOpen){
     setTimeout(()=>{
       const handler=(e)=>{
-        const bell=document.getElementById('alertBell');
         if(!panel.contains(e.target)&&!(bell&&bell.contains(e.target))){
           panel.classList.remove('open');
           panel.setAttribute('aria-hidden','true');
+          if(bell)bell.setAttribute('aria-expanded','false');
           document.removeEventListener('pointerdown',handler,true);
           if(window._cceAlertsOutsideHandler===handler)window._cceAlertsOutsideHandler=null;
         }
@@ -1763,6 +1815,16 @@ function toggleAlertsPanel(){
     },60);
   }
 }
+
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const panel=document.getElementById('alertsPanel');
+  const bell=document.getElementById('alertBell');
+  if(!panel?.classList.contains('open'))return;
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden','true');
+  if(bell){bell.setAttribute('aria-expanded','false');bell.focus();}
+});
 
 function renderBreeding(){
   const q=(document.getElementById('breedSearch').value||'').toLowerCase();
@@ -2474,17 +2536,20 @@ function initNotifications(){
     const el=document.getElementById('notif-'+k);
     if(el&&saved!==null) el.checked=saved;
   });
+  const bookingMode=document.getElementById('notifBookings');
+  const savedBookingMode=notifGet('bookings_instant');
+  if(bookingMode&&savedBookingMode!==null)bookingMode.value=String(savedBookingMode);
 
-  // Check browser push status
+  // Check browser notification status
   checkPushStatus();
 }
 
-// ── Browser Push ──
+// ── Browser Notifications ──
 function checkPushStatus(){
   const el=document.getElementById('pushStatus');
   const btn=document.getElementById('pushEnableBtn');
   if(!('Notification' in window)){
-    if(el) el.innerHTML='&#10060; Browser Push غير مدعوم في هذا المتصفح';
+    if(el) el.innerHTML='&#10060; إشعارات المتصفح غير مدعومة في هذا المتصفح';
     if(btn) btn.disabled=true;
     return;
   }
@@ -2500,7 +2565,7 @@ function checkPushStatus(){
 }
 
 async function enablePush(){
-  if(!('Notification' in window)){alert('Browser Push غير مدعوم');return;}
+  if(!('Notification' in window)){alert('إشعارات المتصفح غير مدعومة');return;}
   const perm=await Notification.requestPermission();
   checkPushStatus();
   if(perm==='granted') sendBrowserPush('CCE Notifications','✅ تم تفعيل الإشعارات بنجاح!','🐴');
@@ -2508,51 +2573,56 @@ async function enablePush(){
 
 // ══════════════════════════════════════════════════════════
 // SESSION REMINDERS — 1 day & 1 hour before every Lesson/Hack
-// Fires for EVERYONE with the app open (admin + all instructors)
+// Runs only for an authenticated member with schedule access while the app is open.
 // ══════════════════════════════════════════════════════════
 async function checkSessionReminders(){
   if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
+  if(typeof window.canUser==='function'&&!window.canUser('schedule.view')&&!window.canUser('schedule.view_own'))return;
   try{
     const now=new Date();
     const pad=n=>String(n).padStart(2,'0');
     const todayStr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
     const tmw=new Date(now.getTime()+864e5);
     const tmwStr=tmw.getFullYear()+'-'+pad(tmw.getMonth()+1)+'-'+pad(tmw.getDate());
-    // Fetch today's & tomorrow's sessions directly (works on ANY page/portal)
-    const rows=await sbGet('schedule',`date=gte.${todayStr}&date=lte.${tmwStr}&select=id,date,start_time,activity,horse,customer,instructor,status`);
+    const canViewAll=typeof window.canUser!=='function'||window.canUser('schedule.view');
+    const rows=canViewAll
+      ? await sbGet('schedule',`date=gte.${todayStr}&date=lte.${tmwStr}&select=id,date,start_time,activity,horse_name,customer_name,instructor,status`)
+      : (schedule_data||[]).filter(row=>row.date>=todayStr&&row.date<=tmwStr);
     rows.filter(r=>/hack|lesson|ride|training/i.test(r.activity||'')&&r.status!=='Done'&&r.status!=='Cancelled').forEach(r=>{
       if(!r.start_time) return;
       const evTime=new Date(r.date+'T'+r.start_time);
       const diff=evTime-now;
       if(diff<=0) return;
-      const who=(r.instructor?'🎓 '+r.instructor+' — ':'')+(r.activity||'Session')+(r.horse?' 🐴 '+r.horse:'')+(r.customer?' 👤 '+r.customer:'');
+      const who=(r.instructor?'🎓 '+r.instructor+' — ':'')+(r.activity||'Session')+(r.horse_name?' 🐴 '+r.horse_name:'')+(r.customer_name?' 👤 '+r.customer_name:'');
       const timeTxt=r.start_time.slice(0,5);
+      const reminderKey=`${r.id}_${r.date}_${timeTxt}`;
       // 1-day reminder (fires within the 24h→23h window, once)
-      if(diff<=864e5&&!localStorage.getItem('cce_rem24_'+r.id)){
-        localStorage.setItem('cce_rem24_'+r.id,'1');
+      if(diff<=864e5&&!localStorage.getItem('cce_rem24_'+reminderKey)){
+        localStorage.setItem('cce_rem24_'+reminderKey,'1');
         sendBrowserPush('📅 Session Tomorrow — '+timeTxt, who,'🐴');
       }
       // 1-hour reminder
-      if(diff<=36e5&&!localStorage.getItem('cce_rem1_'+r.id)){
-        localStorage.setItem('cce_rem1_'+r.id,'1');
+      if(diff<=36e5&&!localStorage.getItem('cce_rem1_'+reminderKey)){
+        localStorage.setItem('cce_rem1_'+reminderKey,'1');
         sendBrowserPush('⏰ Session in 1 Hour — '+timeTxt, who,'🐴');
       }
     });
-  }catch(e){console.log('session reminders skip');}
+  }catch(e){console.warn('[CCE] Session reminders skipped',e);}
 }
 // Run on every page (admin, instructor portal, anywhere) + every minute
 setTimeout(checkSessionReminders,4000);
 setInterval(checkSessionReminders,60000);
 
 function sendBrowserPush(title, body, icon){
-  if(Notification.permission!=='granted') return;
+  if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
   try{
-    new Notification(title,{body,icon:icon||'🐴',badge:'🐴',tag:'cce-'+Date.now()});
+    const iconUrl=icon&&/^(https?:|data:|\/)/.test(icon)?icon:'icons/icon-192.png';
+    new Notification(title,{body,icon:iconUrl,badge:'icons/icon-96.png',tag:'cce-'+Date.now()});
   }catch(e){console.log('Push error:',e);}
 }
 
 function testPush(){
-  if(Notification.permission!=='granted'){alert('يجب تفعيل الإشعارات أولاً');return;}
+  if(typeof Notification==='undefined'||Notification.permission!=='granted'){alert('يجب تفعيل الإشعارات أولاً');return;}
   sendBrowserPush('CCE — Test Notification','🐴 هذا اختبار للإشعارات — كل شيء يعمل!');
   logNotif('✅ تم إرسال Browser Push تجريبي');
 }
@@ -2575,29 +2645,34 @@ function buildNotifMessages(){
   const today=new Date(); today.setHours(0,0,0,0);
   function daysSince(d){if(!d)return null;const dt=new Date(d);dt.setHours(0,0,0,0);return Math.floor((today-dt)/86400000);}
   const msgs=[];
+  const role=String(window.CCE_MEMBER?.role?.code||window.CCE_MEMBER?.portal||'').toLowerCase();
+  const baseHorses=['owner','horse_owner'].includes(role)?(ownerHorses||[]):horses;
+  const notificationHorses=window.CCE?.health?.mergeCompletedSummaries
+    ? CCE.health.mergeCompletedSummaries(baseHorses,horse_health_events)
+    : baseHorses;
 
   // Health alerts
   if(notifGet('check_farrier')!==false){
-    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+    notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
       const d=daysSince(h.farrier_date);
       if(d!==null&&d>30) msgs.push('🔧 Farrier: '+h.horse_name+' ('+d+' days)');
       if(!h.farrier_date) msgs.push('⚠️ No farrier date: '+h.horse_name);
     });
   }
   if(notifGet('check_deworm')!==false){
-    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+    notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
       const d=daysSince(h.deworm_date);
       if(d!==null&&d>90) msgs.push('🐛 Deworm: '+h.horse_name+' ('+d+' days)');
     });
   }
   if(notifGet('check_vaccine')!==false){
-    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+    notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
       const d=daysSince(h.vaccine_date);
       if(d!==null&&d>150) msgs.push('💉 Vaccine: '+h.horse_name+' ('+d+' days)');
     });
   }
   if(notifGet('check_teeth')!==false){
-    horses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
+    notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
       const d=daysSince(h.teeth_date);
       if(d!==null&&d>180) msgs.push('🦷 Teeth: '+h.horse_name+' ('+d+' days)');
     });
@@ -2626,13 +2701,12 @@ async function sendAllNotifications(){
   if(!msgs.length){
     logNotif('✅ لا توجد تنبيهات حالياً — كل شيء على ما يرام!');
     sendBrowserPush('CCE — All Clear ✅','لا توجد مواعيد متأخرة أو حجوزات معلقة 🐴');
+    notifSet('last_sent',new Date().toISOString());
     return;
   }
 
-  const summary='🐴 *CCE Daily Alert*\n'+new Date().toLocaleDateString('en-GB')+'\n\n'+msgs.join('\n');
-
-  // Browser Push
-  if(Notification.permission==='granted'){
+  // Browser notifications
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
     msgs.slice(0,3).forEach((m,i)=>setTimeout(()=>sendBrowserPush('CCE Alert',m),i*500));
     if(msgs.length>3) setTimeout(()=>sendBrowserPush('CCE Alert','...و '+(msgs.length-3)+' تنبيهات أخرى'),1500);
   }
@@ -2643,6 +2717,9 @@ async function sendAllNotifications(){
 
 // ── Auto-schedule: check if daily notification time has passed ──
 function checkScheduledNotifications(){
+  if(!window.CCE_MEMBER)return;
+  if(typeof window.canUser==='function'&&!window.canUser('notifications.view')&&!window.canUser('settings.manage'))return;
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
   const savedTime=notifGet('time');
   if(!savedTime) return;
   const lastSent=notifGet('last_sent');
@@ -2656,6 +2733,7 @@ function checkScheduledNotifications(){
     sendAllNotifications();
   }
 }
+setInterval(checkScheduledNotifications,60000);
 
 // ── Instant notification on new booking ──
 function notifyNewBooking(customerName, horseName, time){

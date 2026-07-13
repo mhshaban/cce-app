@@ -63,6 +63,8 @@
     }
     el.setAttribute('aria-label', 'Notifications');
     el.setAttribute('title', 'Notifications');
+    el.setAttribute('aria-controls', 'alertsPanel');
+    if (!el.hasAttribute('aria-expanded')) el.setAttribute('aria-expanded', 'false');
   }
 
   function enhancePill(pill) {
