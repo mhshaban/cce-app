@@ -1738,17 +1738,29 @@ function handleAlertClick(i){
 
 function toggleAlertsPanel(){
   const panel=document.getElementById('alertsPanel');
+  if(!panel)return;
+  if(window.CCEHeaderSystem?.syncHeaderMetrics) window.CCEHeaderSystem.syncHeaderMetrics();
   panel.classList.toggle('open');
-  // Close when clicking outside
+  panel.setAttribute('aria-hidden',panel.classList.contains('open')?'false':'true');
+  // Close when clicking outside without hiding the panel behind the header.
+  if(window._cceAlertsOutsideHandler){
+    document.removeEventListener('pointerdown',window._cceAlertsOutsideHandler,true);
+    window._cceAlertsOutsideHandler=null;
+  }
   if(panel.classList.contains('open')){
     setTimeout(()=>{
-      document.addEventListener('click',function handler(e){
-        if(!panel.contains(e.target)&&e.target.id!=='alertBell'){
+      const handler=(e)=>{
+        const bell=document.getElementById('alertBell');
+        if(!panel.contains(e.target)&&!(bell&&bell.contains(e.target))){
           panel.classList.remove('open');
-          document.removeEventListener('click',handler);
+          panel.setAttribute('aria-hidden','true');
+          document.removeEventListener('pointerdown',handler,true);
+          if(window._cceAlertsOutsideHandler===handler)window._cceAlertsOutsideHandler=null;
         }
-      });
-    },100);
+      };
+      window._cceAlertsOutsideHandler=handler;
+      document.addEventListener('pointerdown',handler,true);
+    },60);
   }
 }
 

@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260713-460"></script>
+<script src="app-bootstrap.js?v=20260713-462"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,10 +23,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260713-460" rel="stylesheet"/>
-<link href="member-portal.css?v=20260713-460" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260713-460" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260713-460" rel="stylesheet"/>
+<link href="app-core.css?v=20260713-462" rel="stylesheet"/>
+<link href="member-portal.css?v=20260713-462" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260713-462" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260713-462" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -41,13 +41,13 @@
 <div class="header" id="globalHeader">
 <div class="header-right" style="margin-left:0;margin-right:0">
 <span class="sync-status hidden" id="syncStatus"></span>
-<button class="sync-btn hidden" data-i18n="refresh" id="refreshBtn" onclick="loadAll()">🔄 Refresh</button>
-<button class="sync-btn hidden" data-i18n="backup" id="backupBtn" onclick="downloadBackup()" style="background:#1E7D4E">💾 Backup</button>
-<button class="sync-btn hidden" data-i18n="logout" id="logoutAdminBtn" onclick="logoutAdmin()" style="background:#C0392B">🔓 Logout</button>
-<button class="sync-btn hidden" data-i18n="logout" id="logoutOwnerBtn" onclick="logoutOwner()" style="background:#C0392B">🔓 Logout</button>
-<button class="home-btn hidden" id="backBtn" onclick="goHome()">← Home</button>
+<button class="sync-btn hidden" data-i18n="refresh" id="refreshBtn" onclick="loadAll()">Refresh</button>
+<button class="sync-btn hidden" data-i18n="backup" id="backupBtn" onclick="downloadBackup()" style="background:#1E7D4E">Backup</button>
+<button class="sync-btn hidden" data-i18n="logout" id="logoutAdminBtn" onclick="logoutAdmin()" style="background:#C0392B">Logout</button>
+<button class="sync-btn hidden" data-i18n="logout" id="logoutOwnerBtn" onclick="logoutOwner()" style="background:#C0392B">Logout</button>
+<button class="home-btn hidden" id="backBtn" onclick="goHome()">Home</button>
 <span class="overdue-badge hidden" id="overdueBadge" onclick="showDashPage('overdue',null)" style="display:none !important;">⚠️ <span id="overdueCount">0</span></span>
-<div class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()">🔔<div class="alert-bell-badge" id="alertBellCount">0</div></div>
+<div class="alert-bell hidden" id="alertBell" onclick="toggleAlertsPanel()"><div class="alert-bell-badge" id="alertBellCount">0</div></div>
 </div>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub" id="headerSub">Dashboard</div></div>
@@ -209,7 +209,7 @@
 <!-- ════════════════════════════ BOOKING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-booking">
 <div class="header service-header">
-<button class="home-btn" onclick="navigate('home')">← Home</button>
+<button class="home-btn" onclick="navigate('home')">Home</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Horse Ride Booking</div></div>
 <img alt="CCE" src="icons/logo-transparent.png"/>
@@ -377,7 +377,7 @@
 <!-- ════════════════════════════ TRAINING PAGE ════════════════════════════ -->
 <div class="app-page" id="page-training">
 <div class="header service-header">
-<button class="home-btn" onclick="navigate('home')">← Home</button>
+<button class="home-btn" onclick="navigate('home')">Home</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Training Packages</div></div>
 <img alt="CCE" src="icons/logo-transparent.png"/>
@@ -538,7 +538,7 @@
 <!-- ════════════════════════════ LIVERY PAGE ════════════════════════════ -->
 <div class="app-page" id="page-livery">
 <div class="header service-header">
-<button class="home-btn" onclick="navigate('home')">← Home</button>
+<button class="home-btn" onclick="navigate('home')">Home</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Livery Booking</div></div>
 <img alt="CCE" src="icons/logo-transparent.png"/>
@@ -753,7 +753,7 @@
 <!-- ════════════════════════════ INSTRUCTOR PAGE ════════════════════════════ -->
 <div class="app-page" id="page-instructor">
 <div class="header legacy-portal-header">
-<button class="home-btn" onclick="navigate('home')">← Home</button>
+<button class="home-btn" onclick="navigate('home')">Home</button>
 <button class="sync-btn hidden" id="instrLogoutBtn" onclick="logoutInstructor()" style="background:var(--red)">🔒 Logout</button>
 <div class="header-brand">
 <div><div class="header-title">Country Club Equestrian</div><div class="header-sub" id="instrHeaderSub">Instructor Portal</div></div>
@@ -1164,23 +1164,23 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260713-460"></script>
-<script src="src/core/config.js?v=20260713-460"></script>
-<script src="src/core/store.js?v=20260713-460"></script>
-<script src="src/services/supabase-runtime.js?v=20260713-460"></script>
-<script src="src/modules/horses/horse-service.js?v=20260713-460"></script>
-<script src="src/modules/health/health-service.js?v=20260713-460"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-460"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260713-460"></script>
-<script src="app-core.js?v=20260713-460"></script>
-<script src="app-branding.js?v=20260713-460"></script>
-<script src="horse-health.js?v=20260713-460"></script>
-<script src="member-portal.js?v=20260713-460"></script>
-<script src="src/components/header/header-system.js?v=20260713-460"></script>
+<script src="src/core/events.js?v=20260713-462"></script>
+<script src="src/core/config.js?v=20260713-462"></script>
+<script src="src/core/store.js?v=20260713-462"></script>
+<script src="src/services/supabase-runtime.js?v=20260713-462"></script>
+<script src="src/modules/horses/horse-service.js?v=20260713-462"></script>
+<script src="src/modules/health/health-service.js?v=20260713-462"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-462"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260713-462"></script>
+<script src="app-core.js?v=20260713-462"></script>
+<script src="app-branding.js?v=20260713-462"></script>
+<script src="horse-health.js?v=20260713-462"></script>
+<script src="member-portal.js?v=20260713-462"></script>
+<script src="src/components/header/header-system.js?v=20260713-462"></script>
 </body>
 </html>

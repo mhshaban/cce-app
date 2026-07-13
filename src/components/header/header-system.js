@@ -3,8 +3,8 @@
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-5v6h-5A1.5 1.5 0 0 1 3 19.5z"/></svg>',
-    refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M19.1 11A7.5 7.5 0 1 0 20 15"/></svg>',
-    backup: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v6h-6"/></svg>',
+    backup: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
     logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M13 8l4 4-4 4M17 12H9"/></svg>',
     bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>'
   };
@@ -35,6 +35,10 @@
     // which previously caused duplicated icons and extra square glyphs.
     const expected = actionMarkup(config, label);
     if (el.innerHTML !== expected) el.innerHTML = expected;
+    // A second line of defence against legacy CSS/markup that used emoji icons.
+    Array.from(el.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) node.remove();
+    });
     el.setAttribute('aria-label', label);
     el.setAttribute('title', label);
   }
@@ -106,6 +110,7 @@
       sync.setAttribute('aria-label', 'Sync status');
     }
     enforceActionVisibility();
+    requestAnimationFrame(syncHeaderMetrics);
   }
 
   function configureServiceHeaders() {
@@ -139,6 +144,14 @@
     });
   }
 
+  function syncHeaderMetrics() {
+    const header = document.getElementById('globalHeader');
+    const bottom = header && getComputedStyle(header).display !== 'none'
+      ? Math.max(0, Math.round(header.getBoundingClientRect().bottom))
+      : 0;
+    document.documentElement.style.setProperty('--cce-header-bottom', `${bottom}px`);
+  }
+
   function refresh() {
     configureGlobalHeader();
     configureServiceHeaders();
@@ -160,12 +173,25 @@
       });
       observer.observe(header, {childList:true, subtree:true, characterData:true});
     }
-    window.addEventListener('resize', () => document.documentElement.style.setProperty('--cce-vw', `${window.innerWidth}px`), {passive:true});
-    document.documentElement.style.setProperty('--cce-vw', `${window.innerWidth}px`);
+    const updateViewport = () => {
+      document.documentElement.style.setProperty('--cce-vw', `${window.innerWidth}px`);
+      requestAnimationFrame(syncHeaderMetrics);
+    };
+    window.addEventListener('resize', updateViewport, {passive:true});
+    window.addEventListener('orientationchange', updateViewport, {passive:true});
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewport, {passive:true});
+      window.visualViewport.addEventListener('scroll', updateViewport, {passive:true});
+    }
+    if (header && 'ResizeObserver' in window) {
+      const ro = new ResizeObserver(() => requestAnimationFrame(syncHeaderMetrics));
+      ro.observe(header);
+    }
+    updateViewport();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
   else init();
 
-  window.CCEHeaderSystem = { refresh, icons: ICONS };
+  window.CCEHeaderSystem = { refresh, syncHeaderMetrics, icons: ICONS };
 })();

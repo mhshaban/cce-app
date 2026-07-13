@@ -678,7 +678,6 @@ html[dir="rtl"] .report-metric:after{inset:0 0 0 auto}
   body.member-authenticated .header-right{gap:5px!important;max-width:100%;flex:1 1 auto}
   body.member-authenticated .sync-btn,body.member-authenticated .home-btn,#page-instructor>.header .sync-btn,#page-instructor>.header .home-btn{min-height:34px!important;padding:6px 8px!important;font-size:9px!important}
   body.member-authenticated #backupBtn,body.member-authenticated #refreshBtn{font-size:0!important;width:36px!important;padding:0!important}
-  body.member-authenticated #backupBtn:before{content:'💾';font-size:14px}body.member-authenticated #refreshBtn:before{content:'↻';font-size:16px}
   body.member-authenticated .member-session-pill{font-size:8px!important;min-height:34px!important;padding:6px 8px!important;max-width:43vw!important}
   body.member-authenticated .dash-nav-wrap{padding:7px 8px!important}.body.member-authenticated .content{padding-top:12px!important}
   body.member-authenticated .nav-group-btn{min-width:104px!important;font-size:10px!important}
@@ -1016,3 +1015,6 @@ body.member-authenticated textarea{min-height:116px!important;padding:14px!impor
   body.member-authenticated #globalHeader .sync-btn,
   body.member-authenticated #globalHeader .home-btn{min-height:40px!important;font-size:.78rem!important;padding:8px 11px!important}
 }
+
+/* v4.6.1: HeaderSystem owns all action icons; suppress legacy generated glyphs. */
+#globalHeader .cce-header-action::before,#globalHeader .cce-header-action::after,#globalHeader .cce-header-bell::before,#globalHeader .cce-header-bell::after{content:none!important;display:none!important}
