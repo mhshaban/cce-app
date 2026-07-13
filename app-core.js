@@ -201,6 +201,7 @@ function navigate(page) {
   if(page==='owner' && sessionStorage.getItem('owner_phone')) {
     logoutOwner.classList.remove('hidden');
   }
+  if(window.CCEHeaderSystem) window.CCEHeaderSystem.refresh();
 }
 
 function goHome() {

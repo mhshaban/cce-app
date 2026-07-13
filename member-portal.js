@@ -204,6 +204,7 @@
       const publicBtn=document.getElementById('publicMemberButton');
       if(publicBtn){publicBtn.textContent='🔐 Member Login';publicBtn.onclick=()=>window.navigate('admin');}
     }
+    if(window.CCEHeaderSystem) window.CCEHeaderSystem.refresh();
   }
 
   function resetProtectedPortals() {
