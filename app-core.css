@@ -18,7 +18,7 @@ html[lang="ar"] *,
 body{font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;background:var(--cream);color:var(--navy);min-height:100vh}
 .header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,39,68,.25)}
 /* iPhone/PWA safe area — keep header buttons below the status bar on ALL pages */
-.header{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important}
+.header{padding-top:calc(10px + env(safe-area-inset-top,0px)) !important}
 .home-btn{background:#444;color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit}
 .header-brand{margin-left:auto !important;display:flex;align-items:center;gap:10px;text-align:right}
 body.mode-stable .home-btn,body.mode-instructor .home-btn{display:none !important}
@@ -448,7 +448,7 @@ html[dir="rtl"] .pie-legend-item {
    ══════════════════════════════════════════════════════════ */
 html,body{min-height:100%;overflow-x:hidden}
 body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-.service-header{position:relative;top:auto;min-height:72px;padding-top:calc(12px + env(safe-area-inset-top,0px))!important}
+.service-header{position:relative;top:auto;min-height:72px;padding-top:calc(10px + env(safe-area-inset-top,0px))!important}
 .service-header .header-brand img{width:44px;height:44px;object-fit:contain}
 .service-hero{padding-top:clamp(38px,8vw,72px)!important}
 .ride-capacity-summary{display:flex;align-items:center;gap:16px;padding:16px;border-radius:14px;background:#f5f8ff;border:1px solid #dbe3f1}
@@ -462,7 +462,7 @@ body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inse
 
 @media(max-width:640px){
   body{font-size:15px}
-  .header{padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top,0px))!important;gap:8px;flex-wrap:wrap}
+  .header{padding:10px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px))!important;gap:8px;flex-wrap:wrap}
   .header-brand{min-width:0;gap:8px}.header-brand>div{min-width:0}.header-title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}.header-sub{font-size:12px}
   .home-btn,.sync-btn,.logout-btn{min-height:44px;padding:9px 13px;font-size:14px;border-radius:13px}
   .hero-title{font-size:clamp(1.65rem,7vw,2.15rem);line-height:1.25}.hero-sub{font-size:1rem}.hero-icon{font-size:42px}
@@ -560,8 +560,8 @@ html[dir="rtl"] .instructor-session-card::before{inset:0 0 0 auto}
 @media(max-width:600px){
   /* True safe area: all authenticated content starts below iOS status UI */
   html{scroll-padding-top:calc(12px + env(safe-area-inset-top,0px))}
-  body.member-authenticated #globalHeader{padding-top:calc(12px + max(env(safe-area-inset-top,0px),20px))!important}
-  #page-instructor>.header.legacy-portal-header{padding-top:calc(12px + max(env(safe-area-inset-top,0px),20px))!important}
+  body.member-authenticated #globalHeader{padding-top:calc(8px + env(safe-area-inset-top,0px))!important}
+  #page-instructor>.header.legacy-portal-header{padding-top:calc(8px + env(safe-area-inset-top,0px))!important}
 
   /* Navigation remains compact and readable */
   body.member-authenticated .nav-groups{padding:2px 0 4px!important}

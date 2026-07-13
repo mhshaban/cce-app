@@ -19,7 +19,7 @@
     horses: ['horses.view'],
     health: ['horse_health.view', 'horses.view'],
     breeding: ['breeding.view'],
-    notifications: ['settings.manage'],
+    notifications: ['notifications.view', 'settings.manage'],
     audit: ['audit.view'],
     tools: ['settings.manage'],
     users: ['users.manage', 'roles.manage']
@@ -86,6 +86,9 @@
     currentInstructor = null;
     ownerHorses = [];
     currentOwner = '';
+    income = []; expenses = []; horses = []; breeding = []; schedule_data = []; instructors_data = [];
+    horse_health_profiles = []; horse_health_events = [];
+    horse_medical_records = []; horse_vaccinations = []; horse_care_tasks = [];
     accessAdminData = null;
   }
 
@@ -379,11 +382,11 @@
     try {
       const needIncome = hasAny(['income.view','bookings.view','dashboard.view','reports.view']);
       const needExpenses = hasAny(['expenses.view','dashboard.view','reports.view']);
-      const needHorses = hasAny(['horses.view','dashboard.view','schedule.view']);
       const needBreeding = hasPermission('breeding.view');
       const needSchedule = hasPermission('schedule.view');
       const needInstructors = hasAny(['instructors.view','schedule.view']);
       const needHealth = hasAny(['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view']);
+      const needHorses = hasAny(['horses.view','dashboard.view','schedule.view']) || needHealth;
       [income, expenses, horses, breeding, schedule_data, instructors_data] = await Promise.all([
         safeGet('income','select=*&limit=2000',needIncome),
         safeGet('expenses','select=*&limit=1000',needExpenses),
@@ -402,6 +405,7 @@
           safeGet('horse_health_profiles','select=*&limit=500',true),
           safeGet('horse_health_events','select=*&order=event_date.desc,id.desc&limit=4000',true)
         ]);
+        if (window.CCE?.health?.mergeCompletedSummaries) horses = CCE.health.mergeCompletedSummaries(horses, horse_health_events);
         if (typeof deriveHealthCollections === 'function') deriveHealthCollections();
       } else {
         horse_health_profiles=[];horse_health_events=[];horse_medical_records=[];horse_vaccinations=[];horse_care_tasks=[];
@@ -410,7 +414,8 @@
       if (hasPermission('dashboard.view')) safeInvoke('buildDash');
       if (hasPermission('income.view')) safeInvoke('renderIncome');
       if (hasPermission('expenses.view')) safeInvoke('renderExpenses');
-      if (hasPermission('horses.view')) { safeInvoke('renderHorses'); safeInvoke('renderHorseHealth'); }
+      if (hasPermission('horses.view')) safeInvoke('renderHorses');
+      if (needHealth) safeInvoke('renderHorseHealth');
       if (hasPermission('breeding.view')) safeInvoke('renderBreeding');
       if (hasAny(['income.view','expenses.view'])) safeInvoke('renderOverdue');
       if (hasPermission('bookings.view')) safeInvoke('renderBookings');
@@ -421,6 +426,9 @@
       if (hasPermission('income.view')) safeInvoke('renderReceipts');
       if (hasPermission('settings.manage')) safeInvoke('renderToolsPanel');
       safeInvoke('populateLists');
+      safeInvoke('buildAlerts');
+      safeInvoke('initNotifications');
+      safeInvoke('checkScheduledNotifications');
       stripDisallowedActions();
       if (overlay) overlay.style.display = 'none';
     } catch (error) {

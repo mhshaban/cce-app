@@ -1,0 +1,10 @@
+{
+  "name": "cce-stableos",
+  "version": "4.6.4",
+  "private": true,
+  "type": "module",
+  "description": "Country Club Equestrian stable management platform",
+  "scripts": {
+    "check": "node --check app-bootstrap.js && node --check app-branding.js && node --check app-core.js && node --check horse-health.js && node --check member-portal.js && node --check src/components/header/header-system.js && node --check src/core/config.js && node --check src/core/events.js && node --check src/core/store.js && node --check src/modules/health/health-service.js && node --check src/modules/horses/horse-service.js && node --check src/modules/horses/profile/care-panel.js && node --check src/modules/horses/profile/medical-panel.js && node --check src/modules/horses/profile/overview-panel.js && node --check src/modules/horses/profile/profile-shell.js && node --check src/modules/horses/profile/timeline-panel.js && node --check src/modules/horses/profile/vaccinations-panel.js && node --check src/modules/timeline/timeline-service.js && node --check src/services/supabase-runtime.js && node --test tests/stableos-regression.test.mjs"
+  }
+}
