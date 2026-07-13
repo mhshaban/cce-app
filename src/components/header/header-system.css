@@ -1,4 +1,4 @@
-/* CCE StableOS 4.6.2 — final responsive reusable header system */
+/* CCE StableOS 4.6.3 — final responsive reusable header system */
 :root{
   --cce-header-navy:#152744;
   --cce-header-navy-2:#20385f;
@@ -102,7 +102,7 @@ html[dir="rtl"] #alertsPanel.alerts-panel{right:auto!important;left:12px!importa
     position:relative!important;
     top:auto!important;
     min-height:0!important;
-    padding-top:calc(env(safe-area-inset-top,0px) + 68px)!important;
+    padding-top:calc(env(safe-area-inset-top,0px) + 10px)!important;
     padding-right:12px!important;
     padding-bottom:14px!important;
     padding-left:12px!important;
@@ -139,7 +139,7 @@ html[dir="rtl"] #alertsPanel.alerts-panel{right:auto!important;left:12px!importa
 .cce-service-responsive-header .cce-header-brand{order:1;max-width:min(70%,520px)!important}
 .cce-service-responsive-header .cce-header-action{order:2!important}
 @media(max-width:700px){
-  .cce-service-responsive-header{min-height:0!important;padding-top:calc(env(safe-area-inset-top,0px) + 62px)!important;padding-right:14px!important;padding-bottom:12px!important;padding-left:14px!important}
+  .cce-service-responsive-header{min-height:0!important;padding-top:calc(env(safe-area-inset-top,0px) + 10px)!important;padding-right:14px!important;padding-bottom:12px!important;padding-left:14px!important}
   .cce-service-responsive-header .cce-header-brand{max-width:calc(100% - 54px)!important;padding:6px 8px!important;border:0!important;background:transparent!important}
   .cce-service-responsive-header .cce-header-brand img{width:36px!important;height:36px!important}
   .cce-service-responsive-header .cce-header-brand .header-title{font-size:12px!important}
