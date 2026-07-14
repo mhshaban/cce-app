@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260713-464"></script>
+<script src="app-bootstrap.js?v=20260714-465"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,10 +23,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260713-464" rel="stylesheet"/>
-<link href="member-portal.css?v=20260713-464" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260713-464" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260713-464" rel="stylesheet"/>
+<link href="app-core.css?v=20260714-465" rel="stylesheet"/>
+<link href="member-portal.css?v=20260714-465" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260714-465" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260714-465" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -230,12 +230,12 @@
 </div>
 <div class="card">
 <div class="card-title">📋 Your Information</div>
-<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="b-name" placeholder="اكتب الاسم الكامل" type="text"/></div>
-<div class="form-group"><label>Phone Number — رقم الهاتف *</label><input id="b-phone" placeholder="مثال: 39001234" type="tel"/></div>
+<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="b-name" maxlength="120" placeholder="اكتب الاسم الكامل" type="text"/></div>
+<div class="form-group"><label>Phone Number — رقم الهاتف *</label><input id="b-phone" maxlength="16" placeholder="مثال: 39001234" type="tel"/></div>
 <div class="form-group"><label>Date of Birth — تاريخ الميلاد</label><input id="b-birth-date" type="date"/></div>
-<div class="form-group"><label>Personal ID / ID Number — الرقم الشخصي *</label><input id="b-personal-id" placeholder="أدخل رقم الهوية أو جواز السفر" type="text"/></div>
-<div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input id="b-emergency" placeholder="رقم للتواصل في حالات الطوارئ" type="tel"/></div>
-<div class="form-group"><label>Health Condition — الحالة الصحية</label><input id="b-health" placeholder="أي حالة صحية أو حساسية..." type="text"/></div>
+<div class="form-group"><label>Personal ID / ID Number — الرقم الشخصي *</label><input id="b-personal-id" maxlength="40" placeholder="أدخل رقم الهوية أو جواز السفر" type="text"/></div>
+<div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input id="b-emergency" maxlength="32" placeholder="رقم للتواصل في حالات الطوارئ" type="tel"/></div>
+<div class="form-group"><label>Health Condition — الحالة الصحية</label><input id="b-health" maxlength="500" placeholder="أي حالة صحية أو حساسية..." type="text"/></div>
 <div class="form-group"><label>Date *</label><input id="b-date" type="date"/></div>
 <div class="form-group"><label>Preferred Time *</label><input id="b-time" type="time"/></div>
 </div>
@@ -431,12 +431,12 @@
 </div>
 <div class="card">
 <div class="card-title">📋 Your Information</div>
-<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="t-name" placeholder="اكتب الاسم الكامل" type="text"/></div>
-<div class="form-group"><label>Phone Number — رقم الهاتف *</label><input id="t-phone" placeholder="مثال: 39001234" type="tel"/></div>
+<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="t-name" maxlength="120" placeholder="اكتب الاسم الكامل" type="text"/></div>
+<div class="form-group"><label>Phone Number — رقم الهاتف *</label><input id="t-phone" maxlength="16" placeholder="مثال: 39001234" type="tel"/></div>
 <div class="form-group"><label>Date of Birth — تاريخ الميلاد</label><input id="t-birth-date" type="date"/></div>
-<div class="form-group"><label>Personal ID / ID Number — الرقم الشخصي *</label><input id="t-personal-id" placeholder="أدخل رقم الهوية أو جواز السفر" type="text"/></div>
-<div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input id="t-emergency" placeholder="رقم للتواصل في حالات الطوارئ" type="tel"/></div>
-<div class="form-group"><label>Health Condition — الحالة الصحية</label><input id="t-health" placeholder="أي حالة صحية أو حساسية..." type="text"/></div>
+<div class="form-group"><label>Personal ID / ID Number — الرقم الشخصي *</label><input id="t-personal-id" maxlength="40" placeholder="أدخل رقم الهوية أو جواز السفر" type="text"/></div>
+<div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input id="t-emergency" maxlength="32" placeholder="رقم للتواصل في حالات الطوارئ" type="tel"/></div>
+<div class="form-group"><label>Health Condition — الحالة الصحية</label><input id="t-health" maxlength="500" placeholder="أي حالة صحية أو حساسية..." type="text"/></div>
 </div>
 <!-- Dynamic session slots -->
 <div id="sessionSlotsWrap" style="display:none">
@@ -560,20 +560,20 @@
 <!-- Horse Info -->
 <div class="card">
 <div class="card-title">🐴 Horse Information</div>
-<div class="form-group"><label>Horse Name — اسم الحصان *</label><input id="lv-horse" placeholder="اكتب اسم الحصان..." type="text"/></div>
-<div class="form-group"><label>Horse Breed — نوع الحصان *</label><input id="lv-breed" placeholder="مثال: عربي، ثوروبريد..." type="text"/></div>
+<div class="form-group"><label>Horse Name — اسم الحصان *</label><input id="lv-horse" maxlength="120" placeholder="اكتب اسم الحصان..." type="text"/></div>
+<div class="form-group"><label>Horse Breed — نوع الحصان *</label><input id="lv-breed" maxlength="120" placeholder="مثال: عربي، ثوروبريد..." type="text"/></div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
 <div class="form-group"><label>Sex — الجنس</label>
 <select id="lv-sex"><option value="">— Select —</option><option>Stallion</option><option>Mare</option><option>Gelding</option></select>
 </div>
-<div class="form-group"><label>Color — اللون</label><input id="lv-color" placeholder="مثال: كميت، رمادي..." type="text"/></div>
+<div class="form-group"><label>Color — اللون</label><input id="lv-color" maxlength="80" placeholder="مثال: كميت، رمادي..." type="text"/></div>
 </div>
 </div>
 <!-- Owner Info -->
 <div class="card">
 <div class="card-title">👤 Owner Information</div>
-<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="lv-name" placeholder="اكتب الاسم الكامل..." type="text"/></div>
-<div class="form-group"><label>Phone — رقم التواصل *</label><input id="lv-phone" placeholder="مثال: 39001234" type="tel"/></div>
+<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="lv-name" maxlength="120" placeholder="اكتب الاسم الكامل..." type="text"/></div>
+<div class="form-group"><label>Phone — رقم التواصل *</label><input id="lv-phone" maxlength="16" placeholder="مثال: 39001234" type="tel"/></div>
 <div class="form-group"><label>Preferred Start Date — تاريخ البداية</label><input id="lv-date" type="date"/></div>
 </div>
 <!-- Livery Type -->
@@ -665,7 +665,7 @@
 <!-- Notes -->
 <div class="card">
 <div class="card-title">📋 Notes</div>
-<textarea id="lv-notes" placeholder="أي ملاحظات إضافية..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;min-height:80px;resize:vertical;outline:none"></textarea>
+<textarea id="lv-notes" maxlength="1000" placeholder="أي ملاحظات إضافية..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;min-height:80px;resize:vertical;outline:none"></textarea>
 </div>
 <div class="note-box">
 <div class="note-title">💳 ملاحظة الدفع</div>
@@ -878,7 +878,7 @@
 <div class="card"><div class="card-title">🏷️ Revenue by Activity</div><div id="actPie"></div></div>
 <div class="card"><div class="card-title">💸 Expenses by Category</div><div id="expPie"></div></div>
 </div>
-<div class="card"><div class="card-title">📋 Recent Sessions (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
+<div class="card"><div class="card-title">📋 Recent Financial Activity (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
 </div>
 <div class="section" id="page-income">
 <div class="card"><div class="card-title" onclick="toggleForm('incForm')" style="cursor:pointer">➕ Add New Session <span style="margin-left:auto;font-size:12px;color:var(--muted)">▼ expand</span></div>
@@ -1164,23 +1164,23 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260713-464"></script>
-<script src="src/core/config.js?v=20260713-464"></script>
-<script src="src/core/store.js?v=20260713-464"></script>
-<script src="src/services/supabase-runtime.js?v=20260713-464"></script>
-<script src="src/modules/horses/horse-service.js?v=20260713-464"></script>
-<script src="src/modules/health/health-service.js?v=20260713-464"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260713-464"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260713-464"></script>
-<script src="app-core.js?v=20260713-464"></script>
-<script src="app-branding.js?v=20260713-464"></script>
-<script src="horse-health.js?v=20260713-464"></script>
-<script src="member-portal.js?v=20260713-464"></script>
-<script src="src/components/header/header-system.js?v=20260713-464"></script>
+<script src="src/core/events.js?v=20260714-465"></script>
+<script src="src/core/config.js?v=20260714-465"></script>
+<script src="src/core/store.js?v=20260714-465"></script>
+<script src="src/services/supabase-runtime.js?v=20260714-465"></script>
+<script src="src/modules/horses/horse-service.js?v=20260714-465"></script>
+<script src="src/modules/health/health-service.js?v=20260714-465"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260714-465"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260714-465"></script>
+<script src="app-core.js?v=20260714-465"></script>
+<script src="app-branding.js?v=20260714-465"></script>
+<script src="horse-health.js?v=20260714-465"></script>
+<script src="member-portal.js?v=20260714-465"></script>
+<script src="src/components/header/header-system.js?v=20260714-465"></script>
 </body>
 </html>

@@ -7,6 +7,13 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const functionBlock=(source,name,nextName)=>{
+  const start=source.indexOf(`function ${name}`);
+  const end=source.indexOf(`function ${nextName}`,start+1);
+  assert.ok(start>=0,`missing function ${name}`);
+  assert.ok(end>start,`missing function boundary ${nextName}`);
+  return source.slice(start,end);
+};
 
 function healthService(){
   const context={Intl,Date,console};
@@ -65,8 +72,63 @@ test('database migration owns completion-to-summary synchronization',()=>{
   assert.match(sql,/timezone\('Asia\/Bahrain',new\.completed_at\)/);
 });
 
-test('all app assets use the v4.6.4 cache key',()=>{
+test('public booking data is escaped before admin or success-page rendering',()=>{
+  const core=read('app-core.js');
+  const bookings=functionBlock(core,'renderBookings','openModal');
+  for(const pattern of [/esc\(r\.customer_name/,/esc\(r\.horse_name/,/esc\(r\.start_time/,/esc\(pkg\|\|notes/,/esc\(r\.status/]){
+    assert.match(bookings,pattern);
+  }
+  const editIncome=functionBlock(core,'editIncome','saveIncome');
+  assert.match(editIncome,/escAttr\(r\.customer_name/);
+  assert.match(editIncome,/escAttr\(r\.notes/);
+  assert.match(core,/\$\{esc\(g\.name\)\}/);
+  assert.match(core,/'🐴 Horse: <strong>'\+esc\(horse\)/);
+});
+
+test('paid expenses cannot create a plan and metadata edits preserve Paid BD',()=>{
+  const core=read('app-core.js');
+  const cell=functionBlock(core,'expenseInstallmentsCell','bahrainDateISO');
+  assert.match(cell,/isPaidRow\(r\)/);
+  assert.match(cell,/No plan needed/);
+  const save=functionBlock(core,'saveExpenseMetaPatch','addExpenseInstallment');
+  assert.doesNotMatch(save,/else if\(cleanInstallments\.length\)/);
+  const add=functionBlock(core,'addExpenseInstallment','payExpenseInstallment');
+  assert.match(add,/isPaidRow\(r\)\|\|!hasRemaining\(r\)/);
+  assert.match(add,/openingPaidInstallment\(r,r\.paid_bd\)/);
+  assert.match(add,/cannot exceed expense remaining/);
+  assert.match(core,/paidValue=hasPlan\?Math\.max\(plan\.paid,moneyNum\(r\.paid_bd\)\)/);
+});
+
+test('recent dashboard activity combines income and expenses by latest operation',()=>{
+  const core=read('app-core.js');
+  const context={Date,Math,Number,readAuditLog:()=>[
+    {ts:'2026-07-14T08:02:00Z',table_name:'expenses',record_id:'1',action:'create'},
+    {ts:'2026-07-14T08:01:00Z',table_name:'income',record_id:'99',action:'create'}
+  ]};
+  vm.runInNewContext(functionBlock(core,'recentFinancialActivityRows','recentFinancialActivityHTML'),context);
+  const rows=context.recentFinancialActivityRows(
+    [{id:99,date:'2026-07-14',customer_name:'Income'}],
+    [{id:1,date:'2026-07-14',supplier:'Expense'}],
+    10
+  );
+  assert.equal(rows.length,2);
+  assert.equal(rows[0].kind,'Expense');
+  assert.match(read('index.html'),/Recent Financial Activity \(Last 10\)/);
+});
+
+test('Bahrain date boundaries and reminder windows are deterministic',()=>{
+  const core=read('app-core.js');
+  const context={Intl,Date};
+  vm.runInNewContext(functionBlock(core,'bahrainDateISO','todayISOForInstallment'),context);
+  assert.equal(context.bahrainDateISO(new Date('2026-07-13T22:30:00.000Z')),'2026-07-14');
+  const reminders=functionBlock(core,'checkSessionReminders','sendBrowserPush');
+  assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
+});
+
+test('all app assets use the v4.6.5 cache key',()=>{
   const html=read('index.html');
-  assert.ok(!html.includes('20260713-463'));
-  assert.ok((html.match(/20260713-464/g)||[]).length>=20);
+  assert.ok(!html.includes('20260713-464'));
+  assert.ok((html.match(/20260714-465/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260714-465/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260714-465/);
 });
