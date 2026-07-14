@@ -807,7 +807,46 @@ function buildDash(){
   document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${esc(k)}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
   const eM={};expRows.forEach(r=>{const c=normalizeActivityCategory(r.category);eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${esc(k)}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
-  document.getElementById('recentInc').innerHTML=incTblHTML([...incRows].reverse().slice(0,10));
+  document.getElementById('recentInc').innerHTML=recentFinancialActivityHTML(incRows,expRows,10);
+}
+
+function recentFinancialActivityRows(incRows,expRows,limit=10){
+  const auditRows=readAuditLog();
+  const activityStamp=(tableName,r,index,total)=>{
+    const entry=auditRows.find(e=>e&&e.table_name===tableName&&String(e.record_id)===String(r.id)&&['create','update'].includes(e.action));
+    const exact=entry?.ts||r.updated_at||r.created_at||'';
+    const exactMs=Date.parse(exact);
+    if(Number.isFinite(exactMs))return exactMs;
+    const dateMs=Date.parse(String(r.date||'')+'T00:00:00');
+    const relativeOrder=(index+1)/Math.max(1,total||1);
+    return (Number.isFinite(dateMs)?dateMs:0)+relativeOrder+(tableName==='expenses'?0.000001:0);
+  };
+  const rows=[
+    ...(incRows||[]).map((r,index,list)=>({kind:'Income',row:r,stamp:activityStamp('income',r,index,list.length)})),
+    ...(expRows||[]).map((r,index,list)=>({kind:'Expense',row:r,stamp:activityStamp('expenses',r,index,list.length)}))
+  ];
+  return rows.sort((a,b)=>b.stamp-a.stamp).slice(0,Math.max(0,limit));
+}
+function recentFinancialActivityHTML(incRows,expRows,limit=10){
+  const rows=recentFinancialActivityRows(incRows,expRows,limit);
+  if(!rows.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
+  return '<table><thead><tr><th>Date</th><th>Type</th><th>Customer / Supplier</th><th>Category</th><th>Horse</th><th>Amount</th><th>Paid</th><th>Status</th></tr></thead><tbody>'+rows.map(item=>{
+    const r=item.row;
+    const isIncome=item.kind==='Income';
+    const party=isIncome?r.customer_name:r.supplier;
+    const category=isIncome?r.activity:r.category;
+    const horse=isIncome?r.horse_name:r.horse;
+    return '<tr>'+
+      '<td>'+fmt(r.date)+'</td>'+
+      '<td><span class="badge '+(isIncome?'badge-green':'badge-red')+'">'+item.kind+'</span></td>'+
+      '<td>'+esc(party||'—')+'</td>'+
+      '<td><span class="badge badge-amber">'+esc(category||'')+'</span></td>'+
+      '<td>'+esc(horse||'—')+'</td>'+
+      '<td class="'+(isIncome?'money-green':'money-red')+'">'+BD(r.amount_bd)+'</td>'+
+      '<td>'+BD(r.paid_bd)+'</td>'+
+      '<td><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+
+    '</tr>';
+  }).join('')+'</tbody></table>';
 }
 
 function incTblHTML(data){
@@ -1058,6 +1097,13 @@ function invoiceTableHTML(invoice){
 }
 function installmentPaid(inst){return (normalizeExpenseInstallment(inst).payments||[]).reduce((s,p)=>s+moneyNum(p.amount),0);}
 function installmentRemaining(inst){const i=normalizeExpenseInstallment(inst);return Math.max(0,moneyNum(i.amount)-installmentPaid(i));}
+function installmentRowsPaid(rows){return (rows||[]).reduce((sum,i)=>sum+installmentPaid(i),0);}
+function expenseUntrackedPaid(r,rows){return Math.max(0,moneyNum(r&&r.paid_bd)-installmentRowsPaid(rows));}
+function openingPaidInstallment(r,amount){
+  const paid=money3(amount);
+  const date=String((r&&r.date)||todayISOForInstallment());
+  return {id:newExpenseInstallmentId(),due_date:date,amount:paid,note:'Paid before installment plan',payments:[{date,amount:paid,note:'Opening paid balance'}]};
+}
 function installmentStatus(inst){
   if(installmentRemaining(inst)<=0.0004)return 'Paid';
   if(isPastDueDate(inst.due_date))return 'Overdue';
@@ -1081,6 +1127,9 @@ function expenseOverdueAmount(r){const rows=overdueExpenseInstallments(r);return
 function expenseOverdueDueHTML(r){const rows=overdueExpenseInstallments(r);return rows.length?rows.map(i=>fmt(i.due_date)).join('<br>'):fmt(r.due_date);}
 function expenseInstallmentsCell(r){
   const t=expensePlanTotals(r);
+  if(!t.count&&isPaidRow(r)){
+    return '<div style="min-width:155px"><span class="badge badge-green">Paid</span><div style="font-size:11px;color:var(--muted);margin-top:4px">No plan needed</div></div>';
+  }
   const bg=t.overdueCount?'#FDECEA':'#E8F5EE';
   const color=t.overdueCount?'var(--red)':'var(--green)';
   const label=t.count?('Plan ('+t.count+')'):'Add Plan';
@@ -1088,7 +1137,12 @@ function expenseInstallmentsCell(r){
   const warn=t.unplannedRemaining>0.0004?('<div style="font-size:11px;color:var(--amber);margin-top:4px">Unplanned: '+BD(t.unplannedRemaining)+'</div>'):(t.overPlanned>0.0004?('<div style="font-size:11px;color:var(--red);margin-top:4px">Over planned: '+BD(t.overPlanned)+'</div>'):'');
   return '<div style="min-width:155px"><button class="action-btn" style="background:'+bg+';color:'+color+';padding:6px 12px" onclick="viewExpenseInstallments('+r.id+')">&#128467;&#65039; '+label+'</button>'+next+warn+'</div>';
 }
-function todayISOForInstallment(){return new Date().toISOString().slice(0,10);}
+function bahrainDateISO(value=new Date()){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bahrain',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value);
+  const get=type=>parts.find(part=>part.type===type)?.value||'';
+  return get('year')+'-'+get('month')+'-'+get('day');
+}
+function todayISOForInstallment(){return bahrainDateISO();}
 function newExpenseInstallmentId(){return 'inst_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);}
 function installmentPaymentsHTML(inst){
   const i=normalizeExpenseInstallment(inst);
@@ -1128,6 +1182,7 @@ function viewExpenseInstallments(id){
   const r=expenses.find(x=>String(x.id)===String(id));if(!r)return;
   const rows=expenseInstallments(r);
   const t=expensePlanTotals(r);
+  const canAddPlan=!isPaidRow(r)&&hasRemaining(r);
   const body=rows.length?rows.map(i=>{
     const st=installmentStatus(i);
     const badge=st==='Paid'?'badge-green':(st==='Overdue'?'badge-red':'badge-amber');
@@ -1161,7 +1216,7 @@ function viewExpenseInstallments(id){
       ${t.overPlanned>0.0004?`<span style="color:var(--red);font-weight:700">Over planned: ${BD(t.overPlanned)}</span>`:''}
     </div>
     <div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Installment Amount</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Note</th><th>Payment History</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div>
-    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa">
+    ${canAddPlan?`<div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fafafa">
       <div style="font-weight:700;color:var(--navy);margin-bottom:8px">Add Variable Installment</div>
       <div class="form-grid">
         <div class="form-group"><label>Due Date *</label><input type="date" id="inst-due"></div>
@@ -1169,7 +1224,7 @@ function viewExpenseInstallments(id){
         <div class="form-group" style="grid-column:1/-1"><label>Note</label><input type="text" id="inst-note" placeholder="Example: reimbursement deduction, supplier payment, etc."></div>
       </div>
       <div class="btn-row"><button class="btn btn-red" onclick="addExpenseInstallment(${id})">Add Installment</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Close</button></div>
-    </div>
+    </div>`:`<div style="border:1px solid #B8DDC7;border-radius:10px;padding:12px;background:#E8F5EE;color:var(--green);font-weight:700">&#10003; This expense is fully paid. No additional installment plan is needed.<div class="btn-row"><button class="btn" style="background:#fff;color:var(--navy)" onclick="closeModal()">Close</button></div></div>`}
   </div>`);
 }
 async function saveExpenseMetaPatch(expenseId,details,installments,paidOverride,invoiceOverride){
@@ -1180,31 +1235,30 @@ async function saveExpenseMetaPatch(expenseId,details,installments,paidOverride,
   if(typeof paidOverride==='number'){
     payload.paid_bd=money3(paidOverride);
     payload.status=normalizePaidStatus(moneyNum(r.amount_bd),payload.paid_bd);
-  }else if(cleanInstallments.length){
-    // When an installment plan exists, Paid BD is controlled by installment payments.
-    payload.paid_bd=money3(cleanInstallments.reduce((s,i)=>s+installmentPaid(i),0));
-    payload.status=normalizePaidStatus(moneyNum(r.amount_bd),payload.paid_bd);
   }
   await sbPatch('expenses',r.id,payload);
   await loadAll();
 }
 async function addExpenseInstallment(expenseId){
   const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
+  if(isPaidRow(r)||!hasRemaining(r)){alert('This expense is fully paid. No installment plan is needed.');return;}
   const due=(document.getElementById('inst-due')?.value||'').trim();
   const amount=money3(document.getElementById('inst-amount')?.value||0);
   const note=(document.getElementById('inst-note')?.value||'').trim();
   if(!due||amount<=0){alert('Fill installment due date and amount');return;}
   const meta=expenseMeta(r);
   const rows=expenseInstallments(r);
+  if(!rows.length&&moneyNum(r.paid_bd)>0.0004)rows.push(openingPaidInstallment(r,r.paid_bd));
   rows.push({id:newExpenseInstallmentId(),due_date:due,amount,note,payments:[]});
   const planRemaining=rows.reduce((s,i)=>s+installmentRemaining(i),0);
-  if(planRemaining-calcRemaining(r)>0.0004 && !confirm('Installment plan remaining exceeds expense remaining by '+BD(planRemaining-calcRemaining(r))+'. Add anyway?'))return;
+  if(planRemaining-calcRemaining(r)>0.0004){alert('Installment plan cannot exceed expense remaining by '+BD(planRemaining-calcRemaining(r))+'.');return;}
   try{await saveExpenseMetaPatch(expenseId,meta.details,rows);viewExpenseInstallments(expenseId);}catch(e){showError('Error',e);}
 }
 async function payExpenseInstallment(expenseId,instId){
   const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
   const meta=expenseMeta(r);
   const rows=expenseInstallments(r);
+  const untrackedPaid=expenseUntrackedPaid(r,rows);
   const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
   const instRem=installmentRemaining(inst);
   const expRem=calcRemaining(r);
@@ -1219,7 +1273,7 @@ async function payExpenseInstallment(expenseId,instId){
   if(date===null)return;
   const payDate=(date||todayISOForInstallment()).trim();
   inst.payments.push({date:payDate,amount,note:''});
-  const newPaid=Math.min(moneyNum(r.amount_bd),rows.reduce((s,i)=>s+installmentPaid(i),0));
+  const newPaid=Math.min(moneyNum(r.amount_bd),untrackedPaid+installmentRowsPaid(rows));
   try{await saveExpenseMetaPatch(expenseId,meta.details,rows,newPaid);viewExpenseInstallments(expenseId);}catch(e){showError('Error',e);}
 }
 
@@ -1271,6 +1325,7 @@ async function saveExpenseInstallmentPayments(expenseId,instId){
   const r=expenses.find(x=>String(x.id)===String(expenseId));if(!r)return;
   const meta=expenseMeta(r);
   const rows=expenseInstallments(r);
+  const untrackedPaid=expenseUntrackedPaid(r,rows);
   const inst=rows.find(i=>String(i.id)===String(instId));if(!inst)return;
   const tb=document.getElementById('inst-payment-lines');
   const payments=tb?[...tb.querySelectorAll('.payment-line')].map(row=>({
@@ -1281,7 +1336,7 @@ async function saveExpenseInstallmentPayments(expenseId,instId){
   const total=payments.reduce((s,p)=>s+moneyNum(p.amount),0);
   if(total-moneyNum(inst.amount)>0.0004){alert('Payments cannot be greater than the installment amount.');return;}
   inst.payments=payments;
-  const allPaid=rows.reduce((s,i)=>s+installmentPaid(i),0);
+  const allPaid=untrackedPaid+installmentRowsPaid(rows);
   if(allPaid-moneyNum(r.amount_bd)>0.0004){alert('All installment payments cannot be greater than expense amount.');return;}
   try{await saveExpenseMetaPatch(expenseId,meta.details,rows,allPaid);viewExpenseInstallments(expenseId);}catch(e){showError('Error',e);}
 }
@@ -1318,7 +1373,7 @@ async function editExpenseInstallment(expenseId,instId){
   const note=prompt('Note',inst.note||'');if(note===null)return;
   inst.due_date=(due||'').trim();inst.amount=amount;inst.note=(note||'').trim();
   const planRemaining=rows.reduce((s,i)=>s+installmentRemaining(i),0);
-  if(planRemaining-calcRemaining(r)>0.0004 && !confirm('Installment plan remaining exceeds expense remaining by '+BD(planRemaining-calcRemaining(r))+'. Save anyway?'))return;
+  if(planRemaining-calcRemaining(r)>0.0004){alert('Installment plan cannot exceed expense remaining by '+BD(planRemaining-calcRemaining(r))+'.');return;}
   try{await saveExpenseMetaPatch(expenseId,meta.details,rows);viewExpenseInstallments(expenseId);}catch(e){showError('Error',e);}
 }
 async function deleteExpenseInstallment(expenseId,instId){
@@ -1499,7 +1554,7 @@ function startWaBroadcast(){
     const phoneBadge=g.phone?'':'<span style="font-size:10px;background:#FDECEA;color:var(--red);border-radius:6px;padding:2px 6px">no phone</span>';
     return `<div id="wa-row-${i}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:13px;color:var(--navy)">${g.name} ${phoneBadge}</div>
+        <div style="font-weight:700;font-size:13px;color:var(--navy)">${esc(g.name)} ${phoneBadge}</div>
         <div style="font-size:11px;color:var(--muted)">${g.items.length} payment(s) — remaining <b style="color:var(--red)">${BD(remaining)}</b></div>
       </div>
       <button class="action-btn" style="background:#25D366;color:#fff;padding:8px 14px;flex-shrink:0" onclick="waSendGroup(${i})">&#128172; Send</button>
@@ -1875,12 +1930,12 @@ function renderBookings(){
       return '<tr>'+
         '<td>'+fmt(r.date)+'</td>'+
         '<td>'+type+'</td>'+
-        '<td>'+(r.customer_name||'—')+'</td>'+
-        '<td>'+(r.horse_name||'—')+'</td>'+
-        '<td>'+(r.start_time||'—')+'</td>'+
-        '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,''))+'</td>'+
+        '<td>'+esc(r.customer_name||'—')+'</td>'+
+        '<td>'+esc(r.horse_name||'—')+'</td>'+
+        '<td>'+esc(r.start_time||'—')+'</td>'+
+        '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+esc(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,''))+'</td>'+
         '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
-        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+(r.status||'Pending')+'</span></td>'+
+        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+
         '<td style="white-space:nowrap">'+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
@@ -1897,21 +1952,21 @@ function openModal(t,b){document.getElementById('modalTitle').textContent=t;docu
 function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
 function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort().map(n=>'<option value="'+escAttr(n)+'" '+(n===sel?'selected':'')+'>'+esc(n)+'</option>').join('');}
 function editIncome(id){
-  const r=income.find(x=>x.id===id);if(!r)return;
+  const r=income.find(x=>String(x.id)===String(id));if(!r)return;
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
   openModal('Edit Income',`<div class="form-grid">
-    <div class="form-group"><label>Date</label><input type="date" id="ei-date" value="${r.date||''}"></div>
-    <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${r.due_date||''}"></div>
-    <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${r.customer_name||''}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+c+'">').join('')}</datalist></div>
+    <div class="form-group"><label>Date</label><input type="date" id="ei-date" value="${escAttr(r.date||'')}"></div>
+    <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${escAttr(r.due_date||'')}"></div>
+    <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${escAttr(r.customer_name||'')}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('')}</datalist></div>
     <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
     <div class="form-group"><label>Category</label><select id="ei-act">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
     <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
     <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ei-amt" value="${apu.toFixed(3)}" oninput="cET('inc')"></div>
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ei-total" value="${r.amount_bd}" readonly></div>
     <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ei-paid" value="${r.paid_bd||0}"></div>
-    <div class="form-group"><label>Start Time</label><input type="time" id="ei-start" value="${r.start_time||''}"></div>
-    <div class="form-group"><label>End Time</label><input type="time" id="ei-end" value="${r.end_time||''}"></div>
-    <div class="form-group"><label>Notes</label><input type="text" id="ei-notes" value="${r.notes||''}"></div>
+    <div class="form-group"><label>Start Time</label><input type="time" id="ei-start" value="${escAttr(r.start_time||'')}"></div>
+    <div class="form-group"><label>End Time</label><input type="time" id="ei-end" value="${escAttr(r.end_time||'')}"></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="ei-notes" value="${escAttr(r.notes||'')}"></div>
   </div><div class="btn-row"><button class="btn btn-green" onclick="saveIncome(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveIncome(id){
@@ -1924,7 +1979,7 @@ async function saveIncome(id){
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
-  const plan=expensePlanTotals(r);const hasPlan=plan.count>0;const paidValue=hasPlan?plan.paid:(r.paid_bd||0);
+  const plan=expensePlanTotals(r);const hasPlan=plan.count>0;const paidValue=hasPlan?Math.max(plan.paid,moneyNum(r.paid_bd)):(r.paid_bd||0);
   openModal('Edit Expense',`<div class="form-grid">
     <div class="form-group"><label>Date</label><input type="date" id="ee-date" value="${r.date||''}"></div>
     <div class="form-group"><label>Due Date</label><input type="date" id="ee-due" value="${r.due_date||''}"></div>
@@ -2029,6 +2084,12 @@ async function markPaid(t,id,amt){
   const rows=(t==='income')?income:expenses;
   const row=rows.find(x=>String(x.id)===String(id));
   const finalAmount=moneyNum(row?.amount_bd ?? amt);
+  if(t==='expenses'&&row){
+    const plan=expenseInstallments(row);
+    const planned=plan.reduce((sum,i)=>sum+moneyNum(i.amount),0);
+    const effectivePlanned=planned+expenseUntrackedPaid(row,plan);
+    if(effectivePlanned-finalAmount>0.0004){alert('Installment plan exceeds the expense total by '+BD(effectivePlanned-finalAmount)+'. Adjust the plan before marking this expense paid.');return;}
+  }
   if(!confirm('Mark as Paid ('+BD(finalAmount)+')?'))return;
   // Capture record BEFORE reload (for the thank-you message)
   const rec=(t==='income')?row:null;
@@ -2039,7 +2100,17 @@ async function markPaid(t,id,amt){
       const plan=expenseInstallments(row);
       if(plan.length){
         const payDate=todayISOForInstallment();
-        plan.forEach(i=>{const rem=installmentRemaining(i);if(rem>0.0004)i.payments.push({date:payDate,amount:money3(rem),note:'Marked paid from expense'});});
+        const untrackedPaid=expenseUntrackedPaid(row,plan);
+        if(untrackedPaid>0.0004)plan.unshift(openingPaidInstallment(row,untrackedPaid));
+        let left=Math.max(0,finalAmount-installmentRowsPaid(plan));
+        plan.sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).forEach(i=>{
+          const payment=money3(Math.min(installmentRemaining(i),left));
+          if(payment>0.0004)i.payments.push({date:payDate,amount:payment,note:'Marked paid from expense'});
+          left=money3(left-payment);
+        });
+        if(left>0.0004){
+          plan.push({id:newExpenseInstallmentId(),due_date:payDate,amount:left,note:'Final unplanned balance',payments:[{date:payDate,amount:left,note:'Marked paid from expense'}]});
+        }
         payload.notes=buildExpenseNotes(meta.details,plan,meta.invoice);
       }
     }
@@ -2367,10 +2438,10 @@ async function submitTraining(){
     document.getElementById('trainSuccess').style.display='block';
     document.getElementById('trainSuccessText').innerHTML=
       'Thank you <strong>'+esc(name)+'</strong>!<br><br>'+
-      'Package: <strong>'+selectedPkg+'</strong><br>'+
+      'Package: <strong>'+esc(selectedPkg)+'</strong><br>'+
       'Sessions: <strong>'+selectedPkgSessions+' حصص</strong><br>'+
       'Amount: <strong>'+selectedPrice+' BD</strong><br><br>'+
-      '<div style="font-size:12px;color:#666;margin-top:8px">'+slots.map((s,i)=>'&#128197; حصة '+(i+1)+': '+s.date+' @ '+s.time).join('<br>')+'</div>'+
+      '<div style="font-size:12px;color:#666;margin-top:8px">'+slots.map((s,i)=>'&#128197; حصة '+(i+1)+': '+esc(s.date)+' @ '+esc(s.time)).join('<br>')+'</div>'+
       '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 Send Payment Proof via WhatsApp</button>';
   }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🎯 Send Registration Request';}
 }
@@ -2596,15 +2667,16 @@ async function checkSessionReminders(){
       const who=(r.instructor?'🎓 '+r.instructor+' — ':'')+(r.activity||'Session')+(r.horse_name?' 🐴 '+r.horse_name:'')+(r.customer_name?' 👤 '+r.customer_name:'');
       const timeTxt=r.start_time.slice(0,5);
       const reminderKey=`${r.id}_${r.date}_${timeTxt}`;
-      // 1-day reminder (fires within the 24h→23h window, once)
-      if(diff<=864e5&&!localStorage.getItem('cce_rem24_'+reminderKey)){
-        localStorage.setItem('cce_rem24_'+reminderKey,'1');
-        sendBrowserPush('📅 Session Tomorrow — '+timeTxt, who,'🐴');
-      }
       // 1-hour reminder
-      if(diff<=36e5&&!localStorage.getItem('cce_rem1_'+reminderKey)){
-        localStorage.setItem('cce_rem1_'+reminderKey,'1');
-        sendBrowserPush('⏰ Session in 1 Hour — '+timeTxt, who,'🐴');
+      if(diff<=36e5){
+        if(!localStorage.getItem('cce_rem1_'+reminderKey)){
+          localStorage.setItem('cce_rem1_'+reminderKey,'1');
+          sendBrowserPush('⏰ Session in 1 Hour — '+timeTxt, who,'🐴');
+        }
+      }else if(diff<=864e5&&!localStorage.getItem('cce_rem24_'+reminderKey)){
+        // Keep the two reminder windows mutually exclusive when the app opens late.
+        localStorage.setItem('cce_rem24_'+reminderKey,'1');
+        sendBrowserPush('📅 Session Within 24 Hours — '+timeTxt, who,'🐴');
       }
     });
   }catch(e){console.warn('[CCE] Session reminders skipped',e);}
@@ -3556,7 +3628,7 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
 
   try{
     await publicPostIncome({
-      date:date||new Date().toISOString().slice(0,10),
+      date:date||todayISOForInstallment(),
       customer_name:name+' | '+phone,
       horse_name:horse,
       activity:'Livery',
@@ -3570,9 +3642,9 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
     document.getElementById('liverySuccess').style.display='block';
     document.getElementById('liverySuccessText').innerHTML=
       'Thank you <strong>'+esc(name)+'</strong>!<br><br>'+
-      '🐴 Horse: <strong>'+horse+'</strong>'+(breed?' — '+breed:'')+
-      (date?'<br>📅 Start Date: <strong>'+date+'</strong>':'')+
-      '<br><br><div style="font-size:12px;text-align:left">'+services.map(s=>'✓ '+s).join('<br>')+'</div>'+
+      '🐴 Horse: <strong>'+esc(horse)+'</strong>'+(breed?' — '+esc(breed):'')+
+      (date?'<br>📅 Start Date: <strong>'+esc(date)+'</strong>':'')+
+      '<br><br><div style="font-size:12px;text-align:left">'+services.map(s=>'✓ '+esc(s)).join('<br>')+'</div>'+
       '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'livery\')">📱 Send Payment Proof via WhatsApp</button>';
   }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🏠 Submit Livery Request';}
 }
@@ -3698,7 +3770,7 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'v2.0.3-release-candidate',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
+function backupObject(){return {app:'Country Club Equestrian',version:'4.6.5',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
 function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
@@ -3772,7 +3844,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260712-320', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260714-465', {scope:'./'})
       .then(reg => {
 
         reg.update();

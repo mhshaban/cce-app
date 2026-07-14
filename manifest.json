@@ -1,6 +1,6 @@
 {
-  "name": "Country Club Equestrian — Unified Portal",
-  "short_name": "CCE Portal",
+  "name": "Country Club Equestrian — CCE StableOS",
+  "short_name": "CCE StableOS",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -18,6 +18,6 @@
       "type": "image/png"
     }
   ],
-  "description": "Guest booking and secure member access for Country Club Equestrian.",
+  "description": "Enterprise stable management, guest booking and secure member access for Country Club Equestrian.",
   "id": "./"
 }
