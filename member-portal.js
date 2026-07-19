@@ -175,10 +175,31 @@
     clearMemberSession();
     resetProtectedPortals();
     legacyNavigate('home');
+    syncMemberLogoutButtons();
   };
   window.logoutAdmin = window.logoutMember;
   window.logoutOwner = window.logoutMember;
   window.logoutInstructor = window.logoutMember;
+
+  function activePortalPage() {
+    const pageClass = [...document.body.classList].find(name => /^page-(dashboard|owner|instructor)$/.test(name));
+    return pageClass ? pageClass.slice(5) : '';
+  }
+
+  function syncMemberLogoutButtons() {
+    const activePage = activePortalPage();
+    const memberSession = hasMemberSession();
+    const routes = {
+      logoutAdminBtn: {page:'dashboard', allowed:memberSession},
+      logoutOwnerBtn: {page:'owner', allowed:memberSession || !!sessionStorage.getItem('owner_phone')},
+      instrLogoutBtn: {page:'instructor', allowed:memberSession || !!currentInstructor}
+    };
+    Object.entries(routes).forEach(([id, route]) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      button.classList.toggle('hidden', !route.allowed || activePage !== route.page);
+    });
+  }
 
   function updateMemberChrome() {
     let pill = document.getElementById('memberSessionPill');
@@ -207,6 +228,7 @@
       const publicBtn=document.getElementById('publicMemberButton');
       if(publicBtn){publicBtn.textContent='🔐 Member Login';publicBtn.onclick=()=>window.navigate('admin');}
     }
+    syncMemberLogoutButtons();
     if(window.CCEHeaderSystem) window.CCEHeaderSystem.refresh();
   }
 
@@ -261,6 +283,7 @@
     if (protectedPages.has(page) && !hasMemberSession()) page = 'admin';
     if (page === 'dashboard' && !canAccessDashboard()) page = 'admin';
     legacyNavigate(page);
+    syncMemberLogoutButtons();
     if (page === 'booking') loadCCHorses();
     if (page === 'owner' && hasMemberSession()) openOwnerMemberPortal();
     if (page === 'instructor' && hasMemberSession()) openInstructorMemberPortal();
@@ -308,6 +331,7 @@
 
   function applyMemberUI() {
     updateMemberChrome();
+    syncMemberLogoutButtons();
     document.querySelectorAll('#dashSubNav .nav-btn').forEach(button => {
       const id = button.id.replace(/^nav-/, '');
       button.style.display = canOpenDashPage(id) ? '' : 'none';
@@ -447,9 +471,13 @@
   async function openOwnerMemberPortal() {
     if (!hasMemberSession()) return;
     if (routeForMember() !== 'owner' && !hasAny(['owner.horses.view','owner.horses.update'])) return;
+    if (!document.body.classList.contains('page-owner')) {
+      syncMemberLogoutButtons();
+      return;
+    }
     const login = document.getElementById('ownerLoginWrap'); if (login) login.style.display = 'none';
     const portal = document.getElementById('ownerPortal'); if (portal) portal.style.display = 'block';
-    const logout = document.getElementById('logoutOwnerBtn'); if (logout) logout.classList.remove('hidden');
+    syncMemberLogoutButtons();
     currentOwner = memberAccess.profile?.owner_name || memberAccess.profile?.full_name || 'Owner';
     const display = document.getElementById('ownerNameDisplay'); if (display) display.textContent = currentOwner;
     try {
@@ -480,12 +508,17 @@
   async function openInstructorMemberPortal() {
     if (!hasMemberSession()) return;
     if (routeForMember() !== 'trainer' && !hasPermission('schedule.view_own')) return;
+    if (!document.body.classList.contains('page-instructor')) {
+      syncMemberLogoutButtons();
+      return;
+    }
     const login = document.getElementById('instrLoginWrap'); if (login) login.style.display = 'none';
     currentInstructor = {id: memberAccess.profile?.instructor_id || null, name: memberAccess.instructor_name || memberAccess.profile?.full_name || 'Trainer'};
     sessionStorage.removeItem('cce_instr');
     const allScope = document.getElementById('instrScopeAll'); if (allScope) allScope.style.display = 'none';
     const mineScope = document.getElementById('instrScopeMine'); if (mineScope) mineScope.style.display = 'none';
     showInstrPortal();
+    syncMemberLogoutButtons();
   }
 
   window.loadInstructorNames = function loadUnifiedInstructor() {
