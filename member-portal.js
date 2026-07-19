@@ -190,14 +190,18 @@
     const activePage = activePortalPage();
     const memberSession = hasMemberSession();
     const routes = {
-      logoutAdminBtn: {page:'dashboard', allowed:memberSession},
+      // The instructor page uses the global workspace header on every viewport.
+      // Reuse its single member logout action because the legacy instructor
+      // header (which owns instrLogoutBtn) is intentionally not rendered.
+      logoutAdminBtn: {pages:['dashboard','instructor'], allowed:memberSession},
       logoutOwnerBtn: {page:'owner', allowed:memberSession || !!sessionStorage.getItem('owner_phone')},
       instrLogoutBtn: {page:'instructor', allowed:memberSession || !!currentInstructor}
     };
     Object.entries(routes).forEach(([id, route]) => {
       const button = document.getElementById(id);
       if (!button) return;
-      button.classList.toggle('hidden', !route.allowed || activePage !== route.page);
+      const pages = route.pages || [route.page];
+      button.classList.toggle('hidden', !route.allowed || !pages.includes(activePage));
     });
   }
 

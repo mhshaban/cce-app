@@ -68,11 +68,12 @@ test('only the active portal exposes its logout action',()=>{
   const portal=read('member-portal.js');
   const sync=functionBlock(portal,'syncMemberLogoutButtons','updateMemberChrome');
   for(const mapping of [
-    /logoutAdminBtn:\s*\{page:'dashboard'/,
+    /logoutAdminBtn:\s*\{pages:\['dashboard','instructor'\]/,
     /logoutOwnerBtn:\s*\{page:'owner'/,
     /instrLogoutBtn:\s*\{page:'instructor'/
   ]) assert.match(sync,mapping);
-  assert.match(sync,/activePage !== route\.page/);
+  assert.match(sync,/const pages = route\.pages \|\| \[route\.page\]/);
+  assert.match(sync,/!pages\.includes\(activePage\)/);
   const owner=functionBlock(portal,'openOwnerMemberPortal','secureMemberOwnerUpdate');
   assert.match(owner,/classList\.contains\('page-owner'\)/);
   assert.doesNotMatch(owner,/logoutOwnerBtn[\s\S]*classList\.remove\('hidden'\)/);
@@ -348,11 +349,11 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.8.2 cache key',()=>{
+test('all app assets use the v4.8.3 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok((html.match(/20260719-482/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260719-482/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260719-482/);
-  assert.equal(read('VERSION.txt').trim(),'4.8.2');
+  assert.ok((html.match(/20260720-483/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260720-483/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260720-483/);
+  assert.equal(read('VERSION.txt').trim(),'4.8.3');
 });
