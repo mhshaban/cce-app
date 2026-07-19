@@ -162,6 +162,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260719_security_database_foundation_v470.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
+    'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
+    'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
     'supabase/rollback/rollback_v470_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });

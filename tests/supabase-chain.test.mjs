@@ -163,3 +163,56 @@ test('the full Supabase chain builds and enforces the v4.7.0 contracts',async()=
     await db.close();
   }
 });
+
+test('legacy finance repair is backed up, fail-closed and reversible',async()=>{
+  const db=await buildDatabase();
+  try{
+    await db.exec(`
+      alter table public.expenses alter column date drop not null;
+      insert into public.income(date,customer_name,qty,amount_bd,paid_bd,status)
+      values('2025-02-12','Legacy rider',12,4.167,50,'Paid');
+      insert into public.expenses(date,due_date,supplier,qty,amount_bd,paid_bd,status)
+      values
+        ('2025-08-05','2025-07-01','Legacy supplier',150,0.5,70.11,'Paid'),
+        (null,'2026-06-19','Missing date supplier',1,55,0,'Pending');
+    `);
+
+    await db.exec(read('supabase/maintenance/20260719_finance_pre_v470_repair.sql'));
+
+    const repaired=await db.query(`
+      select 'income' as source,customer_name as party,date::text,amount_bd::text,paid_bd::text
+      from public.income where customer_name='Legacy rider'
+      union all
+      select 'expenses',supplier,date::text,amount_bd::text,paid_bd::text
+      from public.expenses where supplier in ('Legacy supplier','Missing date supplier')
+      order by source,party
+    `);
+    assert.deepEqual(repaired.rows.map(row=>({...row})),[
+      {source:'expenses',party:'Legacy supplier',date:'2025-08-05',amount_bd:'70.110',paid_bd:'70.110'},
+      {source:'expenses',party:'Missing date supplier',date:'2026-06-19',amount_bd:'55.000',paid_bd:'0.000'},
+      {source:'income',party:'Legacy rider',date:'2025-02-12',amount_bd:'50.000',paid_bd:'50.000'}
+    ]);
+    const backup=await db.query(`
+      select source,count(*)::int as rows
+      from cce_migration_backup.finance_pre_v470_20260719
+      group by source order by source
+    `);
+    assert.deepEqual(backup.rows.map(row=>({...row})),[
+      {source:'expenses',rows:2},{source:'income',rows:1}
+    ]);
+
+    await db.exec(read('supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql'));
+    const restored=await db.query(`
+      select customer_name,amount_bd::text from public.income where customer_name='Legacy rider'
+    `);
+    assert.deepEqual({...restored.rows[0]},{customer_name:'Legacy rider',amount_bd:'4.167'});
+    const restoredExpense=await db.query(`
+      select supplier,date::text,amount_bd::text
+      from public.expenses where supplier='Missing date supplier'
+    `);
+    assert.deepEqual({...restoredExpense.rows[0]},
+      {supplier:'Missing date supplier',date:null,amount_bd:'55.000'});
+  }finally{
+    await db.close();
+  }
+});
