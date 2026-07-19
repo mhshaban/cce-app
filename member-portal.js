@@ -394,6 +394,17 @@
     }
   }
 
+  async function safeRpcRows(name, params, allowed) {
+    if (!allowed) return [];
+    try {
+      const rows = await sbRpc(name, params || {});
+      return Array.isArray(rows) ? rows : (rows ? [rows] : []);
+    } catch (error) {
+      console.warn(`[CCE] ${name} unavailable for this account`, error);
+      return [];
+    }
+  }
+
   function safeInvoke(name) {
     try { if (typeof window[name] === 'function') window[name](); }
     catch (error) { console.warn(`[CCE] render ${name} skipped`, error); }
@@ -414,7 +425,8 @@
       const needBookings = hasPermission('bookings.view');
       const needBreeding = hasPermission('breeding.view');
       const needSchedule = hasPermission('schedule.view');
-      const needInstructors = hasAny(['instructors.view','schedule.view']);
+      const needInstructors = hasAny(['instructors.view','schedule.view','income.view']);
+      const canReadInstructorTable = hasPermission('instructors.view');
       const needHealth = hasAny(['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view']);
       const needHorses = hasAny(['horses.view','dashboard.view','schedule.view']) || needHealth;
       [income, expenses, horses, breeding, schedule_data, instructors_data, booking_requests] = await Promise.all([
@@ -423,7 +435,9 @@
         safeGet('horses','select=*&limit=500',needHorses),
         safeGet('breeding','select=*&limit=500',needBreeding),
         safeGet('schedule','select=*&order=date.asc,start_time.asc&limit=1500',needSchedule),
-        safeGet('instructors','select=*&order=name.asc',needInstructors),
+        canReadInstructorTable
+          ? safeGet('instructors','select=*&order=name.asc',true)
+          : safeRpcRows('cce_instructor_directory',{},needInstructors),
         safeGet('booking_requests','select=id,request_type,service_code,service_name,customer_name,phone,horse_name,requested_date,start_time,end_time,rider_level,session_slots,services,request_metadata,status,amount_bd,created_at,updated_at&order=created_at.desc&limit=1500',needBookings)
       ]);
       if (typeof normalizeLoadedPaymentStatuses === 'function') {

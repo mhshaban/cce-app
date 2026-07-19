@@ -174,11 +174,19 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260711_horse_health_phase1.sql',
     'supabase/migrations/20260712_database_consolidation_v310.sql',
     'supabase/migrations/20260719_security_database_foundation_v470.sql',
+    'supabase/migrations/20260719_training_revenue_instructor_v480.sql',
+    'supabase/migrations/20260719_training_split_cutover_v481.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
+    'supabase/verification/preflight_v480.sql',
+    'supabase/verification/verify_v480.sql',
+    'supabase/verification/preflight_v481.sql',
+    'supabase/verification/verify_v481.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
-    'supabase/rollback/rollback_v470_compatibility.sql'
+    'supabase/rollback/rollback_v470_compatibility.sql',
+    'supabase/rollback/rollback_v480_compatibility.sql',
+    'supabase/rollback/rollback_v481_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -207,6 +215,75 @@ test('paid expenses cannot create a plan and metadata edits preserve Paid BD',()
   assert.match(add,/openingPaidInstallment\(r,r\.paid_bd\)/);
   assert.match(add,/cannot exceed expense remaining/);
   assert.match(core,/paidValue=hasPlan\?Math\.max\(plan\.paid,moneyNum\(r\.paid_bd\)\)/);
+});
+
+test('training cash is split 50/50 without changing gross paid or remaining',()=>{
+  const core=read('app-core.js');
+  const start=core.indexOf('const isTrainingIncome=');
+  const end=core.indexOf('const calcIncomePending=',start);
+  assert.ok(start>=0&&end>start,'missing training accounting helpers');
+  const context={Math};
+  context.moneyNum=value=>Number.parseFloat(value)||0;
+  context.normalizeActivityCategory=value=>String(value||'').trim()||'Others';
+  vm.runInNewContext(`${core.slice(start,end)};this.accounting={isTrainingIncome,trainingSplitEnabled,incomeStableShare,incomeInstructorShare,calcGrossIncomeReceived,calcIncomeReceived,calcInstructorShares};`,context);
+  const paidPackage={activity:'Lesson',amount_bd:70,paid_bd:70};
+  assert.equal(context.accounting.calcGrossIncomeReceived([paidPackage]),70);
+  assert.equal(context.accounting.incomeStableShare(paidPackage),35);
+  assert.equal(context.accounting.incomeInstructorShare(paidPackage),35);
+  assert.equal(paidPackage.amount_bd-paidPackage.paid_bd,0);
+  const partial={activity:'Lesson',amount_bd:70,paid_bd:20};
+  assert.equal(context.accounting.incomeStableShare(partial),10);
+  assert.equal(context.accounting.incomeInstructorShare(partial),10);
+  assert.equal(partial.amount_bd-partial.paid_bd,50);
+  const legacy={activity:'Lesson',amount_bd:5,paid_bd:5,training_split_enabled:false};
+  assert.equal(context.accounting.incomeStableShare(legacy),5);
+  assert.equal(context.accounting.incomeInstructorShare(legacy),0);
+  assert.equal(context.accounting.incomeStableShare({activity:'Hack',paid_bd:70}),70);
+});
+
+test('training payment and schedule forms require a linked active instructor',()=>{
+  const core=read('app-core.js');
+  const payment=functionBlock(core,'openTrainingPaymentModal','confirmTrainingPayment');
+  assert.match(payment,/training-payment-instructor/);
+  assert.match(payment,/Stable.*splitStableHalf/s);
+  assert.match(payment,/Instructor.*splitStableHalf/s);
+  const confirm=functionBlock(core,'confirmTrainingPayment','markPaid');
+  assert.match(confirm,/instructor_id:trainer\.id/);
+  assert.match(confirm,/paid_bd:finalAmount/);
+  const add=functionBlock(core,'openAddSchedule','syncScheduleInstructorField');
+  assert.match(add,/<select id="sc-instructor-id">/);
+  assert.doesNotMatch(add,/id="sc-instructor"/);
+  const save=functionBlock(core,'saveSchedule','openEditSchedule');
+  assert.match(save,/Select an instructor for this training session/);
+  assert.match(save,/instructor_id:trainer\?\.id\|\|null/);
+  const update=functionBlock(core,'updateSchedule','markSchedDone');
+  assert.match(update,/instructor_id:trainer\?\.id\|\|null/);
+  assert.match(read('member-portal.js'),/cce_instructor_directory/);
+});
+
+test('v4.8 migration derives shares and protects instructor assignments',()=>{
+  const sql=read('supabase/migrations/20260719_training_revenue_instructor_v480.sql');
+  assert.match(sql,/generated always as/i);
+  assert.match(sql,/round\(coalesce\(paid_bd,0\)::numeric\/2,3\)/i);
+  assert.match(sql,/income_training_instructor_required/i);
+  assert.match(sql,/schedule_training_instructor_required/i);
+  assert.match(sql,/cce_validate_training_income_instructor/i);
+  assert.match(sql,/cce_validate_schedule_instructor/i);
+  assert.match(sql,/cce_instructor_directory/i);
+  assert.match(sql,/cce_v480_finance_guard/i);
+  assert.match(sql,/s\.instructor_id=v_instructor_id/i);
+});
+
+test('v4.8.1 preserves historical lessons and enables only explicit new splits',()=>{
+  const sql=read('supabase/migrations/20260719_training_split_cutover_v481.sql');
+  assert.match(sql,/training_split_enabled boolean not null default false/i);
+  assert.match(sql,/income_prepare_training_split/i);
+  assert.match(sql,/when training_split_enabled/i);
+  assert.match(sql,/recorded training split cannot be disabled/i);
+  assert.match(sql,/cce_v481_finance_guard/i);
+  const core=read('app-core.js');
+  assert.match(core,/Legacy — preserved/);
+  assert.match(core,/training_split_enabled:splitEnabled/);
 });
 
 test('recent dashboard activity combines income and expenses by latest operation',()=>{
@@ -241,11 +318,11 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.7.1 cache key',()=>{
+test('all app assets use the v4.8.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok((html.match(/20260719-471/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260719-471/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260719-471/);
-  assert.equal(read('VERSION.txt').trim(),'4.7.1');
+  assert.ok((html.match(/20260719-481/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260719-481/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260719-481/);
+  assert.equal(read('VERSION.txt').trim(),'4.8.1');
 });

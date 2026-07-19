@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260719-471"></script>
+<script src="app-bootstrap.js?v=20260719-481"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,10 +23,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260719-471" rel="stylesheet"/>
-<link href="member-portal.css?v=20260719-471" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260719-471" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260719-471" rel="stylesheet"/>
+<link href="app-core.css?v=20260719-481" rel="stylesheet"/>
+<link href="member-portal.css?v=20260719-481" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260719-481" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260719-481" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -873,9 +873,9 @@
 </div>
 </div>
 <div class="stats-grid" id="statsGrid"></div>
-<div class="card"><div class="card-title">📅 Monthly Revenue vs Expenses</div><div class="bar-chart" id="barChart"></div><div class="chart-legend"><span><span class="legend-dot" style="background:var(--green)"></span>Revenue</span><span><span class="legend-dot" style="background:var(--red)"></span>Expenses</span></div></div>
+<div class="card"><div class="card-title">📅 Monthly Stable Revenue vs Expenses</div><div class="bar-chart" id="barChart"></div><div class="chart-legend"><span><span class="legend-dot" style="background:var(--green)"></span>Stable Revenue</span><span><span class="legend-dot" style="background:var(--red)"></span>Expenses</span></div></div>
 <div class="two-col">
-<div class="card"><div class="card-title">🏷️ Revenue by Activity</div><div id="actPie"></div></div>
+<div class="card"><div class="card-title">🏷️ Stable Revenue by Activity</div><div id="actPie"></div></div>
 <div class="card"><div class="card-title">💸 Expenses by Category</div><div id="expPie"></div></div>
 </div>
 <div class="card"><div class="card-title">📋 Recent Financial Activity (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
@@ -888,11 +888,12 @@
 <div class="form-group"><label>Due Date</label><input id="inc-due" type="date"/></div>
 <div class="form-group"><label>Customer Name *</label><input id="inc-customer" list="cList" placeholder="Name..." type="text"/><datalist id="cList"></datalist></div>
 <div class="form-group"><label>Horse Name *</label><select id="inc-horse"><option value="">— Select —</option></select></div>
-<div class="form-group"><label>Category *</label><select id="inc-activity"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Wood Shavings</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Rent</option><option>Others</option></select></div>
+<div class="form-group"><label>Category *</label><select id="inc-activity" onchange="syncIncomeInstructorField('inc')"><option>Hack</option><option>Lesson</option><option>Livery</option><option>Breeding</option><option>Shuwar</option><option>Salary</option><option>Wood Shavings</option><option>Hay</option><option>Maintenance</option><option>Farrier</option><option>Medicant</option><option>Trash Container</option><option>Leading</option><option>Rent</option><option>Others</option></select></div>
 <div class="form-group"><label>Qty</label><input id="inc-qty" min="1" oninput="calcTotal('inc')" type="number" value="1"/></div>
 <div class="form-group"><label>Amount BD (per unit)</label><input id="inc-amount" oninput="calcTotal('inc')" placeholder="0.000" step="0.001" type="number"/></div>
 <div class="form-group"><label>Total BD (auto)</label><input id="inc-total" readonly="" step="0.001" type="number"/></div>
-<div class="form-group"><label>Paid BD</label><input id="inc-paid" step="0.001" type="number" value="0"/></div>
+<div class="form-group"><label>Paid BD</label><input id="inc-paid" min="0" oninput="syncIncomeInstructorField('inc')" step="0.001" type="number" value="0"/></div>
+<div class="form-group" id="inc-instructor-wrap" style="display:none"><label>Instructor *</label><select id="inc-instructor"><option value="">— Select instructor —</option></select><div id="inc-training-split" style="font-size:11px;color:var(--muted);margin-top:5px">The 50/50 split is created immediately when Paid BD is recorded.</div></div>
 <div class="form-group"><label>Start Time</label><input id="inc-start" type="time"/></div>
 <div class="form-group"><label>End Time</label><input id="inc-end" type="time"/></div>
 <div class="form-group"><label>Notes</label><input id="inc-notes" type="text"/></div>
@@ -1164,23 +1165,23 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260719-471"></script>
-<script src="src/core/config.js?v=20260719-471"></script>
-<script src="src/core/store.js?v=20260719-471"></script>
-<script src="src/services/supabase-runtime.js?v=20260719-471"></script>
-<script src="src/modules/horses/horse-service.js?v=20260719-471"></script>
-<script src="src/modules/health/health-service.js?v=20260719-471"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260719-471"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260719-471"></script>
-<script src="app-core.js?v=20260719-471"></script>
-<script src="app-branding.js?v=20260719-471"></script>
-<script src="horse-health.js?v=20260719-471"></script>
-<script src="member-portal.js?v=20260719-471"></script>
-<script src="src/components/header/header-system.js?v=20260719-471"></script>
+<script src="src/core/events.js?v=20260719-481"></script>
+<script src="src/core/config.js?v=20260719-481"></script>
+<script src="src/core/store.js?v=20260719-481"></script>
+<script src="src/services/supabase-runtime.js?v=20260719-481"></script>
+<script src="src/modules/horses/horse-service.js?v=20260719-481"></script>
+<script src="src/modules/health/health-service.js?v=20260719-481"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260719-481"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260719-481"></script>
+<script src="app-core.js?v=20260719-481"></script>
+<script src="app-branding.js?v=20260719-481"></script>
+<script src="horse-health.js?v=20260719-481"></script>
+<script src="member-portal.js?v=20260719-481"></script>
+<script src="src/components/header/header-system.js?v=20260719-481"></script>
 </body>
 </html>

@@ -19,3 +19,13 @@
 5. اتبع `../../docs/DEPLOYMENT_V470.md` قبل الإنتاج.
 
 ملف `../rollback/rollback_v470_compatibility.sql` للطوارئ فقط؛ لا يحذف البيانات لكنه يعيد فتح مسار الإدخال العام القديم مؤقتًا.
+
+للانتقال من v4.7.1 إلى v4.8.0:
+
+1. خذ نسخة احتياطية، ثم شغّل `../verification/preflight_v480.sql` واحفظ النتائج.
+2. شغّل `20260719_training_revenue_instructor_v480.sql`؛ لا يغيّر `amount_bd` أو `paid_bd` ويوقف المعاملة إذا تغير مجموعهما.
+3. انشر واجهة v4.8.0 مباشرة بعد نجاح الترحيل.
+4. عيّن المدرب للسجلات القديمة، ثم شغّل `../verification/verify_v480.sql` حتى تصبح جميع قيم `issue_count` صفرًا.
+5. اتبع `../../docs/DEPLOYMENT_V480.md` لاختبارات القبول والرجوع التوافقي.
+
+إذا كان v4.8.0 قد طُبق بالفعل، لا تُسند كل سجلات Lesson القديمة. شغّل `../verification/preflight_v481.sql` ثم `20260719_training_split_cutover_v481.sql` و`../verification/verify_v481.sql`. اتبع `../../docs/DEPLOYMENT_V481.md`؛ التصحيح يحفظ المبالغ التاريخية كما كانت ويطبّق 50/50 على السجلات الجديدة فقط.

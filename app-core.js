@@ -374,16 +374,32 @@ const todayDateOnly=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const dateOnly=s=>{if(!s)return null;const d=new Date(String(s).slice(0,10)+'T00:00:00');return isNaN(d)?null:d;};
 const isPastDueDate=s=>{const d=dateOnly(s);return !!d && d<todayDateOnly();};
 const isOverdueRow=r=>isPendingRow(r)&&hasRemaining(r)&&((!!r.due_date&&isPastDueDate(r.due_date))||(r&&Object.prototype.hasOwnProperty.call(r,'supplier')&&expenseHasOverdueInstallment(r)));
-// Cash accounting rule requested:
-// Total Revenue = money actually received (sum income.paid_bd).
+// Cash accounting rule:
+// Gross Collected = money received from customers (sum income.paid_bd).
+// Stable Revenue = Gross Collected minus the immediate 50% instructor share
+// for Lesson/Training income. Customer totals and remaining balances stay gross.
 // Total Expenses = money actually paid/spent (sum expenses.paid_bd), regardless of status.
-// Net Profit = Total Revenue - Total Expenses.
+// Net Profit = Stable Revenue - Total Expenses.
 // Pending/Unpaid are shown separately as remaining balances.
 const rowStatus=r=>String((r&&r.status)||'Pending').trim().toLowerCase();
 const calcPaidExpenseAmount=r=>moneyNum(r&&r.paid_bd);
 const calcPaidExpenses=(rows)=>rows.reduce((s,r)=>s+calcPaidExpenseAmount(r),0);
 const calcPendingAmount=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
-const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
+const isTrainingIncome=r=>['lesson','training'].includes(normalizeActivityCategory(r&&r.activity).toLowerCase());
+const trainingSplitEnabled=r=>isTrainingIncome(r)&&(!r||r.training_split_enabled!==false);
+const splitStableHalf=value=>Math.round((moneyNum(value)/2)*1000)/1000;
+const incomeStableShare=r=>{
+  if(r&&r.stable_share_bd!==undefined&&r.stable_share_bd!==null)return moneyNum(r.stable_share_bd);
+  return trainingSplitEnabled(r)?splitStableHalf(r&&r.paid_bd):moneyNum(r&&r.paid_bd);
+};
+const incomeInstructorShare=r=>{
+  if(r&&r.instructor_share_bd!==undefined&&r.instructor_share_bd!==null)return moneyNum(r.instructor_share_bd);
+  return trainingSplitEnabled(r)?Math.max(0,moneyNum(r&&r.paid_bd)-splitStableHalf(r&&r.paid_bd)):0;
+};
+const incomeStableExpected=r=>trainingSplitEnabled(r)?splitStableHalf(r&&r.amount_bd):moneyNum(r&&r.amount_bd);
+const calcGrossIncomeReceived=(rows)=>rows.reduce((s,r)=>s+moneyNum(r.paid_bd),0);
+const calcIncomeReceived=(rows)=>rows.reduce((s,r)=>s+incomeStableShare(r),0);
+const calcInstructorShares=(rows)=>rows.reduce((s,r)=>s+incomeInstructorShare(r),0);
 const calcIncomePending=(rows)=>rows.filter(isPendingRow).reduce((s,r)=>s+calcRemaining(r),0);
 const calcNetOverdue=(incRows,expRows)=>calcIncomePending(incRows)-calcPendingAmount(expRows);
 function normalizePaidStatus(total,paid){return paid>=total&&total>0?'Paid':'Pending';}
@@ -562,6 +578,10 @@ async function downloadBackup(){
       'Customer Name':r.customer_name, 'Horse Name':r.horse_name,
       Activity:r.activity, Qty:r.qty,
       'Amount BD':r.amount_bd, 'Paid BD':r.paid_bd,
+      'Stable Share BD':incomeStableShare(r),
+      'Instructor Share BD':incomeInstructorShare(r),
+      'Training Split Enabled':!!r.training_split_enabled,
+      Instructor:instructorNameById(r.instructor_id,''),
       Notes:r.notes, Status:r.status,
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(incData), 'Income');
@@ -599,14 +619,18 @@ async function downloadBackup(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(breData), 'Breeding');
 
     // Summary sheet
+    const totalGross=calcGrossIncomeReceived(inc);
     const totalRev=calcIncomeReceived(inc);
-    // Total expenses = fully paid expense records only; pending/partial records are not deducted from Net Profit.
+    const totalInstructorShare=calcInstructorShares(inc);
+    // Total expenses = cash actually paid, including partial payments.
     const totalExp=calcPaidExpenses(exp);
     const totalPending=calcPendingAmount(exp);
     const totalPendingIncome=calcIncomePending(inc);
     const netOverdue=calcNetOverdue(inc,exp);
     const sumData=[
-      {Metric:'Total Revenue BD',Value:totalRev.toFixed(3)},
+      {Metric:'Gross Collected BD',Value:totalGross.toFixed(3)},
+      {Metric:'Stable Revenue BD',Value:totalRev.toFixed(3)},
+      {Metric:'Instructor Shares BD',Value:totalInstructorShare.toFixed(3)},
       {Metric:'Total Expenses BD',Value:totalExp.toFixed(3)},
       {Metric:'Net Profit BD',Value:(totalRev-totalExp).toFixed(3)},
       {Metric:'Pending Income BD',Value:totalPendingIncome.toFixed(3)},
@@ -783,8 +807,10 @@ function buildDash(){
   const incRows=hasPeriod?filterRowsByDashPeriod(income):income;
   const expRows=hasPeriod?filterRowsByDashPeriod(expenses):expenses;
 
-  // Total revenue = received income cash. Pending income shows remaining only.
+  // Stable revenue excludes the instructor's immediate 50% training share.
+  const gross=calcGrossIncomeReceived(incRows);
   const rev=calcIncomeReceived(incRows);
+  const trainerShares=calcInstructorShares(incRows);
 
   // Cash accounting: Total Expenses is actual paid/spent cash (sum paid_bd).
   const exp=calcPaidExpenses(expRows);
@@ -809,7 +835,9 @@ function buildDash(){
   document.getElementById('overdueBanner').classList.add('hidden');
   document.getElementById('overdueBadge').classList.add('hidden');
   const stats=[
-    {l:'Total Revenue',v:BD(rev),c:'var(--green)'},
+    {l:'Gross Collected',v:BD(gross),c:'var(--navy)'},
+    {l:'Stable Revenue',v:BD(rev),c:'var(--green)'},
+    {l:'Instructor Shares',v:BD(trainerShares),c:'var(--amber)'},
     {l:'Total Expenses',v:BD(exp),c:'var(--red)'},
     {l:'Net Profit',v:BD(profit),c:profit>=0?'var(--green)':'var(--red)'},
     {l:'Pending Income',v:BD(pendInc),c:'var(--amber)'},
@@ -823,12 +851,12 @@ function buildDash(){
   const mo={};
   const chartIncome=(p.year&&!p.month)?income.filter(r=>rowMonthKey(r).slice(0,4)===p.year):income;
   const chartExpenses=(p.year&&!p.month)?expenses.filter(r=>rowMonthKey(r).slice(0,4)===p.year):expenses;
-  chartIncome.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=moneyNum(r.paid_bd);});
+  chartIncome.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].rev+=incomeStableShare(r);});
   chartExpenses.forEach(r=>{const m=rowMonthKey(r);if(!m)return;mo[m]=mo[m]||{rev:0,exp:0};mo[m].exp+=calcPaidExpenseAmount(r);});
   const months=Object.entries(mo).sort(([a],[b])=>a.localeCompare(b)).slice(-9);
   const mx=Math.max(...months.flatMap(([,v])=>[v.rev,v.exp]),1);
   document.getElementById('barChart').innerHTML=months.length?months.map(([m,v])=>`<div class="bar-group"><div class="bar-pair"><div class="bar" style="width:18px;height:${Math.max(4,(v.rev/mx)*110)}px;background:var(--green)" title="${BD(v.rev)}"></div><div class="bar" style="width:18px;height:${Math.max(4,(v.exp/mx)*110)}px;background:var(--red)" title="${BD(v.exp)}"></div></div><div class="bar-label">${MN[+m.split('-')[1]]}</div></div>`).join(''):'<p style="color:var(--muted);padding:12px">No monthly data</p>';
-  const aM={};incRows.forEach(r=>{const a=normalizeActivityCategory(r.activity);aM[a]=(aM[a]||0)+moneyNum(r.paid_bd);});
+  const aM={};incRows.forEach(r=>{const a=normalizeActivityCategory(r.activity);aM[a]=(aM[a]||0)+incomeStableShare(r);});
   document.getElementById('actPie').innerHTML='<div class="pie-legend">'+Object.entries(aM).sort(([,a],[,b])=>b-a).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${esc(k)}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
   const eM={};expRows.forEach(r=>{const c=normalizeActivityCategory(r.category);eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${esc(k)}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
@@ -876,7 +904,7 @@ function recentFinancialActivityHTML(incRows,expRows,limit=10){
 
 function incTblHTML(data){
   if(!data.length)return '<p style="color:var(--muted);padding:12px">No records</p>';
-  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Category</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+ 
+  return '<table><thead><tr><th>Date</th><th>Due</th><th>Customer</th><th>Horse</th><th>Category</th><th>Qty</th><th>Amount</th><th>Paid</th><th>Training Split</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
     data.map(function(r){
       return '<tr>'+ 
         '<td>'+fmt(r.date)+'</td>'+ 
@@ -887,6 +915,7 @@ function incTblHTML(data){
         '<td>'+esc(r.qty||1)+'</td>'+ 
         '<td class="money-green">'+BD(r.amount_bd)+'</td>'+ 
         '<td>'+BD(r.paid_bd)+'</td>'+ 
+        '<td>'+trainingSplitHTML(r)+'</td>'+
         '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+ 
         '<td style="white-space:nowrap">'+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
@@ -903,7 +932,7 @@ function renderIncome(){
   const st=document.getElementById('incStFilter').value;
   let data=income.filter(r=>{const m=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(r.activity||'').toLowerCase().includes(q);return m&&(!ac||normalizeActivityCategory(r.activity)===ac)&&(!st||r.status===st);});
   document.getElementById('incCount').textContent=data.length;
-  document.getElementById('incTotalAmt').textContent='Paid: '+BD(data.reduce((s,r)=>s+(parseFloat(r.paid_bd)||0),0));
+  document.getElementById('incTotalAmt').textContent='Gross: '+BD(calcGrossIncomeReceived(data))+' • Stable: '+BD(calcIncomeReceived(data))+' • Instructor: '+BD(calcInstructorShares(data));
   const pages=Math.ceil(data.length/PER)||1;incPage=Math.min(incPage,pages);
   document.getElementById('incTable').innerHTML=incTblHTML([...data].reverse().slice((incPage-1)*PER,incPage*PER));
   renderPag('incPag',pages,incPage,p=>{incPage=p;renderIncome();});
@@ -917,16 +946,19 @@ async function addIncome(){
   const total=qty*amt;
   const paid=parseFloat(document.getElementById('inc-paid').value)||0;
   if(!validatePaymentInput(total,paid,'Income'))return;
+  const activity=normalizeActivityCategory(document.getElementById('inc-activity').value);
+  const trainer=selectedInstructor('inc-instructor');
+  if(isTrainingIncome({activity})&&paid>0&&!trainer){alert('Select an active instructor before recording a training payment.');return;}
   const btn=document.getElementById('incSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:normalizeActivityCategory(document.getElementById('inc-activity').value),qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:normalizePaidStatus(total,paid)});
+    await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:isTrainingIncome({activity}),instructor_id:isTrainingIncome({activity})?(trainer?.id||null):null,notes:document.getElementById('inc-notes').value||null,status:normalizePaidStatus(total,paid)});
     // Notify if booking
     const notes=document.getElementById('inc-notes').value||'';
     if(['BOOKING REQUEST','TRAINING REQUEST','LIVERY REQUEST'].some(marker=>notes.includes(marker))){
       notifyNewBooking(cust,document.getElementById('inc-horse').value||'?',document.getElementById('inc-start').value||date);
     }
     ['inc-date','inc-due','inc-customer','inc-amount','inc-notes','inc-start','inc-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';
+    document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';document.getElementById('inc-instructor').value='';syncIncomeInstructorField('inc');
     await loadAll();
   }catch(e){showError('Error',e);}
   finally{btn.disabled=false;btn.textContent='Save to Database';}
@@ -2027,27 +2059,36 @@ function hOpts(sel=''){return horses.map(h=>h.horse_name).filter(Boolean).sort()
 function editIncome(id){
   const r=income.find(x=>String(x.id)===String(id));if(!r)return;
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
+  const splitChecked=isTrainingIncome(r)?r.training_split_enabled!==false:true;
+  const splitLocked=isTrainingIncome(r)&&r.training_split_enabled===true;
   openModal('Edit Income',`<div class="form-grid">
     <div class="form-group"><label>Date</label><input type="date" id="ei-date" value="${escAttr(r.date||'')}"></div>
     <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${escAttr(r.due_date||'')}"></div>
     <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${escAttr(r.customer_name||'')}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('')}</datalist></div>
     <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
-    <div class="form-group"><label>Category</label><select id="ei-act">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
+    <div class="form-group"><label>Category</label><select id="ei-act" onchange="syncIncomeInstructorField('ei')">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
     <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
     <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ei-amt" value="${apu.toFixed(3)}" oninput="cET('inc')"></div>
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ei-total" value="${r.amount_bd}" readonly></div>
-    <div class="form-group"><label>Paid BD</label><input type="number" step="0.001" id="ei-paid" value="${r.paid_bd||0}"></div>
+    <div class="form-group"><label>Paid BD</label><input type="number" min="0" step="0.001" id="ei-paid" value="${r.paid_bd||0}" oninput="syncIncomeInstructorField('ei')"></div>
+    <div class="form-group" id="ei-training-policy-wrap"><label>Training revenue policy</label><label style="display:flex;align-items:flex-start;gap:8px;font-weight:600"><input type="checkbox" id="ei-training-split-enabled" ${splitChecked?'checked':''} ${splitLocked?'disabled':''} onchange="syncIncomeInstructorField('ei')" style="margin-top:3px"> Apply the new 50/50 stable/instructor split</label><div style="font-size:11px;color:var(--muted);margin-top:5px">Historical Lesson rows remain unchanged unless this is selected explicitly. Once a paid split is recorded it cannot be disabled.</div></div>
+    <div class="form-group" id="ei-instructor-wrap"><label>Instructor *</label><select id="ei-instructor">${activeInstructorOptions(r.instructor_id,instructorNameById(r.instructor_id,''))}</select><div id="ei-training-split" style="font-size:11px;color:var(--muted);margin-top:5px"></div></div>
     <div class="form-group"><label>Start Time</label><input type="time" id="ei-start" value="${escAttr(r.start_time||'')}"></div>
     <div class="form-group"><label>End Time</label><input type="time" id="ei-end" value="${escAttr(r.end_time||'')}"></div>
     <div class="form-group"><label>Notes</label><input type="text" id="ei-notes" value="${escAttr(r.notes||'')}"></div>
   </div><div class="btn-row"><button class="btn btn-green" onclick="saveIncome(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+  syncIncomeInstructorField('ei');
 }
 async function saveIncome(id){
   const qty=parseFloat(document.getElementById('ei-qty').value)||1;
   const amt=parseFloat(document.getElementById('ei-amt').value)||0;
   const total=qty*amt;const paid=parseFloat(document.getElementById('ei-paid').value)||0;
   if(!validatePaymentInput(total,paid,'Income'))return;
-  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity:normalizeActivityCategory(document.getElementById('ei-act').value),qty,amount_bd:total,paid_bd:paid,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  const activity=normalizeActivityCategory(document.getElementById('ei-act').value);
+  const splitEnabled=isTrainingIncome({activity})&&!!document.getElementById('ei-training-split-enabled')?.checked;
+  const trainer=selectedInstructor('ei-instructor');
+  if(splitEnabled&&paid>0&&!trainer){alert('Select an active instructor before recording a training payment.');return;}
+  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:splitEnabled,instructor_id:splitEnabled?(trainer?.id||null):null,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
@@ -2153,10 +2194,36 @@ function editBreeding(id){
 async function saveBreeding(id){
   try{await sbPatch('breeding',id,{mare_name:document.getElementById('eb-mare').value,owner:document.getElementById('eb-owner').value,mobile:document.getElementById('eb-mobile').value||null,day1:document.getElementById('eb-d1').value||null,day2:document.getElementById('eb-d2').value||null,day3:document.getElementById('eb-d3').value||null,day4:document.getElementById('eb-d4').value||null,day5:document.getElementById('eb-d5').value||null,day6:document.getElementById('eb-d6').value||null,day7:document.getElementById('eb-d7').value||null,day8:document.getElementById('eb-d8').value||null,day9:document.getElementById('eb-d9').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
+function openTrainingPaymentModal(id){
+  const r=income.find(x=>String(x.id)===String(id));if(!r)return;
+  const total=moneyNum(r.amount_bd);
+  openModal('Training Payment — 50/50 Split',`
+    <div style="background:var(--sand);border-radius:12px;padding:14px;margin-bottom:14px;line-height:1.8">
+      <div><strong>Customer:</strong> ${esc(r.customer_name||'—')}</div>
+      <div><strong>Gross payment:</strong> ${BD(total)}</div>
+      <div style="color:var(--green)"><strong>Stable:</strong> ${BD(splitStableHalf(total))}</div>
+      <div style="color:var(--navy)"><strong>Instructor:</strong> ${BD(total-splitStableHalf(total))}</div>
+    </div>
+    <div class="form-group"><label>Instructor receiving the 50% share *</label><select id="training-payment-instructor">${activeInstructorOptions(r.instructor_id,instructorNameById(r.instructor_id,''))}</select></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">The customer receipt remains ${BD(total)} and the remaining balance becomes ${BD(0)}.</div>
+    <div class="btn-row"><button class="btn btn-green" onclick="confirmTrainingPayment(${r.id})">Confirm Payment & Split</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
+}
+async function confirmTrainingPayment(id){
+  const r=income.find(x=>String(x.id)===String(id));if(!r)return;
+  const trainer=selectedInstructor('training-payment-instructor');
+  if(!trainer){alert('Select an active instructor.');return;}
+  const finalAmount=moneyNum(r.amount_bd);
+  try{
+    await sbPatch('income',id,{paid_bd:finalAmount,status:'Paid',training_split_enabled:true,instructor_id:trainer.id});
+    closeModal();await loadAll();
+    if(confirm('✅ Payment split recorded.\n\nStable: '+BD(splitStableHalf(finalAmount))+'\n'+trainer.name+': '+BD(finalAmount-splitStableHalf(finalAmount))+'\n\nSend a thank-you WhatsApp message?'))sendWhatsAppThanks(r,finalAmount);
+  }catch(e){showError('Training payment',e);}
+}
 async function markPaid(t,id,amt){
   const rows=(t==='income')?income:expenses;
   const row=rows.find(x=>String(x.id)===String(id));
   const finalAmount=moneyNum(row?.amount_bd ?? amt);
+  if(t==='income'&&row&&isTrainingIncome(row)){openTrainingPaymentModal(id);return;}
   if(t==='expenses'&&row){
     const plan=expenseInstallments(row);
     const planned=plan.reduce((sum,i)=>sum+moneyNum(i.amount),0);
@@ -2242,6 +2309,49 @@ function cET(p){
   const amt=parseFloat(document.getElementById(p==='inc'?'ei-amt':'ee-amt')?.value)||0;
   const el=document.getElementById(p==='inc'?'ei-total':'ee-total');if(el)el.value=(qty*amt).toFixed(3);
 }
+function instructorById(id){return instructors_data.find(i=>String(i.id)===String(id||''))||null;}
+function instructorNameById(id,fallback=''){
+  return instructorById(id)?.name||fallback||'';
+}
+function activeInstructorOptions(selectedId='',selectedName=''){
+  const rows=instructors_data.filter(i=>i.active).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  const selected=instructorById(selectedId);
+  if(selected&&!rows.some(i=>String(i.id)===String(selected.id)))rows.push(selected);
+  const options=rows.map(i=>`<option value="${escAttr(i.id)}" ${String(i.id)===String(selectedId||'')?'selected':''}>${esc(i.name)}${i.active?'':' (Inactive)'}</option>`).join('');
+  const legacy=selectedName&&!selectedId&&!rows.some(i=>normText(i.name)===normText(selectedName))
+    ?`<option value="" selected>${esc(selectedName)} — select linked instructor</option>`:'';
+  return '<option value="">— Select instructor —</option>'+legacy+options;
+}
+function selectedInstructor(selectId){
+  const id=document.getElementById(selectId)?.value||'';
+  const instructor=instructorById(id);
+  return instructor&&instructor.active?instructor:null;
+}
+function syncIncomeInstructorField(prefix='inc'){
+  const edit=prefix==='ei';
+  const activity=document.getElementById(edit?'ei-act':'inc-activity')?.value||'';
+  const paid=moneyNum(document.getElementById(edit?'ei-paid':'inc-paid')?.value);
+  const wrap=document.getElementById(edit?'ei-instructor-wrap':'inc-instructor-wrap');
+  const policy=document.getElementById('ei-training-policy-wrap');
+  const select=document.getElementById(edit?'ei-instructor':'inc-instructor');
+  const split=document.getElementById(edit?'ei-training-split':'inc-training-split');
+  const training=['lesson','training'].includes(normalizeActivityCategory(activity).toLowerCase());
+  const enabled=training&&(!edit||!!document.getElementById('ei-training-split-enabled')?.checked);
+  if(policy)policy.style.display=training?'':'none';
+  if(wrap)wrap.style.display=enabled?'':'none';
+  if(select)select.required=enabled&&paid>0;
+  if(split)split.textContent=enabled&&paid>0
+    ?`Stable ${BD(splitStableHalf(paid))} • Instructor ${BD(paid-splitStableHalf(paid))}`
+    :'The 50/50 split is created immediately when Paid BD is recorded.';
+}
+function trainingSplitHTML(r){
+  if(!isTrainingIncome(r))return '<span style="color:var(--muted)">—</span>';
+  const paid=moneyNum(r.paid_bd);
+  if(!trainingSplitEnabled(r))return `<div style="min-width:150px;font-size:11px;line-height:1.65"><strong>Legacy — preserved</strong><br><span style="color:var(--green)">Stable: ${BD(paid)}</span><br><span style="color:var(--muted)">No retroactive split</span></div>`;
+  if(paid<=0)return '<span style="color:var(--muted)">Awaiting payment</span>';
+  const instructor=instructorNameById(r.instructor_id,'Unassigned instructor');
+  return `<div style="min-width:150px;font-size:11px;line-height:1.65"><strong>${esc(instructor)}</strong><br><span style="color:var(--green)">Stable: ${BD(incomeStableShare(r))}</span><br><span style="color:var(--navy)">Instructor: ${BD(incomeInstructorShare(r))}</span></div>`;
+}
 function populateLists(){
   const cl=document.getElementById('cList');
   if(cl)cl.innerHTML=[...new Set(income.map(r=>r.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('');
@@ -2250,6 +2360,9 @@ function populateLists(){
   if(ih)ih.innerHTML='<option value="">&#8212; Select &#8212;</option>'+hn.map(h=>'<option>'+esc(h)+'</option>').join('');
   const eh=document.getElementById('exp-horse');
   if(eh)eh.innerHTML='<option value="">&#8212; None &#8212;</option>'+hn.map(h=>'<option>'+esc(h)+'</option>').join('');
+  const instructor=document.getElementById('inc-instructor');
+  if(instructor){const selected=instructor.value;instructor.innerHTML=activeInstructorOptions(selected);instructor.value=selected;}
+  syncIncomeInstructorField('inc');
 }
 function renderPag(id,total,cur,fn){
   const el=document.getElementById(id);if(total<=1){el.innerHTML='';return;}
@@ -3011,7 +3124,7 @@ function getAllEvents(){
       activity:normalizeActivityCategory(r.activity),
       horse:r.horse_name||'',
       customer:r.customer_name||'',
-      instructor:r.instructor||'',
+      instructor:instructorNameById(r.instructor_id,r.instructor||''),
       notes:r.notes||'',
       status:r.status||'Scheduled',
       color:actColor(r.activity)
@@ -3175,12 +3288,12 @@ function openAddSchedule(prefillDate){
   openModal('&#10133; Add Session',`
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="sc-date" value="${d}"></div>
-      <div class="form-group"><label>Activity *</label><select id="sc-activity"><option>Hack</option><option>Lesson</option><option>Breeding</option><option>Shuwar</option><option>Livery</option><option>Rent</option><option>Others</option></select></div>
+      <div class="form-group"><label>Activity *</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option>Hack</option><option>Lesson</option><option>Breeding</option><option>Shuwar</option><option>Livery</option><option>Rent</option><option>Others</option></select></div>
       <div class="form-group"><label>Start Time *</label><input type="time" id="sc-start" value="08:00"></div>
       <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="09:00"></div>
       <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option value="${escAttr(h.horse_name)}">${esc(h.horse_name)}</option>`).join('')}</select></div>
       <div class="form-group"><label>Customer</label><input type="text" id="sc-customer" list="cList" placeholder="Name..."></div>
-      <div class="form-group"><label>Instructor</label><input type="text" id="sc-instructor" placeholder="Instructor name..."></div>
+      <div class="form-group" id="sc-instructor-wrap"><label id="sc-instructor-label">Instructor</label><select id="sc-instructor-id">${activeInstructorOptions()}</select><div id="sc-instructor-note" style="font-size:11px;color:var(--muted);margin-top:5px">Optional for non-training sessions.</div></div>
       <div class="form-group"><label>Status</label><select id="sc-status"><option>Scheduled</option><option>Done</option><option>Cancelled</option></select></div>
       <div class="form-group" style="grid-column:1/-1"><label>Notes</label><input type="text" id="sc-notes" placeholder="Optional notes..."></div>
     </div>
@@ -3188,6 +3301,18 @@ function openAddSchedule(prefillDate){
       <button class="btn btn-green" onclick="saveSchedule()">&#128190; Save Session</button>
       <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
     </div>`);
+  syncScheduleInstructorField();
+}
+
+function syncScheduleInstructorField(){
+  const activity=normalizeActivityCategory(document.getElementById('sc-activity')?.value||'');
+  const training=['lesson','training'].includes(activity.toLowerCase());
+  const select=document.getElementById('sc-instructor-id');
+  const label=document.getElementById('sc-instructor-label');
+  const note=document.getElementById('sc-instructor-note');
+  if(select)select.required=training;
+  if(label)label.textContent=training?'Instructor *':'Instructor';
+  if(note)note.textContent=training?'Required: assign this training session to an active instructor.':'Optional for non-training sessions.';
 }
 
 async function saveSchedule(){
@@ -3195,17 +3320,21 @@ async function saveSchedule(){
   const start=document.getElementById('sc-start').value;
   if(!date||!start){alert('Date and Start Time are required');return;}
   const horse=document.getElementById('sc-horse').value||'';
-  const instructor=document.getElementById('sc-instructor').value||'';
+  const activity=normalizeActivityCategory(document.getElementById('sc-activity').value);
+  const trainer=selectedInstructor('sc-instructor-id');
+  if(['lesson','training'].includes(activity.toLowerCase())&&!trainer){alert('Select an instructor for this training session.');return;}
+  const instructor=trainer?.name||'';
   const end=document.getElementById('sc-end').value||'';
   if(alertConflicts(findBookingConflicts({date,start,end,horse,instructor})))return;
   try{
     await sbPost('schedule',{ 
       date,start_time:start,
       end_time:end||null,
-      activity:normalizeActivityCategory(document.getElementById('sc-activity').value),
+      activity,
       horse_name:horse||null,
       customer_name:document.getElementById('sc-customer').value||null,
       instructor:instructor||null,
+      instructor_id:trainer?.id||null,
       status:document.getElementById('sc-status').value,
       notes:document.getElementById('sc-notes').value||null,
       color:actColor(document.getElementById('sc-activity').value)
@@ -3217,15 +3346,16 @@ async function saveSchedule(){
 async function openEditSchedule(id){
   const r=schedule_data.find(x=>String(x.id)===String(id));
   if(!r){alert('⚠️ Session not found. Please refresh and try again.');return;}
+  const selectedInstructorId=r.instructor_id||instructors_data.find(i=>normText(i.name)===normText(r.instructor))?.id||'';
   openModal('&#9999;&#65039; Edit Session',`
     <div class="form-grid">
       <div class="form-group"><label>Date</label><input type="date" id="sc-date" value="${r.date||''}"></div>
-      <div class="form-group"><label>Activity</label><select id="sc-activity"><option ${r.activity==='Hack'?'selected':''}>Hack</option><option ${r.activity==='Lesson'?'selected':''}>Lesson</option><option ${r.activity==='Breeding'?'selected':''}>Breeding</option><option ${r.activity==='Shuwar'?'selected':''}>Shuwar</option><option ${r.activity==='Livery'?'selected':''}>Livery</option><option ${r.activity==='Rent'?'selected':''}>Rent</option><option ${normalizeActivityCategory(r.activity)==='Others'?'selected':''}>Others</option></select></div>
+      <div class="form-group"><label>Activity</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option ${r.activity==='Hack'?'selected':''}>Hack</option><option ${r.activity==='Lesson'?'selected':''}>Lesson</option><option ${r.activity==='Breeding'?'selected':''}>Breeding</option><option ${r.activity==='Shuwar'?'selected':''}>Shuwar</option><option ${r.activity==='Livery'?'selected':''}>Livery</option><option ${r.activity==='Rent'?'selected':''}>Rent</option><option ${normalizeActivityCategory(r.activity)==='Others'?'selected':''}>Others</option></select></div>
       <div class="form-group"><label>Start Time</label><input type="time" id="sc-start" value="${r.start_time||''}"></div>
       <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="${r.end_time||''}"></div>
       <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option value="${escAttr(h.horse_name)}" ${h.horse_name===r.horse_name?'selected':''}>${esc(h.horse_name)}</option>`).join('')}</select></div>
       <div class="form-group"><label>Customer</label><input type="text" id="sc-customer" value="${r.customer_name||''}"></div>
-      <div class="form-group"><label>Instructor</label><input type="text" id="sc-instructor" value="${r.instructor||''}"></div>
+      <div class="form-group" id="sc-instructor-wrap"><label id="sc-instructor-label">Instructor</label><select id="sc-instructor-id">${activeInstructorOptions(selectedInstructorId,r.instructor||'')}</select><div id="sc-instructor-note" style="font-size:11px;color:var(--muted);margin-top:5px"></div></div>
       <div class="form-group"><label>Status</label><select id="sc-status"><option ${r.status==='Scheduled'?'selected':''}>Scheduled</option><option ${r.status==='Done'?'selected':''}>Done</option><option ${r.status==='Cancelled'?'selected':''}>Cancelled</option></select></div>
       <div class="form-group" style="grid-column:1/-1"><label>Notes</label><input type="text" id="sc-notes" value="${r.notes||''}"></div>
     </div>
@@ -3233,6 +3363,7 @@ async function openEditSchedule(id){
       <button class="btn btn-amber" onclick="updateSchedule('${r.id}')">&#128190; Save Changes</button>
       <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
     </div>`);
+  syncScheduleInstructorField();
 }
 
 async function updateSchedule(id){
@@ -3240,17 +3371,21 @@ async function updateSchedule(id){
   const start=document.getElementById('sc-start').value;
   const end=document.getElementById('sc-end').value||'';
   const horse=document.getElementById('sc-horse').value||'';
-  const instructor=document.getElementById('sc-instructor').value||'';
+  const activity=normalizeActivityCategory(document.getElementById('sc-activity').value);
+  const trainer=selectedInstructor('sc-instructor-id');
+  if(['lesson','training'].includes(activity.toLowerCase())&&!trainer){alert('Select an instructor for this training session.');return;}
+  const instructor=trainer?.name||'';
   if(alertConflicts(findBookingConflicts({date,start,end,horse,instructor},{source:'schedule',dbId:id})))return;
   try{
     await sbPatch('schedule',id,{
       date:document.getElementById('sc-date').value,
       start_time:document.getElementById('sc-start').value,
       end_time:end||null,
-      activity:normalizeActivityCategory(document.getElementById('sc-activity').value),
+      activity,
       horse_name:horse||null,
       customer_name:document.getElementById('sc-customer').value||null,
       instructor:instructor||null,
+      instructor_id:trainer?.id||null,
       status:document.getElementById('sc-status').value,
       notes:document.getElementById('sc-notes').value||null,
       color:actColor(document.getElementById('sc-activity').value)
@@ -3455,6 +3590,7 @@ function instrSessionCard(s){
   const statusBg=s.status==='Done'?'#E8F5EE':s.status==='Cancelled'?'#FDECEA':'#FEF3E2';
   const startTime=fmtTimeShort(s.start_time||'');
   const endTime=s.end_time?fmtTimeShort(s.end_time):'';
+  const ownsSession=(currentInstructor?.id&&String(s.instructor_id||'')===String(currentInstructor.id))||normText(s.instructor)===normText(currentInstructor?.name);
   return `<article class="instructor-session-card" style="--session-accent:${actColor(s.activity)}">
     <div class="instructor-session-main">
       <div class="instructor-session-avatar" aria-hidden="true">🐴</div>
@@ -3474,8 +3610,8 @@ function instrSessionCard(s){
         ${instrHorseInfo(s.horse_name)}
       </div>
       <div class="instructor-session-actions">
-        ${normText(s.instructor)===normText(currentInstructor.name)&&s.status!=='Done'&&s.status!=='Cancelled'?`<button class="session-icon-btn done" onclick="instrMarkDone(${s.id})" aria-label="Mark done">✓</button>`:''}
-        ${normText(s.instructor)===normText(currentInstructor.name)?`<button class="session-icon-btn note" onclick="instrAddNote(${s.id},${jsStr(s.notes||'')})" aria-label="Add note">✎</button>`:''}
+        ${ownsSession&&s.status!=='Done'&&s.status!=='Cancelled'?`<button class="session-icon-btn done" onclick="instrMarkDone(${s.id})" aria-label="Mark done">✓</button>`:''}
+        ${ownsSession?`<button class="session-icon-btn note" onclick="instrAddNote(${s.id},${jsStr(s.notes||'')})" aria-label="Add note">✎</button>`:''}
       </div>
     </div>
   </article>`;
@@ -3542,12 +3678,15 @@ function renderInstructors(){
   el.innerHTML=instructors_data.map(instr=>{
     const now=new Date();
     const monthSess=schedule_data.filter(s=>{
-      if(s.instructor!==instr.name) return false;
+      const assigned=String(s.instructor_id||'')===String(instr.id)||normText(s.instructor)===normText(instr.name);
+      if(!assigned) return false;
       const d=new Date(s.date);
       return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
     });
     const doneSess=monthSess.filter(s=>s.status==='Done');
     const active=!!instr.active;
+    const trainerShare=income.filter(r=>String(r.instructor_id||'')===String(instr.id)&&trainingSplitEnabled(r)).reduce((sum,r)=>sum+incomeInstructorShare(r),0);
+    const canSeeFinance=typeof window.canUser!=='function'||window.canUser('income.view');
 
     return `<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
       <div style="width:46px;height:46px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0">&#127919;</div>
@@ -3558,6 +3697,7 @@ function renderInstructors(){
           <span style="font-size:11px;background:#E8F5EE;color:var(--green);border-radius:6px;padding:2px 8px;font-weight:600">&#128197; ${monthSess.length} sessions this month</span>
           <span style="font-size:11px;background:#EEF2FF;color:var(--navy);border-radius:6px;padding:2px 8px;font-weight:600">&#9989; ${doneSess.length} done</span>
           <span style="font-size:11px;background:${active?'#E8F5EE':'#FDECEA'};color:${active?'var(--green)':'var(--red)'};border-radius:6px;padding:2px 8px;font-weight:600">${active?'Active':'Inactive'}</span>
+          ${canSeeFinance?`<span style="font-size:11px;background:#FFF6DF;color:#8A5A00;border-radius:6px;padding:2px 8px;font-weight:700">Instructor share: ${BD(trainerShare)}</span>`:''}
           <span style="font-size:11px;background:#F0F1F4;color:var(--muted);border-radius:6px;padding:2px 8px;font-weight:600">Password protected</span>
         </div>
       </div>
@@ -3770,14 +3910,16 @@ function previousMonthKey(k=currentMonthKey()){
 function periodStatsForMonth(k){
   const inc=income.filter(r=>monthKeyFromDate(r.date)===k);
   const exp=expenses.filter(r=>monthKeyFromDate(r.date)===k);
+  const grossCollected=calcGrossIncomeReceived(inc);
   const cashRevenue=calcIncomeReceived(inc);
+  const instructorShares=calcInstructorShares(inc);
   const paidExp=calcPaidExpenses(exp);
   const pendingIncome=calcIncomePending(inc);
   const unpaidExp=calcPendingAmount(exp);
   const netCash=cashRevenue-paidExp;
-  const expected=(inc.reduce((s,r)=>s+moneyNum(r.amount_bd),0))-exp.reduce((s,r)=>s+moneyNum(r.amount_bd),0);
+  const expected=(inc.reduce((s,r)=>s+incomeStableExpected(r),0))-exp.reduce((s,r)=>s+moneyNum(r.amount_bd),0);
   const collectionBase=inc.reduce((s,r)=>s+moneyNum(r.amount_bd),0);
-  return {inc,exp,cashRevenue,paidExp,pendingIncome,unpaidExp,netCash,expected,collectionBase,collectionRate:collectionBase?cashRevenue/collectionBase*100:0,expenseRatio:cashRevenue?paidExp/cashRevenue*100:0};
+  return {inc,exp,grossCollected,cashRevenue,instructorShares,paidExp,pendingIncome,unpaidExp,netCash,expected,collectionBase,collectionRate:collectionBase?grossCollected/collectionBase*100:0,expenseRatio:cashRevenue?paidExp/cashRevenue*100:0};
 }
 function pctDelta(cur,prev){ if(!prev) return cur?'+100%':'0%'; const v=((cur-prev)/Math.abs(prev))*100; return (v>=0?'+':'')+v.toFixed(1)+'%';}
 function topBy(rows,keyFn,valFn,n=8){const m={};rows.forEach(r=>{const k=normalizeActivityCategory(keyFn(r));m[k]=(m[k]||0)+(valFn(r)||0);});return Object.entries(m).sort(([,a],[,b])=>b-a).slice(0,n);}
@@ -3790,13 +3932,15 @@ function renderAdvancedReports(){
   const curK=currentMonthKey(), prevK=previousMonthKey(curK);
   const cur=periodStatsForMonth(curK), prev=periodStatsForMonth(prevK);
   const topCustomers=topBy(income,r=>(r.customer_name||'').split('|')[0].trim(),r=>moneyNum(r.paid_bd),10);
-  const topServices=topBy(income,r=>r.activity,r=>moneyNum(r.paid_bd),10);
+  const topServices=topBy(income,r=>r.activity,r=>incomeStableShare(r),10);
   const topExpenses=topBy(expenses,r=>r.category,r=>calcPaidExpenseAmount(r),10);
-  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=normalizeActivityCategory(r.activity);m[k]=(m[k]||0)+moneyNum(r.paid_bd);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>normalizeActivityCategory(x.category)===k).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const svcProfit=Object.entries(income.reduce((m,r)=>{const k=normalizeActivityCategory(r.activity);m[k]=(m[k]||0)+incomeStableShare(r);return m;},{})).map(([k,v])=>[k, v-(expenses.filter(x=>normalizeActivityCategory(x.category)===k).reduce((s,x)=>s+calcPaidExpenseAmount(x),0))]).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const metric=(tone,label,value,sub,icon)=>`<article class="report-metric ${tone}"><div class="report-metric-icon">${icon}</div><div class="report-metric-copy"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div></article>`;
   el.innerHTML=`
     <div class="report-metrics">
-      ${metric('positive','Cash profit',BD(cur.netCash),`vs last month ${pctDelta(cur.netCash,prev.netCash)}`,'↗')}
+      ${metric('positive','Stable cash profit',BD(cur.netCash),`vs last month ${pctDelta(cur.netCash,prev.netCash)}`,'↗')}
+      ${metric('navy','Gross collected',BD(cur.grossCollected),'Full customer payments before training split','◎')}
+      ${metric('gold','Instructor shares',BD(cur.instructorShares),'Immediate 50% of paid training cash','½')}
       ${metric('navy','Expected profit',BD(cur.expected),'Includes pending and unpaid totals','◎')}
       ${metric('gold','Collection rate',cur.collectionRate.toFixed(1)+'%','Cash received from invoiced value','✓')}
       ${metric('danger','Expense ratio',cur.expenseRatio.toFixed(1)+'%','Paid expenses against cash revenue','%')}
@@ -3809,7 +3953,7 @@ function renderAdvancedReports(){
     </div>
     <div class="report-grid">
       <section class="report-panel">${renderMiniTable(topCustomers,'Top Customers — Paid','var(--green)')}</section>
-      <section class="report-panel">${renderMiniTable(topServices,'Top Services — Revenue','var(--amber)')}</section>
+      <section class="report-panel">${renderMiniTable(topServices,'Top Services — Stable Revenue','var(--amber)')}</section>
       <section class="report-panel">${renderMiniTable(topExpenses,'Top Expense Categories','var(--red)')}</section>
       <section class="report-panel">${renderMiniTable(svcProfit,'Estimated Service Profit','var(--navy)')}</section>
     </div>`;
@@ -3866,7 +4010,7 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'4.7.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
+function backupObject(){return {app:'Country Club Equestrian',version:'4.8.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
 function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
@@ -3940,7 +4084,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260719-471', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260719-481', {scope:'./'})
       .then(reg => {
 
         reg.update();
