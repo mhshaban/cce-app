@@ -46,8 +46,15 @@ function isAdminAuthed(){
   return false;
 }
 
-async function sbGet(t,q=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}&order=id.asc`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
-function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data})[t]||[];}
+async function sbGet(t,q=''){
+  const query=String(q||'').replace(/^&+|&+$/g,'');
+  const order=/(^|&)order=/.test(query)?'':'order=id.asc';
+  const suffix=[query,order].filter(Boolean).join('&');
+  const r=await fetch(`${SB_URL}/rest/v1/${t}?${suffix}`,{headers:HDR});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests})[t]||[];}
 async function sbPost(t,d,opts={}){
   const data={...d};delete data.id;
   const prefer=opts.prefer||'return=representation';
@@ -61,9 +68,9 @@ async function sbPost(t,d,opts={}){
   return out;
 }
 
-async function publicPostIncome(data){
-  // Public booking/training forms only need INSERT. Using return=minimal avoids requiring SELECT permission on income.
-  return sbPost('income',data,{prefer:'return=minimal',skipAudit:true});
+async function publicSubmitBooking(data){
+  // The database owns price, capacity, rate limiting and the finance/intake transaction.
+  return sbRpc('cce_public_submit_booking',data,{prefer:'return=representation'});
 }
 async function sbRpc(fn,payload={},opts={}){
   const prefer=opts.prefer||'return=representation';
@@ -94,6 +101,4 @@ async function sbDel(t,id,opts={}){
   if(!r.ok)throw new Error(await r.text());
   if(!opts.skipAudit&&t!=='audit_logs')queueAudit('delete',t,id,before,null);
 }
-
-
 

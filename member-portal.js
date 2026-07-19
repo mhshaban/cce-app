@@ -86,7 +86,7 @@
     currentInstructor = null;
     ownerHorses = [];
     currentOwner = '';
-    income = []; expenses = []; horses = []; breeding = []; schedule_data = []; instructors_data = [];
+    income = []; expenses = []; horses = []; breeding = []; schedule_data = []; instructors_data = []; booking_requests = [];
     horse_health_profiles = []; horse_health_events = [];
     horse_medical_records = []; horse_vaccinations = []; horse_care_tasks = [];
     accessAdminData = null;
@@ -224,8 +224,12 @@
     const trainerCodes = new Set(['schedule.view_own','schedule.update_own','schedule.view','schedule.update']);
     const ownerOnly = permissions.length > 0 && permissions.every(code => ownerCodes.has(code));
     const trainerOnly = permissions.length > 0 && permissions.every(code => trainerCodes.has(code));
-    // Linked owner/trainer accounts use their dedicated portal only when their
-    // effective permissions are limited to that portal. Broader accounts use Dashboard.
+    // The explicit portal role owns the landing page. Extra read-only health
+    // permissions must not accidentally redirect a trainer into Dashboard.
+    if ((portal === 'owner' || portal === 'horse_owner') && hasPermission('owner.horses.view') && !hasPermission('dashboard.view')) return 'owner';
+    if ((portal === 'trainer' || portal === 'instructor') && hasPermission('schedule.view_own') && !hasPermission('dashboard.view')) return 'instructor';
+    // Custom linked accounts still receive their dedicated portal when their
+    // effective permission set is limited to that portal.
     if ((portal === 'owner' || portal === 'horse_owner') && ownerOnly) return 'owner';
     if ((portal === 'trainer' || portal === 'instructor') && trainerOnly) return 'instructor';
     return 'dashboard';
@@ -348,6 +352,7 @@
     hideByPermission('[onclick^="editSchedule"],[onclick^="markScheduleDone"]', 'schedule.update');
     hideByPermission('[onclick^="openAddInstructor"],[onclick^="saveInstructor"]', 'instructors.create');
     hideByPermission('[onclick^="editInstructor"],[onclick^="resetInstrPIN"],[onclick^="toggleInstructor"]', 'instructors.update');
+    hideByPermission('[onchange^="updateBookingStatus"]', 'bookings.update');
     document.querySelectorAll('[onclick^="delRec("]').forEach(button => {
       const action = button.getAttribute('onclick') || '';
       const table = (action.match(/delRec\(['\"]([^'\"]+)/) || [])[1];
@@ -382,18 +387,20 @@
     try {
       const needIncome = hasAny(['income.view','bookings.view','dashboard.view','reports.view']);
       const needExpenses = hasAny(['expenses.view','dashboard.view','reports.view']);
+      const needBookings = hasPermission('bookings.view');
       const needBreeding = hasPermission('breeding.view');
       const needSchedule = hasPermission('schedule.view');
       const needInstructors = hasAny(['instructors.view','schedule.view']);
       const needHealth = hasAny(['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view']);
       const needHorses = hasAny(['horses.view','dashboard.view','schedule.view']) || needHealth;
-      [income, expenses, horses, breeding, schedule_data, instructors_data] = await Promise.all([
+      [income, expenses, horses, breeding, schedule_data, instructors_data, booking_requests] = await Promise.all([
         safeGet('income','select=*&limit=2000',needIncome),
         safeGet('expenses','select=*&limit=1000',needExpenses),
         safeGet('horses','select=*&limit=500',needHorses),
         safeGet('breeding','select=*&limit=500',needBreeding),
         safeGet('schedule','select=*&order=date.asc,start_time.asc&limit=1500',needSchedule),
-        safeGet('instructors','select=*&order=name.asc',needInstructors)
+        safeGet('instructors','select=*&order=name.asc',needInstructors),
+        safeGet('booking_requests','select=id,request_type,service_code,service_name,customer_name,phone,horse_name,requested_date,start_time,end_time,rider_level,session_slots,services,request_metadata,status,amount_bd,created_at,updated_at&order=created_at.desc&limit=1500',needBookings)
       ]);
       if (typeof normalizeLoadedPaymentStatuses === 'function') {
         normalizeLoadedPaymentStatuses(income); normalizeLoadedPaymentStatuses(expenses);

@@ -311,8 +311,33 @@ if(document.readyState==='loading'){
 // ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
-let income=[],expenses=[],horses=[],breeding=[],schedule_data=[],instructors_data=[];
+let income=[],expenses=[],horses=[],breeding=[],schedule_data=[],instructors_data=[],booking_requests=[];
 let horse_health_profiles=[],horse_health_events=[],horse_medical_records=[],horse_vaccinations=[],horse_care_tasks=[];
+function bookingRequestForIncome(row){
+  if(!row)return null;
+  const direct=row.booking_request_id;
+  const ref=direct||((String(row.notes||'').match(/Ref\s*#(\d+)/i)||[])[1]);
+  return ref?(booking_requests||[]).find(item=>String(item.id)===String(ref))||null:null;
+}
+function isPublicBookingIncome(row){
+  const notes=String(row&&row.notes||'');
+  return !!(row&&row.booking_request_id)||['BOOKING REQUEST','TRAINING REQUEST','LIVERY REQUEST'].some(marker=>notes.includes(marker));
+}
+function pendingBookingRequests(){
+  if((booking_requests||[]).length){
+    return booking_requests.filter(item=>(item.status||'Requested')==='Requested');
+  }
+  return income.filter(row=>isPublicBookingIncome(row)&&!isPaidRow(row));
+}
+const BOOKING_STATUS_TRANSITIONS=Object.freeze({
+  Requested:['Requested','Confirmed','Cancelled','Rejected'],
+  Confirmed:['Confirmed','Requested','Scheduled','Completed','Cancelled'],
+  Scheduled:['Scheduled','Confirmed','Completed','Cancelled'],
+  Completed:['Completed','Requested'],
+  Cancelled:['Cancelled','Requested'],
+  Rejected:['Rejected','Requested']
+});
+function bookingStatusOptions(status){return BOOKING_STATUS_TRANSITIONS[status]||[status];}
 function deriveHealthCollections(){
   const derived=(window.CCE&&CCE.health)?CCE.health.derive(horse_health_events):{medical:[],vaccinations:[],care:[]};
   horse_medical_records=derived.medical;
@@ -814,12 +839,12 @@ function recentFinancialActivityRows(incRows,expRows,limit=10){
   const auditRows=readAuditLog();
   const activityStamp=(tableName,r,index,total)=>{
     const entry=auditRows.find(e=>e&&e.table_name===tableName&&String(e.record_id)===String(r.id)&&['create','update'].includes(e.action));
-    const exact=entry?.ts||r.updated_at||r.created_at||'';
-    const exactMs=Date.parse(exact);
-    if(Number.isFinite(exactMs))return exactMs;
-    const dateMs=Date.parse(String(r.date||'')+'T00:00:00');
     const relativeOrder=(index+1)/Math.max(1,total||1);
-    return (Number.isFinite(dateMs)?dateMs:0)+relativeOrder+(tableName==='expenses'?0.000001:0);
+    const tableBias=tableName==='expenses'?0.000001:0;
+    const exactMs=[entry?.ts,r.updated_at,r.created_at].map(value=>Date.parse(value||'')).filter(Number.isFinite);
+    if(exactMs.length)return Math.max(...exactMs)+relativeOrder+tableBias;
+    const dateMs=Date.parse(String(r.date||'')+'T00:00:00');
+    return (Number.isFinite(dateMs)?dateMs:0)+relativeOrder+tableBias;
   };
   const rows=[
     ...(incRows||[]).map((r,index,list)=>({kind:'Income',row:r,stamp:activityStamp('income',r,index,list.length)})),
@@ -897,7 +922,7 @@ async function addIncome(){
     await sbPost('income',{date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity:normalizeActivityCategory(document.getElementById('inc-activity').value),qty,amount_bd:total,paid_bd:paid,notes:document.getElementById('inc-notes').value||null,status:normalizePaidStatus(total,paid)});
     // Notify if booking
     const notes=document.getElementById('inc-notes').value||'';
-    if(notes.includes('BOOKING REQUEST')||notes.includes('TRAINING REQUEST')){
+    if(['BOOKING REQUEST','TRAINING REQUEST','LIVERY REQUEST'].some(marker=>notes.includes(marker))){
       notifyNewBooking(cust,document.getElementById('inc-horse').value||'?',document.getElementById('inc-start').value||date);
     }
     ['inc-date','inc-due','inc-customer','inc-amount','inc-notes','inc-start','inc-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1461,12 +1486,15 @@ function waPhone(raw){
   return d;
 }
 function findContactForIncome(r){
-  // 1. Horse owner contact from horses table
+  // 1. Public intake phone is stored outside finance notes.
+  const request=bookingRequestForIncome(r);
+  if(request?.phone){const p=waPhone(request.phone);if(p)return p;}
+  // 2. Horse owner contact from horses table
   if(r.horse_name){
     const h=horses.find(x=>x.horse_name===r.horse_name);
     if(h&&h.contact){const p=waPhone(h.contact);if(p)return p;}
   }
-  // 2. Phone embedded in customer_name ("Name | 39001234")
+  // 3. Legacy rows may still contain a phone in their text fields.
   const src=(r.customer_name||'')+' '+(r.notes||'');
   const m=src.match(/(?:\+?973[\s-]?)?(3\d{7}|6\d{7}|7\d{7})/);
   if(m) return waPhone(m[1]);
@@ -1695,17 +1723,14 @@ function buildAlerts(){
     ? CCE.health.mergeCompletedSummaries(scopedHorseRows,horse_health_events)
     : scopedHorseRows;
 
-  // Administration receives all unprocessed booking and training requests.
+  // Administration receives all unprocessed public requests.
   if(!isOwner&&!isTrainer){
-    const pendingBooks=income.filter(r=>{
-      const n=r.notes||'';
-      return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
-    });
+    const pendingBooks=pendingBookingRequests();
     if(pendingBooks.length){
       alerts.push({
         type:'blue',icon:'📋',
         title:`${pendingBooks.length} pending booking request${pendingBooks.length>1?'s':''}`,
-        desc:summaryLines(pendingBooks,r=>(r.customer_name||'Unknown')+' — '+(r.activity||r.horse_name||'Booking')+' ('+(r.start_time||fmt(r.date))+')'),
+        desc:summaryLines(pendingBooks,r=>(r.customer_name||'Unknown')+' — '+(r.service_name||r.activity||r.horse_name||'Booking')+' ('+(r.start_time||fmt(r.requested_date||r.date))+')'),
         count:pendingBooks.length,
         action:()=>openAdmin('bookings')
       });
@@ -1730,9 +1755,9 @@ function buildAlerts(){
       });
     }
     const canViewBookings=typeof window.canUser!=='function'||window.canUser('bookings.view')||window.canUser('income.view');
-    const pendingRides=canViewBookings?income.filter(r=>{
-      const n=String(r.notes||'');
-      return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';
+    const pendingRides=canViewBookings?pendingBookingRequests().filter(row=>{
+      const requestType=row.request_type||bookingRequestForIncome(row)?.request_type;
+      return requestType?['ride','training'].includes(requestType):!String(row.notes||'').includes('LIVERY REQUEST');
     }):[];
     if(pendingRides.length){
       alerts.push({
@@ -1905,16 +1930,17 @@ function renderBookings(){
   const q=(document.getElementById('bookSearch').value||'').toLowerCase();
   const bt=document.getElementById('bookTypeFilter').value;
   const st=document.getElementById('bookStFilter').value;
-  // Bookings = income records with notes containing BOOKING REQUEST or TRAINING REQUEST
+  // Finance and booking state are displayed independently. Legacy rows remain
+  // readable until they are migrated to booking_requests.
   let data=income.filter(r=>{
-    const notes=r.notes||'';
-    const isBooking=notes.includes('BOOKING REQUEST');
-    const isTraining=notes.includes('TRAINING REQUEST');
-    if(!isBooking&&!isTraining)return false;
-    if(bt==='BOOKING'&&!isBooking)return false;
-    if(bt==='TRAINING'&&!isTraining)return false;
-    const mq=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(notes).toLowerCase().includes(q);
-    return mq&&(!st||r.status===st);
+    if(!isPublicBookingIncome(r))return false;
+    const request=bookingRequestForIncome(r);
+    const notes=String(r.notes||'');
+    const requestType=request?.request_type||(notes.includes('TRAINING REQUEST')?'training':notes.includes('LIVERY REQUEST')?'livery':'ride');
+    if(bt&&requestType!==bt)return false;
+    const haystack=[r.customer_name,r.horse_name,notes,request?.phone,request?.service_name,request?.status].join(' ').toLowerCase();
+    const visibleStatus=request?.status||r.status;
+    return (!q||haystack.includes(q))&&(!st||visibleStatus===st||r.status===st);
   });
   document.getElementById('bookCount').textContent=data.length;
   const pages=Math.ceil(data.length/PER)||1;bookPage=Math.min(bookPage,pages);
@@ -1922,28 +1948,75 @@ function renderBookings(){
   if(!pageData.length){document.getElementById('bookTable').innerHTML='<p style="color:var(--muted);padding:12px">No booking requests found</p>';document.getElementById('bookPag').innerHTML='';return;}
   document.getElementById('bookTable').innerHTML='<table><thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Horse</th><th>Time</th><th>Package / Notes</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
     pageData.map(r=>{
-      const notes=r.notes||'';
-      const isTraining=notes.includes('TRAINING REQUEST');
-      const type=isTraining?'<span class="badge badge-navy">&#127919; Training</span>':'<span class="badge badge-amber">&#128052; Hack Ride</span>';
+      const notes=String(r.notes||'');
+      const request=bookingRequestForIncome(r);
+      const requestType=request?.request_type||(notes.includes('TRAINING REQUEST')?'training':notes.includes('LIVERY REQUEST')?'livery':'ride');
+      const type=requestType==='training'
+        ?'<span class="badge badge-navy">&#127919; Training</span>'
+        :requestType==='livery'
+          ?'<span class="badge badge-green">&#127968; Livery</span>'
+          :'<span class="badge badge-amber">&#128052; Hack Ride</span>';
       const pkgMatch=notes.match(/Package:\s*([^|]+)/);
-      const pkg=pkgMatch?pkgMatch[1].trim():'';
+      const pkg=request?.service_name||(pkgMatch?pkgMatch[1].trim():'');
+      const customer=request?.customer_name||r.customer_name||'—';
+      const phone=request?.phone||'';
+      const horse=request?.horse_name||r.horse_name||'—';
+      const start=request?.start_time||r.start_time||'—';
+      const bookingStatus=request?.status||'Legacy';
+      const statusClass=['Completed','Confirmed','Scheduled'].includes(bookingStatus)?'badge-green':
+        ['Cancelled','Rejected'].includes(bookingStatus)?'badge-red':'badge-amber';
+      const safetyButton=request&&typeof window.canUser==='function'&&window.canUser('bookings.sensitive.view')
+        ?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy)" title="Protected rider details" onclick="viewBookingSafety('+request.id+')">&#128737;&#65039;</button>'
+        :'';
+      const canUpdate=request&&typeof window.canUser==='function'&&window.canUser('bookings.update');
+      const statusControl=canUpdate
+        ?'<select aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
+          bookingStatusOptions(bookingStatus).map(value=>'<option '+(value===bookingStatus?'selected':'')+'>'+value+'</option>').join('')+'</select>'
+        :'<span class="badge '+statusClass+'">'+esc(bookingStatus)+'</span>';
       return '<tr>'+
-        '<td>'+fmt(r.date)+'</td>'+
+        '<td>'+fmt(request?.requested_date||r.date)+'</td>'+
         '<td>'+type+'</td>'+
-        '<td>'+esc(r.customer_name||'—')+'</td>'+
-        '<td>'+esc(r.horse_name||'—')+'</td>'+
-        '<td>'+esc(r.start_time||'—')+'</td>'+
-        '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+esc(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,''))+'</td>'+
+        '<td>'+esc(customer)+(phone?'<div style="font-size:11px;color:var(--muted)" dir="ltr">'+esc(phone)+'</div>':'')+'</td>'+
+        '<td>'+esc(horse)+'</td>'+
+        '<td>'+esc(String(start).slice(0,5))+'</td>'+
+        '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+esc(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,'').replace(/LIVERY REQUEST — /,''))+'</td>'+
         '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
-        '<td><span class="badge '+(r.status==='Paid'?'badge-green':'badge-red')+'">'+esc(r.status||'Pending')+'</span></td>'+
+        '<td>'+statusControl+'<div style="margin-top:4px"><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">Payment: '+esc(r.status||'Pending')+'</span></div></td>'+
         '<td style="white-space:nowrap">'+
+          safetyButton+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
-          '<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>'+
+          (!request?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>':'')+
         '</td>'+
       '</tr>';
     }).join('')+'</tbody></table>';
   renderPag('bookPag',pages,bookPage,p=>{bookPage=p;renderBookings();});
+}
+
+async function updateBookingStatus(bookingRequestId,status){
+  const allowed=['Requested','Confirmed','Scheduled','Completed','Cancelled','Rejected'];
+  if(!allowed.includes(status)||typeof window.canUser!=='function'||!window.canUser('bookings.update'))return;
+  if(['Cancelled','Rejected'].includes(status)&&!confirm('Change this booking request to '+status+'?')){renderBookings();return;}
+  try{
+    await sbRpc('cce_update_booking_status',{p_booking_request_id:bookingRequestId,p_status:status});
+    await loadAll();
+  }catch(error){showError('Booking status',error);renderBookings();}
+}
+
+async function viewBookingSafety(bookingRequestId){
+  if(typeof window.canUser==='function'&&!window.canUser('bookings.sensitive.view'))return;
+  try{
+    const result=await sbRpc('cce_booking_private_details',{p_booking_request_id:bookingRequestId});
+    if(!result)throw new Error('Protected rider details were not found.');
+    openModal('Protected Rider Safety Details',`<div class="form-grid">
+      <div class="form-group"><label>Customer</label><div>${esc(result.customer_name||'—')}</div></div>
+      <div class="form-group"><label>Phone</label><div dir="ltr">${esc(result.phone||'—')}</div></div>
+      <div class="form-group"><label>Personal ID</label><div dir="ltr">${esc(result.personal_id||'—')}</div></div>
+      <div class="form-group"><label>Date of Birth</label><div>${esc(result.birth_date||'—')}</div></div>
+      <div class="form-group"><label>Emergency Contact</label><div dir="ltr">${esc(result.emergency_contact||'—')}</div></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Health / Safety Notes</label><div style="white-space:pre-wrap">${esc(result.health_notes||'None provided')}</div></div>
+    </div><div style="font-size:11px;color:var(--muted);margin-top:12px">Restricted information — access is recorded in the audit log.</div>`);
+  }catch(error){showError('Protected rider details',error);}
 }
 
 // Owner access is managed through unified member accounts; legacy horse passwords are no longer edited here.
@@ -2195,7 +2268,7 @@ renderInvoiceEditor('exp',null);
 // BOOKING SCRIPT
 // ══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
-  const today=new Date().toISOString().split('T')[0];
+  const today=bahrainDateISO();
   ['b-date','t-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.min=today;});
   applyLanguage(currentLang);
   const gh=document.getElementById('globalHeader');if(gh)gh.style.display='none';
@@ -2205,9 +2278,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   initializeRideAvailability();
 });
 
+const PUBLIC_BOOKING_TERMS_VERSION='2026-07-v1';
+const PUBLIC_RIDE_SERVICE_CODES=Object.freeze({
+  'Half Hour Ride':'ride_half_hour',
+  '1 Hour Hack Ride':'ride_one_hour',
+  'Photo Session + Ride':'ride_photo',
+  'Family Package':'ride_family'
+});
+const PUBLIC_TRAINING_SERVICE_CODES=Object.freeze({
+  'Single Session':'training_single',
+  '4 Sessions Package':'training_4',
+  '8 Sessions Package':'training_8',
+  '12 Sessions Package':'training_12'
+});
 let currentRideCapacity={total:0,reserved:0,available:0};
 
 function rideDurationMinutes(service){return /1 Hour/i.test(service||'')?60:30;}
+function rideCapacityUnits(service){return service==='Family Package'?4:1;}
 function setRideCardsDisabled(disabled){
   document.querySelectorAll('#rideOptions .ride-card').forEach(card=>{
     card.classList.toggle('is-disabled',!!disabled);
@@ -2297,6 +2384,7 @@ function selectRiderLevel(el,level){
 async function submitBooking(){
   const name=document.getElementById('b-name').value.trim();
   const phone=document.getElementById('b-phone').value.trim();
+  const birthDate=document.getElementById('b-birth-date').value||null;
   const personalId=document.getElementById('b-personal-id').value.trim();
   const emergency=document.getElementById('b-emergency').value.trim();
   const health=document.getElementById('b-health').value.trim();
@@ -2304,7 +2392,7 @@ async function submitBooking(){
   const time=document.getElementById('b-time').value;
   const riderLevel=document.getElementById('b-rider-level').value;
   const service=document.getElementById('b-service').value;
-  const price=parseFloat(document.getElementById('b-price').value)||0;
+  const serviceCode=PUBLIC_RIDE_SERVICE_CODES[service]||'';
   const missing=[];
   if(!name)missing.push('name');
   if(!phone)missing.push('phone');
@@ -2316,12 +2404,24 @@ async function submitBooking(){
   if(missing.length){showBookingMissingAlert(missing);return;}
   const duration=rideDurationMinutes(service);
   const capacity=await refreshRideAvailability();
-  if(capacity.available<=0){document.getElementById('rideSoldOut')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const requiredUnits=rideCapacityUnits(service);
+  if(capacity.available<requiredUnits){
+    alert('⚠️ This service requires '+requiredUnits+' available horses; only '+capacity.available+' are currently available.');
+    document.getElementById('rideSoldOut')?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   if(!validBahrainPhone(phone)){alert('⚠️ رقم الهاتف يجب أن يتكون من 8 أرقام.');return;}
   if(!document.getElementById('b-terms').checked){alert('⚠️ يرجى قراءة اتفاقية تأجير ركوب الخيل والموافقة عليها للمتابعة.');return;}
   const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
   try{
-    await publicPostIncome({date,start_time:time,end_time:addMins(time,duration),customer_name:name+' | '+phone,horse_name:null,activity:service,qty:1,amount_bd:price,paid_bd:0,notes:'BOOKING REQUEST — Horse assigned internally | Service: '+service+' | Rider Level: '+riderLevel+' | Personal ID: '+personalId+' | Phone: '+phone+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:''),status:'Pending'});
+    if(!serviceCode)throw new Error('The selected ride service is not available.');
+    await publicSubmitBooking({
+      p_request_type:'ride',p_service_code:serviceCode,p_customer_name:name,p_phone:phone,
+      p_requested_date:date,p_start_time:time,p_rider_level:riderLevel,p_session_slots:[],
+      p_horse_name:null,p_personal_id:personalId,p_emergency_contact:emergency||null,
+      p_birth_date:birthDate,p_health_notes:health||null,p_services:[],p_metadata:{},
+      p_terms_accepted:true,p_terms_version:PUBLIC_BOOKING_TERMS_VERSION,p_honeypot:null
+    });
     document.getElementById('bookingForm').style.display='none';
     document.getElementById('bookSuccess').style.display='block';
   }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';}
@@ -2331,7 +2431,7 @@ function resetBooking(){
   document.getElementById('bookingForm').style.display='block';
   document.getElementById('bookSuccess').style.display='none';
   const bt=document.getElementById('b-terms');if(bt)bt.checked=false;
-  ['b-name','b-phone','b-personal-id','b-emergency','b-health','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
+  ['b-name','b-phone','b-birth-date','b-personal-id','b-emergency','b-health','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b-rider-level').value='';
   document.querySelectorAll('input[name="rider-level"]').forEach(r=>r.checked=false);
   const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';refreshRideAvailability();
@@ -2340,7 +2440,7 @@ function resetBooking(){
 // ══════════════════════════════════════════════════════════
 // TRAINING SCRIPT
 // ══════════════════════════════════════════════════════════
-let selectedPkg=null,selectedPrice=0;
+let selectedPkg=null,selectedPkgCode='',selectedPrice=0;
 
 let selectedPkgSessions=1;
 const TIME_SLOTS=['08:00','08:45','09:30','10:15','11:00','11:45','16:00','16:45','17:30','18:15','19:00','19:45'];
@@ -2349,6 +2449,7 @@ function selectPkg(el,name,sessions,price,count){
   document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');
   selectedPkg=name;selectedPrice=price;
+  selectedPkgCode=PUBLIC_TRAINING_SERVICE_CODES[name]||'';
   selectedPkgSessions=count||1;
   document.getElementById('selectedPkgBox').style.display='block';
   document.getElementById('selectedPkgLabel').textContent=name+' — '+price+' BD ('+sessions+')';
@@ -2367,7 +2468,7 @@ function buildSessionSlots(count){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group">
           <label>التاريخ *</label>
-          <input type="date" id="sess-date-${i}" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">
+          <input type="date" id="sess-date-${i}" min="${bahrainDateISO()}" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">
         </div>
         <div class="form-group">
           <label>الوقت *</label>
@@ -2421,26 +2522,23 @@ async function submitTraining(){
 
   const btn=document.getElementById('trainBtn');btn.disabled=true;btn.textContent='⏳ Submitting...';
   try{
-    // Submit one income record per session
-    const slotsText=slots.map((s,i)=>'حصة '+(i+1)+': '+s.date+' @ '+s.time).join(' | ');
-    await publicPostIncome({
-      date:slots[0].date,
-      start_time:slots[0].time,
-      customer_name:name+' | '+phone,
-      activity:'Lesson',
-      qty:selectedPkgSessions,
-      amount_bd:selectedPrice,
-      paid_bd:0,
-      notes:'TRAINING REQUEST — Package: '+selectedPkg+' | Phone: '+phone+(birthDate?' | DOB: '+birthDate:'')+(personalId?' | Personal ID: '+personalId:'')+(emergency?' | Emergency: '+emergency:'')+(health?' | Health: '+health:'')+' | Sessions: '+slotsText,
-      status:'Pending'
+    if(!selectedPkgCode)throw new Error('The selected training package is not available.');
+    const result=await publicSubmitBooking({
+      p_request_type:'training',p_service_code:selectedPkgCode,p_customer_name:name,p_phone:phone,
+      p_requested_date:slots[0].date,p_start_time:slots[0].time,p_rider_level:null,
+      p_session_slots:slots,p_horse_name:null,p_personal_id:personalId,
+      p_emergency_contact:emergency||null,p_birth_date:birthDate||null,p_health_notes:health||null,
+      p_services:[],p_metadata:{},p_terms_accepted:true,
+      p_terms_version:PUBLIC_BOOKING_TERMS_VERSION,p_honeypot:null
     });
+    const acceptedAmount=Number(result?.amount_bd??selectedPrice)||selectedPrice;
     document.getElementById('trainingForm').style.display='none';
     document.getElementById('trainSuccess').style.display='block';
     document.getElementById('trainSuccessText').innerHTML=
       'Thank you <strong>'+esc(name)+'</strong>!<br><br>'+
       'Package: <strong>'+esc(selectedPkg)+'</strong><br>'+
       'Sessions: <strong>'+selectedPkgSessions+' حصص</strong><br>'+
-      'Amount: <strong>'+selectedPrice+' BD</strong><br><br>'+
+      'Amount: <strong>'+acceptedAmount+' BD</strong><br><br>'+
       '<div style="font-size:12px;color:#666;margin-top:8px">'+slots.map((s,i)=>'&#128197; حصة '+(i+1)+': '+esc(s.date)+' @ '+esc(s.time)).join('<br>')+'</div>'+
       '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 Send Payment Proof via WhatsApp</button>';
   }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🎯 Send Registration Request';}
@@ -2455,6 +2553,7 @@ function resetTraining(){
   document.getElementById('sessionSlotsWrap').style.display='none';
   ['t-name','t-phone','t-birth-date','t-personal-id','t-emergency','t-health'].forEach(id=>document.getElementById(id).value='');
   selectedPkg=null;selectedPrice=0;selectedPkgSessions=1;
+  selectedPkgCode='';
   const btn=document.getElementById('trainBtn');btn.disabled=false;btn.textContent='🎯 Send Registration Request';
 }
 
@@ -2760,7 +2859,7 @@ function buildNotifMessages(){
 
   // Pending bookings
   if(notifGet('check_bookings')!==false){
-    const bookings=income.filter(r=>{const n=r.notes||'';return (n.includes('BOOKING REQUEST')||n.includes('TRAINING REQUEST'))&&r.status!=='Paid';});
+    const bookings=pendingBookingRequests();
     if(bookings.length) msgs.push('📋 Pending bookings: '+bookings.length);
   }
 
@@ -3603,7 +3702,6 @@ async function submitLivery(){
 
   // Build services list
   const services=[];
-  const price=selectedLiveryType==='full'?80:150;
   services.push(selectedLiveryType==='full'?'Full Livery (80 BD/mo)':'AC Livery (150 BD/mo)');
   if(document.getElementById('lv-shower').checked) services.push('Extra Care - Shower (3 BD)');
   if(document.getElementById('lv-vip-shower').checked) services.push('VIP Shower (10 BD)');
@@ -3627,16 +3725,14 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
   btn.disabled=true;btn.textContent='⏳ Submitting...';
 
   try{
-    await publicPostIncome({
-      date:date||todayISOForInstallment(),
-      customer_name:name+' | '+phone,
-      horse_name:horse,
-      activity:'Livery',
-      qty:1,
-      amount_bd:price,
-      paid_bd:0,
-      notes:notesText,
-      status:'Pending'
+    const serviceCode=selectedLiveryType==='full'?'livery_full':'livery_ac';
+    await publicSubmitBooking({
+      p_request_type:'livery',p_service_code:serviceCode,p_customer_name:name,p_phone:phone,
+      p_requested_date:date||todayISOForInstallment(),p_start_time:null,p_rider_level:null,
+      p_session_slots:[],p_horse_name:horse,p_personal_id:null,p_emergency_contact:null,
+      p_birth_date:null,p_health_notes:null,p_services:services,
+      p_metadata:{breed:breed||null,sex:sex||null,color:color||null,notes:notes||null,summary:notesText},
+      p_terms_accepted:true,p_terms_version:PUBLIC_BOOKING_TERMS_VERSION,p_honeypot:null
     });
     document.getElementById('liveryForm').style.display='none';
     document.getElementById('liverySuccess').style.display='block';
@@ -3770,7 +3866,7 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'4.6.5',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,audit_logs:readAuditLog()};}
+function backupObject(){return {app:'Country Club Equestrian',version:'4.7.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
 function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
@@ -3844,7 +3940,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260714-465', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260719-470', {scope:'./'})
       .then(reg => {
 
         reg.update();
