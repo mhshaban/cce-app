@@ -2,7 +2,7 @@
 
 ## نظرة عامة
 
-الإصدار 4.7.0 تطبيق واجهة موحد يعمل بملفات HTML/CSS/JavaScript ويستخدم Supabase للهوية وقاعدة البيانات وRPC وRLS. المعمارية انتقالية: ما زال `app-core.js` يحتوي على منطق قديم كبير، بينما تنتقل المجالات تدريجيًا إلى خدمات ووحدات تحت `src/`.
+الإصدار 4.8.1 تطبيق واجهة موحد يعمل بملفات HTML/CSS/JavaScript ويستخدم Supabase للهوية وقاعدة البيانات وRPC وRLS. المعمارية انتقالية: ما زال `app-core.js` يحتوي على منطق قديم كبير، بينما تنتقل المجالات تدريجيًا إلى خدمات ووحدات تحت `src/`.
 
 ```mermaid
 flowchart TD
@@ -53,6 +53,28 @@ flowchart TD
 ```
 
 حالة الطلب (`Requested / Confirmed / Scheduled / Completed / Cancelled / Rejected`) منفصلة عن حالة الدفع (`Pending / Partial / Paid`). تغيير حالة الطلب يتم عبر `cce_update_booking_status` وليس بتعديل مفتوح من المتصفح.
+
+## تدفق باقة التدريب والمدرب
+
+الدفع والإسناد التشغيلي مساران مرتبطان بالمدرب لكنهما مستقلان:
+
+1. عند تسجيل دفعة جديدة لبند `Lesson / Training`، يفعّل النظام `training_split_enabled` وتختار الإدارة المدرب المالي في `income.instructor_id`.
+2. قاعدة البيانات تشتق فورًا حصة الإسطبل وحصة المدرب 50/50 من `paid_bd`، دون تغيير إجمالي العميل أو المتبقي.
+3. عند إنشاء جلسة فعلية، تختار الإدارة المدرب التشغيلي في `schedule.instructor_id`.
+4. يمكن إعادة إسناد الجلسة، فتظهر لمدربها الجديد في Trainer Portal بواسطة المعرّف لا تطابق الاسم.
+
+```mermaid
+flowchart LR
+    Payment["Gross training payment"] --> Split["Database generated 50/50 split"]
+    Split --> Stable["Stable share"]
+    Split --> TrainerFinance["Financial instructor share"]
+    Session["Scheduled session"] --> Assigned["Operational instructor_id"]
+    Assigned --> Portal["Trainer Portal"]
+```
+
+يبقى الإيصال وكشف العميل مبنيين على `amount_bd` و`paid_bd`. أما لوحة الربح وتقارير الخدمات فتستخدم `stable_share_bd` حتى لا تعد حصة المدرب إيرادًا للإسطبل.
+
+سجلات Lesson السابقة لحد القطع تبقى `training_split_enabled=false` لأن كثيرًا من مبالغها يمثل حصة الإسطبل أصلًا. لا يُطبق عليها أي أثر رجعي إلا عندما يفعّل المدير سجلًا محددًا صراحةً.
 
 ## تصنيف البيانات
 
