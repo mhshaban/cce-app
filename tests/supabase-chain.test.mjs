@@ -37,7 +37,7 @@ async function buildDatabaseThrough(lastMigration=''){
 
 const buildDatabase=()=>buildDatabaseThrough();
 
-test('the full Supabase chain builds and enforces the v4.8.1 contracts',async()=>{
+test('the full Supabase chain builds and enforces the v4.8.2 contracts',async()=>{
   const db=await buildDatabase();
   try{
     const services=await db.query(`
@@ -94,6 +94,24 @@ test('the full Supabase chain builds and enforces the v4.8.1 contracts',async()=
       ) as result
     `);
     assert.equal(trainingRequest.rows[0].result.amount_bd,35);
+    const eightSessionRequest=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'training',p_service_code=>'training_8',p_customer_name=>'Eight Session Trainee',
+        p_phone=>'39001236',p_personal_id=>'CPR-789',
+        p_session_slots=>jsonb_build_array(
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+10),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+11),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+12),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+13),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+14),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+15),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+16),'time','18:15'),
+          jsonb_build_object('date',(timezone('Asia/Bahrain',now())::date+17),'time','18:15')
+        ),
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    assert.equal(eightSessionRequest.rows[0].result.amount_bd,70);
     await db.exec('reset role');
 
     const pendingTraining=await db.query(`
@@ -193,6 +211,57 @@ test('the full Supabase chain builds and enforces the v4.8.1 contracts',async()=
     const trainerAli=trainers.rows.find(row=>row.name==='Trainer Ali').id;
     const trainerSara=trainers.rows.find(row=>row.name==='Trainer Sara').id;
     const trainerInactive=trainers.rows.find(row=>row.name==='Trainer Inactive').id;
+
+    const packageMoneyBefore=await db.query(`
+      select amount_bd::text,paid_bd::text,(amount_bd-paid_bd)::text as remaining_bd
+      from public.income where id=$1
+    `,[eightSessionRequest.rows[0].result.income_id]);
+    await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
+    const materialized=await db.query(`
+      select public.cce_schedule_training_booking($1,$2) as result
+    `,[eightSessionRequest.rows[0].result.booking_request_id,trainerAli]);
+    assert.equal(materialized.rows[0].result.sessions,8);
+    assert.equal(materialized.rows[0].result.created,8);
+    const packageSchedule=await db.query(`
+      select count(*)::int as sessions,min(booking_slot_index)::int as first_slot,
+             max(booking_slot_index)::int as last_slot,
+             bool_and(instructor_id=$2) as assigned,
+             bool_and(status='Scheduled') as scheduled
+      from public.schedule where booking_request_id=$1
+    `,[eightSessionRequest.rows[0].result.booking_request_id,trainerAli]);
+    assert.deepEqual({...packageSchedule.rows[0]},
+      {sessions:8,first_slot:1,last_slot:8,assigned:true,scheduled:true});
+    const repeated=await db.query(`
+      select public.cce_schedule_training_booking($1,$2) as result
+    `,[eightSessionRequest.rows[0].result.booking_request_id,trainerAli]);
+    assert.equal(repeated.rows[0].result.created,0);
+    assert.equal(repeated.rows[0].result.existing,8);
+    await db.exec('reset role');
+    const reservedAfterMaterialization=await db.query(`
+      select public.cce_reserved_horse_units(
+        (slot->>'date')::date,(slot->>'time')::time,45
+      )::int as units
+      from public.booking_requests br
+      cross join lateral jsonb_array_elements(br.session_slots) with ordinality as rows(slot,ordinality)
+      where br.id=$1 and ordinality=2
+    `,[eightSessionRequest.rows[0].result.booking_request_id]);
+    assert.equal(reservedAfterMaterialization.rows[0].units,1);
+
+    const packageMoneyAfter=await db.query(`
+      select amount_bd::text,paid_bd::text,(amount_bd-paid_bd)::text as remaining_bd
+      from public.income where id=$1
+    `,[eightSessionRequest.rows[0].result.income_id]);
+    assert.deepEqual({...packageMoneyAfter.rows[0]},{...packageMoneyBefore.rows[0]});
+
+    await db.exec(`
+      update public.profiles set instructor_id=${trainerAli}
+      where id='00000000-0000-4000-8000-000000000004';
+      set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000004';
+      set role authenticated;
+    `);
+    const trainerPackage=await db.query(`select public.cce_member_instructor_schedule() as session`);
+    assert.equal(trainerPackage.rows.filter(row=>String(row.session.booking_request_id)===String(eightSessionRequest.rows[0].result.booking_request_id)).length,8);
+    await db.exec('reset role');
 
     await db.exec(`
       insert into auth.users(id,email) values
@@ -333,6 +402,94 @@ test('v4.8.1 restores pre-cutover Lesson revenue without changing customer cash'
     assert.deepEqual({...corrected.rows[0]},
       {rows:before.rows[0].rows,amount:before.rows[0].amount,paid:before.rows[0].paid,
        stable:'75.000',instructor:'0.000',legacy_preserved:true});
+  }finally{
+    await db.close();
+  }
+});
+
+test('legacy training gross normalization preserves stable cash and is reversible',async()=>{
+  const db=await buildDatabaseThrough('20260719_security_database_foundation_v470.sql');
+  try{
+    await db.exec(`
+      insert into public.income(date,customer_name,activity,amount_bd,paid_bd,status)
+      select
+        '2026-01-01'::date+(series-1),
+        'Historical training '||series,
+        'Lesson',
+        case when series%5=0 then 7 when series%3=0 then 4 else 5 end,
+        case when series%5=0 then 7 when series%3=0 then 4 else 5 end,
+        'Paid'
+      from generate_series(1,126) series;
+    `);
+    const original=await db.query(`
+      select count(*)::int as rows,sum(amount_bd)::text as amount,sum(paid_bd)::text as paid
+      from public.income
+    `);
+
+    await db.exec(read('supabase/migrations/20260719_training_revenue_instructor_v480.sql'));
+    await db.exec(read('supabase/migrations/20260719_training_split_cutover_v481.sql'));
+    const target=await db.query(`
+      insert into public.instructors(name,active)
+      values('Target Trainer',true) returning id
+    `);
+    await db.query(`
+      insert into public.income(
+        date,customer_name,activity,amount_bd,paid_bd,status,instructor_id
+      ) values('2026-07-19','Current training template','Lesson',10,10,'Paid',$1)
+    `,[target.rows[0].id]);
+
+    await db.exec(read('supabase/verification/preflight_legacy_training_gross_normalization.sql'));
+    await db.exec(read('supabase/maintenance/20260719_training_legacy_gross_normalization.sql'));
+    await db.exec(read('supabase/verification/verify_legacy_training_gross_normalization.sql'));
+
+    const normalized=await db.query(`
+      select
+        count(*)::int as rows,
+        bool_and(income.amount_bd=(backup.row_data->>'amount_bd')::numeric*2) as gross_doubled,
+        bool_and(income.paid_bd=(backup.row_data->>'paid_bd')::numeric*2) as paid_doubled,
+        bool_and(income.stable_share_bd=(backup.row_data->>'paid_bd')::numeric) as stable_preserved,
+        bool_and(income.instructor_share_bd=(backup.row_data->>'paid_bd')::numeric) as instructor_added,
+        bool_and(income.amount_bd=income.paid_bd) as zero_remaining,
+        bool_and(income.instructor_id=backup.target_instructor_id) as target_assigned
+      from cce_migration_backup.training_legacy_gross_20260719 backup
+      join public.income income on income.id=backup.record_id
+    `);
+    assert.deepEqual({...normalized.rows[0]},
+      {rows:126,gross_doubled:true,paid_doubled:true,stable_preserved:true,
+       instructor_added:true,zero_remaining:true,target_assigned:true});
+    const totals=await db.query(`
+      select sum(income.amount_bd)::text as amount,sum(income.paid_bd)::text as paid,
+             sum(income.stable_share_bd)::text as stable,
+             sum(income.instructor_share_bd)::text as instructor
+      from cce_migration_backup.training_legacy_gross_20260719 backup
+      join public.income income on income.id=backup.record_id
+    `);
+    assert.equal(Number(totals.rows[0].amount),Number(original.rows[0].amount)*2);
+    assert.equal(Number(totals.rows[0].paid),Number(original.rows[0].paid)*2);
+    assert.equal(Number(totals.rows[0].stable),Number(original.rows[0].paid));
+    assert.equal(Number(totals.rows[0].instructor),Number(original.rows[0].paid));
+
+    await db.exec(read('supabase/rollback/rollback_20260719_training_legacy_gross_normalization.sql'));
+    const restored=await db.query(`
+      select
+        count(*)::int as rows,
+        bool_and(income.amount_bd=(backup.row_data->>'amount_bd')::numeric) as amount_restored,
+        bool_and(income.paid_bd=(backup.row_data->>'paid_bd')::numeric) as paid_restored,
+        bool_and(income.training_split_enabled is false) as legacy_restored,
+        bool_and(income.stable_share_bd=(backup.row_data->>'paid_bd')::numeric) as stable_restored,
+        bool_and(income.instructor_share_bd=0) as instructor_restored
+      from cce_migration_backup.training_legacy_gross_20260719 backup
+      join public.income income on income.id=backup.record_id
+    `);
+    assert.deepEqual({...restored.rows[0]},
+      {rows:126,amount_restored:true,paid_restored:true,legacy_restored:true,
+       stable_restored:true,instructor_restored:true});
+    const template=await db.query(`
+      select amount_bd::text,paid_bd::text,stable_share_bd::text,instructor_share_bd::text
+      from public.income where customer_name='Current training template'
+    `);
+    assert.deepEqual({...template.rows[0]},
+      {amount_bd:'10.000',paid_bd:'10.000',stable_share_bd:'5.000',instructor_share_bd:'5.000'});
   }finally{
     await db.close();
   }

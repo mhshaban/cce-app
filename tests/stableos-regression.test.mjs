@@ -76,6 +76,7 @@ test('only the active portal exposes its logout action',()=>{
   const owner=functionBlock(portal,'openOwnerMemberPortal','secureMemberOwnerUpdate');
   assert.match(owner,/classList\.contains\('page-owner'\)/);
   assert.doesNotMatch(owner,/logoutOwnerBtn[\s\S]*classList\.remove\('hidden'\)/);
+  assert.match(read('src/components/header/header-system.css'),/\.cce-header-action\.hidden\s*\{display:none!important\}/);
 });
 
 test('database migration owns completion-to-summary synchronization',()=>{
@@ -176,17 +177,25 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260719_security_database_foundation_v470.sql',
     'supabase/migrations/20260719_training_revenue_instructor_v480.sql',
     'supabase/migrations/20260719_training_split_cutover_v481.sql',
+    'supabase/migrations/20260719_training_booking_schedule_v482.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
     'supabase/verification/verify_v480.sql',
     'supabase/verification/preflight_v481.sql',
     'supabase/verification/verify_v481.sql',
+    'supabase/verification/preflight_v482.sql',
+    'supabase/verification/verify_v482.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
+    'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
+    'supabase/rollback/rollback_20260719_training_legacy_gross_normalization.sql',
+    'supabase/verification/preflight_legacy_training_gross_normalization.sql',
+    'supabase/verification/verify_legacy_training_gross_normalization.sql',
     'supabase/rollback/rollback_v470_compatibility.sql',
     'supabase/rollback/rollback_v480_compatibility.sql',
-    'supabase/rollback/rollback_v481_compatibility.sql'
+    'supabase/rollback/rollback_v481_compatibility.sql',
+    'supabase/rollback/rollback_v482_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -261,6 +270,27 @@ test('training payment and schedule forms require a linked active instructor',()
   assert.match(read('member-portal.js'),/cce_instructor_directory/);
 });
 
+test('training packages materialize into filtered instructor schedules',()=>{
+  const core=read('app-core.js');
+  const html=read('index.html');
+  const sql=read('supabase/migrations/20260719_training_booking_schedule_v482.sql');
+  assert.match(core,/cce_schedule_training_booking/);
+  assert.match(core,/openScheduleTrainingBooking/);
+  assert.match(core,/let schedStatus='scheduled'/);
+  assert.match(core,/let instrStatus = 'scheduled'/);
+  assert.match(core,/paymentStatus:r\.status\|\|''/);
+  assert.match(html,/id="schedStatusScheduled"/);
+  assert.match(html,/id="schedStatusDone"/);
+  assert.match(html,/id="instrStatusScheduled"/);
+  assert.match(html,/id="instrStatusDone"/);
+  assert.match(sql,/schedule_booking_slot_uidx/i);
+  assert.match(sql,/booking_slot_index/i);
+  assert.match(sql,/where s\.booking_request_id is null/i);
+  assert.match(sql,/update public\.income\s+set instructor_id=/i);
+  assert.doesNotMatch(sql,/set\s+(amount_bd|paid_bd)\s*=/i);
+  assert.match(sql,/Finance guard failed: amount_bd or paid_bd changed/);
+});
+
 test('v4.8 migration derives shares and protects instructor assignments',()=>{
   const sql=read('supabase/migrations/20260719_training_revenue_instructor_v480.sql');
   assert.match(sql,/generated always as/i);
@@ -318,11 +348,11 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.8.1 cache key',()=>{
+test('all app assets use the v4.8.2 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok((html.match(/20260719-481/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260719-481/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260719-481/);
-  assert.equal(read('VERSION.txt').trim(),'4.8.1');
+  assert.ok((html.match(/20260719-482/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260719-482/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260719-482/);
+  assert.equal(read('VERSION.txt').trim(),'4.8.2');
 });

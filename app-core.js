@@ -2001,6 +2001,8 @@ function renderBookings(){
         ?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy)" title="Protected rider details" onclick="viewBookingSafety('+request.id+')">&#128737;&#65039;</button>'
         :'';
       const canUpdate=request&&typeof window.canUser==='function'&&window.canUser('bookings.update');
+      const canScheduleTraining=requestType==='training'&&request&&canUpdate&&
+        window.canUser('schedule.create')&&!['Completed','Cancelled','Rejected'].includes(bookingStatus);
       const statusControl=canUpdate
         ?'<select aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
           bookingStatusOptions(bookingStatus).map(value=>'<option '+(value===bookingStatus?'selected':'')+'>'+value+'</option>').join('')+'</select>'
@@ -2016,6 +2018,7 @@ function renderBookings(){
         '<td>'+statusControl+'<div style="margin-top:4px"><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">Payment: '+esc(r.status||'Pending')+'</span></div></td>'+
         '<td style="white-space:nowrap">'+
           safetyButton+
+          (canScheduleTraining?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" title="Assign instructor and create package sessions" onclick="openScheduleTrainingBooking('+request.id+')">&#128197;</button>':'')+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
           (!request?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>':'')+
@@ -2033,6 +2036,50 @@ async function updateBookingStatus(bookingRequestId,status){
     await sbRpc('cce_update_booking_status',{p_booking_request_id:bookingRequestId,p_status:status});
     await loadAll();
   }catch(error){showError('Booking status',error);renderBookings();}
+}
+
+function openScheduleTrainingBooking(bookingRequestId){
+  const request=(booking_requests||[]).find(row=>String(row.id)===String(bookingRequestId));
+  const financial=(income||[]).find(row=>String(row.booking_request_id||'')===String(bookingRequestId));
+  if(!request||request.request_type!=='training')return alert('Training booking not found.');
+  const slots=Array.isArray(request.session_slots)?request.session_slots:[];
+  if(!slots.length)return alert('This booking has no training session slots.');
+  const existing=(schedule_data||[]).filter(row=>String(row.booking_request_id||'')===String(bookingRequestId));
+  const slotList=slots.map((slot,index)=>`<li><strong>${index+1}.</strong> ${esc(fmtDisplayDate(slot.date))} · ${esc(fmtTimeShort(slot.time||''))}</li>`).join('');
+  openModal('Assign Instructor & Schedule Package',`
+    <div class="form-grid">
+      <div class="form-group"><label>Customer</label><div><strong>${esc(request.customer_name||'—')}</strong></div></div>
+      <div class="form-group"><label>Package</label><div>${esc(request.service_name||'Training')}</div></div>
+      <div class="form-group"><label>Sessions</label><div>${slots.length} requested · ${existing.length} already scheduled</div></div>
+      <div class="form-group"><label>Instructor *</label><select id="booking-instructor">${activeInstructorOptions(financial?.instructor_id||'')}</select></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Selected session slots</label><ol style="margin:0;padding-inline-start:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px">${slotList}</ol></div>
+    </div>
+    <div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--sand);font-size:12px;color:var(--muted)">This creates or links one Schedule row per slot. It does not change Amount BD, Paid BD, or the remaining balance.</div>
+    <div class="btn-row">
+      <button class="btn btn-green" id="scheduleTrainingBookingBtn" onclick="scheduleTrainingBooking(${request.id})">&#128197; Assign & Schedule ${slots.length} Sessions</button>
+      <button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function scheduleTrainingBooking(bookingRequestId){
+  const trainer=selectedInstructor('booking-instructor');
+  if(!trainer)return alert('Select an active instructor.');
+  const button=document.getElementById('scheduleTrainingBookingBtn');
+  if(button){button.disabled=true;button.textContent='Scheduling...';}
+  try{
+    const result=await sbRpc('cce_schedule_training_booking',{
+      p_booking_request_id:bookingRequestId,
+      p_instructor_id:trainer.id
+    });
+    closeModal();
+    schedView='active';
+    schedStatus='scheduled';
+    await loadAll();
+    alert(`✅ ${result.sessions||0} sessions assigned to ${result.instructor||trainer.name}.`);
+  }catch(error){
+    showError('Schedule training package',error);
+    if(button){button.disabled=false;button.textContent='Assign & Schedule Sessions';}
+  }
 }
 
 async function viewBookingSafety(bookingRequestId){
@@ -3041,6 +3088,7 @@ function logNotif(msg){
 // ══════════════════════════════════════════════════════════
 
 let schedView='active';
+let schedStatus='scheduled';
 let schedDate=new Date(); schedDate.setHours(0,0,0,0);
 
 const ACTIVITY_COLORS={
@@ -3057,6 +3105,38 @@ function setSchedView(v){
     const b=document.getElementById(btns[k]);
     if(b){b.style.background=v===k?'var(--amber)':'#f0f0f0';b.style.color=v===k?'#fff':'var(--navy)';}
   });
+  renderSchedule();
+}
+
+function sessionStatusKey(value){
+  const status=String(value||'').trim().toLowerCase();
+  if(['done','completed','paid'].includes(status))return 'done';
+  if(['cancelled','canceled','rejected'].includes(status))return 'cancelled';
+  if(['scheduled','confirmed','active'].includes(status))return 'scheduled';
+  return 'pending';
+}
+
+function sessionMatchesStatus(session,status){
+  return status==='all'||sessionStatusKey(session&&session.status)===status;
+}
+
+function sessionStatusLabel(status){
+  return ({all:'All',scheduled:'Scheduled',done:'Done',pending:'Pending',cancelled:'Cancelled'})[status]||'All';
+}
+
+function syncSchedStatusButtons(){
+  const buttons={all:'schedStatusAll',scheduled:'schedStatusScheduled',done:'schedStatusDone',pending:'schedStatusPending',cancelled:'schedStatusCancelled'};
+  Object.entries(buttons).forEach(([status,id])=>{
+    const button=document.getElementById(id);if(!button)return;
+    button.style.background=schedStatus===status?'var(--amber)':'#f0f0f0';
+    button.style.color=schedStatus===status?'#fff':'var(--navy)';
+  });
+}
+
+function setSchedStatus(status){
+  if(!['all','scheduled','done','pending','cancelled'].includes(status))return;
+  schedStatus=status;
+  syncSchedStatusButtons();
   renderSchedule();
 }
 
@@ -3112,8 +3192,14 @@ function getAllEvents(){
   // Schedule shows ONLY rides & training sessions (Hack / Lesson)
   const isSession=a=>/hack|lesson|ride|training/i.test(a||'');
 
+  const incomeByBooking=new Map(income.filter(row=>row.booking_request_id!=null).map(row=>[String(row.booking_request_id),row]));
+  const materializedSlots=new Set(schedule_data
+    .filter(row=>row.booking_request_id!=null&&row.booking_slot_index!=null)
+    .map(row=>String(row.booking_request_id)+':'+String(row.booking_slot_index)));
+
   // From schedule table
   schedule_data.filter(r=>isSession(r.activity)).forEach(r=>{
+    const financial=r.booking_request_id!=null?incomeByBooking.get(String(r.booking_request_id)):null;
     events.push({
       id:'s_'+r.id,
       dbId:r.id,
@@ -3127,15 +3213,23 @@ function getAllEvents(){
       instructor:instructorNameById(r.instructor_id,r.instructor||''),
       notes:r.notes||'',
       status:r.status||'Scheduled',
+      paymentStatus:financial?.status||'',
       color:actColor(r.activity)
     });
   });
 
   // From income (rides & lessons). Training packages may contain several slots in notes.
   income.filter(r=>r.date&&isSession(r.activity)).forEach(r=>{
+    const request=bookingRequestForIncome(r);
     const slots=extractTrainingSlots(r);
     const list=slots.length?slots:[{date:r.date,start:r.start_time||'00:00'}];
-    list.forEach((slot,idx)=>events.push({
+    list.forEach((slot,idx)=>{
+      if(r.booking_request_id!=null&&materializedSlots.has(String(r.booking_request_id)+':'+String(idx+1)))return;
+      const requestStatus=request?.status||'';
+      const operationalStatus=requestStatus
+        ?(['Completed'].includes(requestStatus)?'Done':['Cancelled','Rejected'].includes(requestStatus)?'Cancelled':['Scheduled','Confirmed'].includes(requestStatus)?'Scheduled':'Pending')
+        :(isPaidRow(r)?'Done':'Pending');
+      events.push({
       id:'i_'+r.id+'_'+idx,
       dbId:r.id,
       source:'income',
@@ -3145,20 +3239,23 @@ function getAllEvents(){
       activity:normalizeActivityCategory(r.activity),
       horse:r.horse_name||'',
       customer:r.customer_name||'',
-      instructor:'',
+      instructor:instructorNameById(r.instructor_id,''),
       notes:r.notes||'',
-      status:r.status==='Paid'?'Done':'Scheduled',
+      status:operationalStatus,
+      paymentStatus:r.status||'',
       color:actColor(r.activity)
-    }));
+      });
+    });
   });
 
   return events.sort((a,b)=>a.start.localeCompare(b.start));
 }
 
 function adminSessionCard(ev){
-  const isDone=ev.status==='Done'||ev.status==='Paid';
-  const statusColor=isDone?'var(--green)':ev.status==='Cancelled'?'var(--red)':'var(--amber)';
-  const statusBg=isDone?'#E8F5EE':ev.status==='Cancelled'?'#FDECEA':'#FEF3E2';
+  const statusKey=sessionStatusKey(ev.status);
+  const isDone=statusKey==='done';
+  const statusColor=isDone?'var(--green)':statusKey==='cancelled'?'var(--red)':'var(--amber)';
+  const statusBg=isDone?'#E8F5EE':statusKey==='cancelled'?'#FDECEA':'#FEF3E2';
   return `<div onclick="viewEvent('${ev.id}')" style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid ${ev.color};cursor:pointer;opacity:${isDone?0.75:1}">
     <div style="display:flex;align-items:flex-start;gap:12px">
       <div style="font-size:28px">🐴</div>
@@ -3166,6 +3263,7 @@ function adminSessionCard(ev){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
           <span style="font-weight:700;font-size:15px;color:var(--navy)">${esc(fmtTimeShort(ev.start||''))} ${esc(ev.activity||'')}</span>
           <span style="background:${statusBg};color:${statusColor};border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${esc(ev.status)}</span>
+          ${ev.paymentStatus?`<span style="background:#EEF3FF;color:var(--navy);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">Payment: ${esc(ev.paymentStatus)}</span>`:''}
           ${ev.source==='income'?'<span style="background:#e8f0ff;color:#1A2744;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">Income</span>':''}
         </div>
         <div style="font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
@@ -3187,14 +3285,16 @@ function renderSchedule(){
   const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today=new Date(); today.setHours(0,0,0,0);
+  syncSchedStatusButtons();
   const allEvents=getAllEvents();
+  const visibleEvents=allEvents.filter(event=>sessionMatchesStatus(event,schedStatus));
 
   if(schedView==='active'){
-    // ALL active (not Done/Cancelled) lessons & hacks — same as Instructor Portal default
-    const activeEvents=allEvents.filter(e=>e.status!=='Done'&&e.status!=='Cancelled'&&e.status!=='Paid');
-    document.getElementById('schedDateLabel').textContent='🟢 Active Sessions';
+    // All dates; status is controlled independently by schedStatus.
+    const activeEvents=visibleEvents;
+    document.getElementById('schedDateLabel').textContent='All Dates — '+sessionStatusLabel(schedStatus);
     if(!activeEvents.length){
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions for this filter</div>';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">No '+esc(sessionStatusLabel(schedStatus).toLowerCase())+' sessions</div>';
       return;
     }
     // Sort by date then time
@@ -3219,7 +3319,7 @@ function renderSchedule(){
 
   } else if(schedView==='day'){
     const key=fmtDateKey(schedDate);
-    const dayEvents=allEvents.filter(e=>e.date===key);
+    const dayEvents=visibleEvents.filter(e=>e.date===key);
     const isToday=fmtDateKey(schedDate)===fmtDateKey(today);
 
     document.getElementById('schedDateLabel').textContent=
@@ -3243,7 +3343,7 @@ function renderSchedule(){
     weekDays.forEach(d=>{
       const key=fmtDateKey(d);
       const isToday=key===fmtDateKey(today);
-      const daySess=allEvents.filter(e=>e.date===key);
+      const daySess=visibleEvents.filter(e=>e.date===key);
       html+=`<div style="margin-bottom:14px">
         <div style="font-weight:700;font-size:13px;color:${isToday?'var(--green)':'var(--muted)'};margin-bottom:6px;padding:4px 0;border-bottom:2px solid ${isToday?'var(--green)':'var(--border)'}">
           ${isToday?'🟢 ':''}${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}
@@ -3413,6 +3513,7 @@ async function delSchedule(id){
 
 let currentInstructor = null;
 let instrView = 'active';
+let instrStatus = 'scheduled';
 let instrScope = 'all';
 let instrDate = new Date(); instrDate.setHours(0,0,0,0);
 const MONTHS_AR=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3460,6 +3561,8 @@ function showInstrPortal(){
   document.getElementById('instrLogoutBtn').classList.remove('hidden');
   document.getElementById('instrHeaderSub').textContent=currentInstructor.name+' — Instructor Portal';
   document.getElementById('instrWelcome').textContent='Welcome, '+currentInstructor.name+'! 👋';
+  instrView='active';
+  instrStatus='scheduled';
   instrDate=new Date(); instrDate.setHours(0,0,0,0);
   loadInstrData();
 }
@@ -3523,6 +3626,22 @@ function setInstrView(v){
   renderInstrSchedule();
 }
 
+function syncInstrStatusButtons(){
+  const buttons={all:'instrStatusAll',scheduled:'instrStatusScheduled',done:'instrStatusDone',cancelled:'instrStatusCancelled'};
+  Object.entries(buttons).forEach(([status,id])=>{
+    const button=document.getElementById(id);if(!button)return;
+    button.style.background=instrStatus===status?'var(--green)':'#f0f0f0';
+    button.style.color=instrStatus===status?'#fff':'var(--navy)';
+  });
+}
+
+function setInstrStatus(status){
+  if(!['all','scheduled','done','cancelled'].includes(status))return;
+  instrStatus=status;
+  syncInstrStatusButtons();
+  renderInstrSchedule();
+}
+
 function setInstrScope(scope){
   instrScope=scope;
   window._instrSessions = window._instrMySessions||[];
@@ -3544,14 +3663,16 @@ function renderInstrSchedule(){
   const el=document.getElementById('instrSessions');
   if(!el||!currentInstructor) return;
   const sessions=window._instrSessions||[];
+  syncInstrStatusButtons();
+  const visibleSessions=sessions.filter(session=>sessionMatchesStatus(session,instrStatus));
   const today=new Date(); today.setHours(0,0,0,0);
 
   if(instrView==='active'){
-    // Show all active/pending sessions
-    const activeSess=sessions.filter(s=>s.status!=='Done'&&s.status!=='Cancelled');
-    document.getElementById('instrDateLabel').textContent='🟢 Active Sessions — My Sessions';
+    // All dates; status is controlled independently by instrStatus.
+    const activeSess=visibleSessions;
+    document.getElementById('instrDateLabel').textContent='All Dates — '+sessionStatusLabel(instrStatus)+' — My Sessions';
     if(!activeSess.length){
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">✅ No active sessions for this filter</div>';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)">No '+esc(sessionStatusLabel(instrStatus).toLowerCase())+' sessions</div>';
       return;
     }
     // Sort by date and time
@@ -3573,7 +3694,7 @@ function renderInstrSchedule(){
     weekDays.forEach(d=>{
       const key=fmtDateKey(d);
       const isToday=key===fmtDateKey(today);
-      const daySess=sessions.filter(s=>s.date===key);
+      const daySess=visibleSessions.filter(s=>s.date===key);
       html+=`<div style="margin-bottom:14px">
         <div style="font-weight:700;font-size:13px;color:${isToday?'var(--green)':'var(--muted)'};margin-bottom:6px;padding:4px 0;border-bottom:2px solid ${isToday?'var(--green)':'var(--border)'}">
           ${isToday?'🟢 ':''} ${DAYS_AR[d.getDay()]} ${d.getDate()} ${MONTHS_AR[d.getMonth()]}
@@ -4010,7 +4131,7 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'4.8.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
+function backupObject(){return {app:'Country Club Equestrian',version:'4.8.2',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
 function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
@@ -4084,7 +4205,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260719-481', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260719-482', {scope:'./'})
       .then(reg => {
 
         reg.update();
