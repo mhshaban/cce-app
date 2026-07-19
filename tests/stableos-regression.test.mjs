@@ -64,6 +64,20 @@ test('notification loading, permissions and session field names stay wired',()=>
   assert.doesNotMatch(core,/select=id,date,start_time,activity,horse,customer,instructor,status/);
 });
 
+test('only the active portal exposes its logout action',()=>{
+  const portal=read('member-portal.js');
+  const sync=functionBlock(portal,'syncMemberLogoutButtons','updateMemberChrome');
+  for(const mapping of [
+    /logoutAdminBtn:\s*\{page:'dashboard'/,
+    /logoutOwnerBtn:\s*\{page:'owner'/,
+    /instrLogoutBtn:\s*\{page:'instructor'/
+  ]) assert.match(sync,mapping);
+  assert.match(sync,/activePage !== route\.page/);
+  const owner=functionBlock(portal,'openOwnerMemberPortal','secureMemberOwnerUpdate');
+  assert.match(owner,/classList\.contains\('page-owner'\)/);
+  assert.doesNotMatch(owner,/logoutOwnerBtn[\s\S]*classList\.remove\('hidden'\)/);
+});
+
 test('database migration owns completion-to-summary synchronization',()=>{
   const sql=read('supabase/migrations/20260713_health_event_summary_sync_v464.sql');
   assert.match(sql,/create trigger cce_health_event_sync_horse_summary/i);
@@ -227,11 +241,11 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.7.0 cache key',()=>{
+test('all app assets use the v4.7.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok((html.match(/20260719-470/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260719-470/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260719-470/);
-  assert.equal(read('VERSION.txt').trim(),'4.7.0');
+  assert.ok((html.match(/20260719-471/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260719-471/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260719-471/);
+  assert.equal(read('VERSION.txt').trim(),'4.7.1');
 });
