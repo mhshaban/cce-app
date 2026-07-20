@@ -51,7 +51,7 @@
     }
 
     function sortedRenderHorses(){
-      if(Array.isArray(window.horses))window.horses.sort(compareHorses);
+      if(typeof horses!=='undefined'&&Array.isArray(horses))horses.sort(compareHorses);
       return originalRenderHorses.apply(this,arguments);
     }
 
