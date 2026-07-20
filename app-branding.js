@@ -6,6 +6,13 @@
       img.onerror=function(){this.onerror=null;this.src='icons/icon-192.png';};
     });
   }
-  document.addEventListener('DOMContentLoaded',normalizePortalBranding);
-  window.addEventListener('load',normalizePortalBranding);
-})();
+
+  function installHorseSorting(){
+    if(typeof renderHorses!=='function'||renderHorses.__cceStableSortInstalled)return;
+
+    const originalRenderHorses=renderHorses;
+    const statusOrder={Available:0,Out:1,Sold:2,Dead:3};
+    const stableNumber=value=>{
+      const raw=String(value??'').trim();
+      if(!raw)return null;
+     
