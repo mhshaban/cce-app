@@ -24,8 +24,8 @@
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="app-core.css?v=20260720-483" rel="stylesheet"/>
-<link href="show-office.css?v=20260721-500" rel="stylesheet"/>
 <link href="member-portal.css?v=20260720-483" rel="stylesheet"/>
+<link href="show-office.css?v=20260720-483" rel="stylesheet"/>
 <link href="src/styles/design-system.css?v=20260720-483" rel="stylesheet"/>
 <link href="src/components/header/header-system.css?v=20260720-483" rel="stylesheet"/>
 </head>
@@ -843,8 +843,8 @@
 <button class="nav-group-btn" id="dash-group-finance" onclick="showDashGroup('finance')">💰 Finance</button>
 <button class="nav-group-btn" id="dash-group-operations" onclick="showDashGroup('operations')">🗓️ Operations</button>
 <button class="nav-group-btn" id="dash-group-horses" onclick="showDashGroup('horses')">🐴 Horses</button>
+<button class="nav-group-btn" id="dash-group-showoffice" onclick="showDashGroup('showoffice')">🏆 Show Office</button>
 <button class="nav-group-btn" id="dash-group-management" onclick="showDashGroup('management')">⚙️ Management</button>
-<button class="nav-group-btn" id="dash-group-show-office" onclick="showDashGroup('show-office')">🏆 Show Office</button>
 </div>
 <div aria-label="Dashboard section tabs" class="nav nav-subtabs" id="dashSubNav">
 <button class="nav-btn active" data-dash-group="dashboard" id="nav-dashboard" onclick="showDashPage('dashboard',this)">📊 Dashboard</button>
@@ -859,12 +859,12 @@
 <button class="nav-btn" data-dash-group="horses" id="nav-horses" onclick="showDashPage('horses',this)">🐴 Horses</button>
 <button class="nav-btn" data-dash-group="horses" id="nav-health" onclick="showDashPage('health',this)">🩺 Horse Health</button>
 <button class="nav-btn" data-dash-group="horses" id="nav-breeding" onclick="showDashPage('breeding',this)">🔬 Breeding</button>
+<button class="nav-btn" data-dash-group="showoffice" id="nav-show-office" onclick="showDashPage('show-office',this)">🏆 Overview</button>
+<button class="nav-btn" data-dash-group="showoffice" id="nav-competitions" onclick="showDashPage('competitions',this)">🏅 Competitions</button>
 <button class="nav-btn" data-dash-group="management" id="nav-users" onclick="showDashPage('users',this)">👥 Users &amp; Permissions</button>
 <button class="nav-btn" data-dash-group="management" id="nav-notifications" onclick="showDashPage('notifications',this)">🔔 Notifications</button>
 <button class="nav-btn" data-dash-group="management" id="nav-audit" onclick="showDashPage('audit',this)">📝 Audit Log</button>
 <button class="nav-btn" data-dash-group="management" id="nav-tools" onclick="showDashPage('tools',this)">🛠️ Tools</button>
-<button class="nav-btn" data-dash-group="show-office" id="nav-show-office" onclick="showDashPage('show-office',this)">🏆 Overview</button>
-<button class="nav-btn" data-dash-group="show-office" id="nav-competitions" onclick="showDashPage('competitions',this)">🏅 Competitions</button>
 </div>
 </div>
 <div class="content">
@@ -889,6 +889,31 @@
 <div class="card"><div class="card-title">💸 Expenses by Category</div><div id="expPie"></div></div>
 </div>
 <div class="card"><div class="card-title">📋 Recent Financial Activity (Last 10)</div><div class="tbl-wrap" id="recentInc"></div></div>
+</div>
+<div class="section" id="page-show-office">
+<div class="show-office-hero">
+  <div><span class="show-office-kicker">CCE STABLEOS</span><h2>🏆 Show Office</h2><p>Competition management from registration to final results.</p></div>
+  <button class="btn btn-amber" onclick="openCompetitionEditor()">＋ New Competition</button>
+</div>
+<div class="show-office-stats" id="showOfficeStats"></div>
+<div class="show-office-grid">
+  <button class="show-office-launch" onclick="showDashPage('competitions')"><span>🏅</span><strong>Competitions</strong><small>Create and manage events</small></button>
+  <button class="show-office-launch is-coming" type="button"><span>🏇</span><strong>Classes</strong><small>Coming in Sprint 2</small></button>
+  <button class="show-office-launch is-coming" type="button"><span>👥</span><strong>Entries</strong><small>Coming in Sprint 3</small></button>
+  <button class="show-office-launch is-coming" type="button"><span>⚖️</span><strong>Judge Panel</strong><small>Competition engine planned</small></button>
+</div>
+<div class="card"><div class="card-title">🏆 Recent Competitions</div><div id="showOfficeRecent"></div></div>
+</div>
+<div class="section" id="page-competitions">
+<div class="show-office-page-head">
+  <div><span class="show-office-kicker">SHOW OFFICE</span><h2>Competitions</h2><p>Create, update and archive show-jumping competitions.</p></div>
+  <button class="btn btn-amber" onclick="openCompetitionEditor()">＋ New Competition</button>
+</div>
+<div class="search-bar show-office-filters">
+  <input id="competitionSearch" oninput="renderCompetitions()" placeholder="🔍 Search competition, venue or organizer..." type="search"/>
+  <select id="competitionStatusFilter" onchange="renderCompetitions()"><option value="">All statuses</option><option>Draft</option><option>Open</option><option>Running</option><option>Finished</option></select>
+</div>
+<div class="card"><div class="card-title">🏅 Competition List — <span id="competitionCount">0</span></div><div class="tbl-wrap" id="competitionTable"></div></div>
 </div>
 <div class="section" id="page-income">
 <div class="card"><div class="card-title" onclick="toggleForm('incForm')" style="cursor:pointer">➕ Add New Session <span style="margin-left:auto;font-size:12px;color:var(--muted)">▼ expand</span></div>
@@ -1159,30 +1184,6 @@
 <div class="pagination" id="bookPag"></div>
 </div>
 </div>
-
-<div class="section" id="page-show-office">
-  <div class="show-office-hero">
-    <div><span class="show-office-kicker">Competition Management</span><h2>🏆 Show Office</h2><p>Create and organize show-jumping competitions from one focused workspace. Classes, entries, draw, judging and live results will build on this foundation.</p></div>
-    <button class="btn btn-amber" onclick="openCompetitionForm()">＋ New Competition</button>
-  </div>
-  <div class="show-office-stats">
-    <div class="show-office-stat"><div class="show-office-stat-icon">🏅</div><div class="show-office-stat-value" id="soCompetitionCount">0</div><div class="show-office-stat-label">Competitions</div></div>
-    <div class="show-office-stat"><div class="show-office-stat-icon">🟠</div><div class="show-office-stat-value" id="soRunningCount">0</div><div class="show-office-stat-label">Running now</div></div>
-    <div class="show-office-stat"><div class="show-office-stat-icon">🟢</div><div class="show-office-stat-value" id="soOpenCount">0</div><div class="show-office-stat-label">Open for entries</div></div>
-    <div class="show-office-stat"><div class="show-office-stat-icon">✅</div><div class="show-office-stat-value" id="soFinishedCount">0</div><div class="show-office-stat-label">Finished</div></div>
-  </div>
-  <div class="card"><div class="card-title">Quick Start</div><div class="show-office-actions">
-    <button class="show-office-action" onclick="openCompetitionForm()"><span style="font-size:26px">➕</span><strong>Create Competition</strong><span>Add the event name, date, venue and officials.</span></button>
-    <button class="show-office-action" onclick="showDashPage('competitions')"><span style="font-size:26px">🏅</span><strong>Manage Competitions</strong><span>Review drafts, open events and completed competitions.</span></button>
-    <button class="show-office-action" disabled style="opacity:.55;cursor:not-allowed"><span style="font-size:26px">🏇</span><strong>Classes — Next Sprint</strong><span>Competition types, heights, times and jump-off settings.</span></button>
-  </div></div>
-</div>
-<div class="section" id="page-competitions">
-  <div class="so-toolbar"><div><h2>🏅 Competitions</h2><p>Foundation records for every class, entry, draw and result.</p></div><button class="btn btn-amber" onclick="openCompetitionForm()">＋ New Competition</button></div>
-  <div class="search-bar"><input id="soCompetitionSearch" oninput="renderCompetitions()" placeholder="🔍 Search competition, venue or official..." type="text"/><select id="soCompetitionStatus" onchange="renderCompetitions()"><option value="">All Statuses</option><option>Draft</option><option>Open</option><option>Running</option><option>Finished</option></select></div>
-  <div class="card"><div class="card-title">Competition Register — <span id="soCompetitionListCount">0</span></div><div class="tbl-wrap" id="soCompetitionsTable"></div></div>
-</div>
-
 <div class="section" id="page-breeding">
 <div class="card"><div class="card-title" onclick="toggleForm('breedForm')" style="cursor:pointer">➕ Add Breeding Record <span style="margin-left:auto;font-size:12px;color:var(--muted)">▼ expand</span></div>
 <div id="breedForm" style="display:none">
@@ -1202,27 +1203,6 @@
 </div>
 </div>
 </div>
-
-<div class="so-modal-overlay hidden" id="soCompetitionModal" onclick="if(event.target===this)closeCompetitionForm()">
-  <div class="so-modal" role="dialog" aria-modal="true" aria-labelledby="soCompetitionModalTitle">
-    <div class="so-modal-head"><h3 id="soCompetitionModalTitle">New Competition</h3><button class="so-modal-close" onclick="closeCompetitionForm()" aria-label="Close">✕</button></div>
-    <form class="so-modal-body" onsubmit="return saveCompetition(event)">
-      <input id="soCompetitionId" type="hidden"/>
-      <div class="form-grid">
-        <div class="form-group"><label>Competition Name <span class="so-required">*</span></label><input id="soCompetitionName" required placeholder="e.g. CCE Summer Cup 2026"/></div>
-        <div class="form-group"><label>Date <span class="so-required">*</span></label><input id="soCompetitionDate" required type="date"/></div>
-        <div class="form-group"><label>Venue</label><input id="soCompetitionVenue" placeholder="Competition venue"/></div>
-        <div class="form-group"><label>Status</label><select id="soCompetitionStatusField"><option>Draft</option><option>Open</option><option>Running</option><option>Finished</option></select></div>
-        <div class="form-group"><label>Organizer</label><input id="soCompetitionOrganizer" placeholder="Organizer name"/></div>
-        <div class="form-group"><label>Chief Judge</label><input id="soCompetitionChiefJudge" placeholder="Chief judge"/></div>
-        <div class="form-group"><label>Course Designer</label><input id="soCompetitionCourseDesigner" placeholder="Course designer"/></div>
-        <div class="form-group"><label>Notes</label><input id="soCompetitionNotes" placeholder="Optional notes"/></div>
-      </div>
-      <div class="so-modal-actions"><button class="btn" type="button" onclick="closeCompetitionForm()" style="background:#eef0f4;color:var(--navy)">Cancel</button><button class="btn btn-green" type="submit">💾 Save Competition</button></div>
-    </form>
-  </div>
-</div>
-
 <!-- Edit Modal -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
@@ -1242,7 +1222,7 @@
 <script src="src/modules/horses/profile/profile-shell.js?v=20260720-483"></script>
 <script src="app-core.js?v=20260720-483"></script>
 <script src="app-branding.js?v=20260720-483"></script>
-<script src="show-office.js?v=20260721-500"></script>
+<script src="show-office.js?v=20260720-483"></script>
 <script src="horse-health.js?v=20260720-483"></script>
 <script src="member-portal.js?v=20260720-483"></script>
 <script src="src/components/header/header-system.js?v=20260720-483"></script>

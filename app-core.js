@@ -270,8 +270,8 @@ const DASH_GROUPS={
   finance:['income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
   horses:['horses','health','breeding'],
-  management:['users','notifications','audit','tools'],
-  'show-office':['show-office','competitions']
+  showoffice:['show-office','competitions'],
+  management:['users','notifications','audit','tools']
 };
 function dashGroupForPage(id){
   for(const [group,pages] of Object.entries(DASH_GROUPS)) if(pages.includes(id)) return group;
@@ -301,8 +301,8 @@ function showDashPage(id, btn) {
   if(id==='receipts') renderReceipts();
   if(id==='health') renderHorseHealth();
   if(id==='tools') renderToolsPanel();
-  if(id==='show-office'&&typeof window.renderShowOfficeDashboard==='function') window.renderShowOfficeDashboard();
-  if(id==='competitions'&&typeof window.renderCompetitions==='function') window.renderCompetitions();
+  if(id==='show-office'&&typeof renderShowOfficeDashboard==='function') renderShowOfficeDashboard();
+  if(id==='competitions'&&typeof renderCompetitions==='function') renderCompetitions();
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',()=>updateDashGroupedNav('dashboard'));
