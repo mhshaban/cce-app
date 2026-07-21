@@ -31,6 +31,20 @@
 - [ ] تطبيق ترحيل v4.8.2 ونشر الواجهة والتحقق من أحدث باقة ذات 8 حصص في Schedule وبوابة المدرب.
 - [ ] تفعيل الباقة الجديدة المحددة فقط واختبار التقسيم المتساوي مع بقاء Amount وPaid والمتبقي دون تغيير.
 
+## Show Office — نظام إدارة البطولات
+
+- [x] Sprint 1: وحدة Show Office أصلية داخل التطبيق.
+- [x] Sprint 1: Dashboard بإجماليات البطولات والفئات والمشاركات وبطولات اليوم.
+- [x] Sprint 1: Competition CRUD والبحث وفلتر الحالة مع RLS وصلاحيات مستقلة.
+- [x] Sprint 1.1: استعادة نسخ Show Office الحالية والقديمة مع تحقق ذري ومنع التكرار وحفظ هوية التدقيق.
+- [ ] Sprint 2: Classes.
+- [ ] Sprint 3: Entries وربط Rider/Horse/Stable بالسجلات القائمة.
+- [ ] Sprint 4: Judge Panel وحساب الترتيب.
+- [ ] Sprint 5: Live Results.
+- [ ] Sprint 6: Start Lists وResults وPDF.
+- [ ] Sprint 7: Archive.
+- [ ] الإحصاءات الموسمية وHall of Fame.
+
 ## المرحلة التالية — الاعتمادية والأمان (P0/P1)
 
 - إكمال اختبار قبول مصفوفة RLS وRPC على Supabase الحقيقي لكل دور.

@@ -88,7 +88,9 @@ async function sbRpc(fn,payload={},opts={}){
   return json||[];
 }
 async function sbPatch(t,id,d,opts={}){
-  const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
+  const before=Object.prototype.hasOwnProperty.call(opts,'before')
+    ? opts.before
+    : (tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
   const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HDR,body:JSON.stringify(d)});
   if(!r.ok)throw new Error(await r.text());
   const out=await r.json();
@@ -96,9 +98,10 @@ async function sbPatch(t,id,d,opts={}){
   return out;
 }
 async function sbDel(t,id,opts={}){
-  const before=(tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
+  const before=Object.prototype.hasOwnProperty.call(opts,'before')
+    ? opts.before
+    : (tableRowsForAudit(t).find(x=>String(x.id)===String(id))||null);
   const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:buildHeaders('return=minimal')});
   if(!r.ok)throw new Error(await r.text());
   if(!opts.skipAudit&&t!=='audit_logs')queueAudit('delete',t,id,before,null);
 }
-

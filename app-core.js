@@ -565,11 +565,13 @@ async function downloadBackup(){
   btn.textContent='⏳ Preparing...';btn.disabled=true;
   try{
     // Fetch all data
-    const [inc,exp,hor,bre]=await Promise.all([
+    const moduleBackupProviders=Object.values(window.CCE?.backupProviders||{}).filter(provider=>typeof provider==='function');
+    const [inc,exp,hor,bre,moduleBackups]=await Promise.all([
       sbGet('income','select=*&limit=5000'),
       sbGet('expenses','select=*&limit=5000'),
       sbGet('horses','select=*&limit=500'),
       sbGet('breeding','select=*&limit=500'),
+      Promise.all(moduleBackupProviders.map(provider=>provider())),
     ]);
 
     const wb=XLSX.utils.book_new();
@@ -620,6 +622,11 @@ async function downloadBackup(){
       'Day 6':r.day6,'Day 7':r.day7,'Day 8':r.day8,'Day 9':r.day9,
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(breData), 'Breeding');
+
+    // Domain modules contribute their own backup sheets without coupling their schema to app-core.
+    moduleBackups.filter(item=>item&&item.sheet&&Array.isArray(item.rows)).forEach(item=>{
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(item.rows),String(item.sheet).slice(0,31));
+    });
 
     // Summary sheet
     const totalGross=calcGrossIncomeReceived(inc);
@@ -4134,8 +4141,17 @@ function asCsv(rows){
 function downloadTextFile(name,text,type='application/json'){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
 }
-function backupObject(){return {app:'Country Club Equestrian',version:'4.8.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()};}
-function downloadJsonBackup(){downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(backupObject(),null,2),'application/json');queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length});}
+async function backupObject(){
+  if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.9.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+}
+async function downloadJsonBackup(){
+  try{
+    const data=await backupObject();
+    downloadTextFile('CCE_Backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(data,null,2),'application/json');
+    queueAudit('export','backup','json',null,{rows:income.length+expenses.length+horses.length,modules:Object.keys(data.modules||{})});
+  }catch(error){alert('Backup failed: '+userSafeError(error));}
+}
 function exportCsvBundle(){
   downloadTextFile('CCE_income.csv',asCsv(income),'text/csv');
   downloadTextFile('CCE_expenses.csv',asCsv(expenses),'text/csv');
@@ -4143,13 +4159,13 @@ function exportCsvBundle(){
   downloadTextFile('CCE_schedule.csv',asCsv(schedule_data),'text/csv');
   queueAudit('export','backup','csv',null,{tables:4});
 }
-function dailyBackupSnapshot(){
+async function dailyBackupSnapshot(){
   try{
     const today=new Date().toISOString().slice(0,10), last=localStorage.getItem('cce_daily_snapshot_date');
-    if(last===today||!income.length&&!expenses.length&&!horses.length)return;
-    localStorage.setItem('cce_daily_snapshot',JSON.stringify(backupObject()));
+    if(last===today)return;
+    localStorage.setItem('cce_daily_snapshot',JSON.stringify(await backupObject()));
     localStorage.setItem('cce_daily_snapshot_date',today);
-  }catch(e){}
+  }catch(error){console.warn('[CCE] daily backup aborted',error?.message||error);}
 }
 function downloadLocalDailySnapshot(){
   const snap=localStorage.getItem('cce_daily_snapshot'); if(!snap){alert('No local snapshot found yet. Open dashboard after loading data to create one.');return;}
@@ -4159,17 +4175,23 @@ async function restoreBackupFile(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const text=await file.text(); let data;
   try{data=JSON.parse(text);}catch(e){alert('Invalid JSON backup');return;}
-  const tables=['income','expenses','horses','breeding','schedule','instructors'];
-  const available=tables.filter(t=>Array.isArray(data[t]));
-  if(!available.length){alert('No valid tables found in backup');return;}
-  if(!confirm('Restore will append records from backup to Supabase. It will not delete current data. Continue?'))return;
-  let count=0;
-  for(const t of available){
-    const rows=data[t].map(r=>{const x={...r};delete x.id;return x;});
-    for(const row of rows){try{await sbPost(t,row,{skipAudit:true});count++;}catch(e){console.warn('restore skipped',t,e.message);}}
-  }
-  queueAudit('restore','backup','json',null,{tables:available,count});
-  alert('Restore completed. Imported '+count+' rows.');
+  let restorePlan;
+  try{restorePlan=window.CCE?.backupRestore?.plan(data);}catch(error){alert('Invalid backup: '+userSafeError(error));return;}
+  if(!restorePlan){alert('Backup restore service is unavailable.');return;}
+  const scope=[
+    restorePlan.tables.length?restorePlan.tables.length+' legacy table(s)':'',
+    restorePlan.modules.length?restorePlan.modules.length+' module(s)':''
+  ].filter(Boolean).join(' and ');
+  if(!confirm('Restore will append '+scope+' to Supabase. Show Office restore is atomic; legacy tables are best-effort and may partially complete. Existing data will not be deleted and duplicate competitions will be skipped. Continue?'))return;
+  let result;
+  try{result=await window.CCE.backupRestore.execute(restorePlan);}catch(error){alert('Restore failed: '+userSafeError(error));return;}
+  const moduleImported=result.modules.reduce((sum,item)=>sum+Number(item.imported||0),0);
+  const moduleDuplicates=result.modules.reduce((sum,item)=>sum+Number(item.duplicates||0),0);
+  const imported=result.legacy.imported+moduleImported;
+  queueAudit('restore','backup','json',null,{legacy:result.legacy,modules:result.modules,ignored_modules:result.ignoredModules,count:imported,module_duplicates:moduleDuplicates});
+  const moduleDetail=result.modules.map(item=>`${item.module==='showOffice'?'Show Office':String(item.module||'Module')}: ${item.imported} imported, ${item.duplicates} duplicate${item.duplicates===1?'':'s'} skipped.`).join('\n');
+  const legacyDetail=result.legacy.failed?`\nLegacy rows failed: ${result.legacy.failed}. Legacy table restore is best-effort; review the console for row errors.`:'';
+  alert('Restore completed. Imported '+imported+' rows.'+legacyDetail+(moduleDetail?'\n'+moduleDetail:''));
   await loadAll();
 }
 function renderToolsPanel(){
@@ -4189,7 +4211,7 @@ function renderToolsPanel(){
       </div>
       <div class="card" style="box-shadow:none;border:1px solid var(--border)">
         <div class="card-title">Restore</div>
-        <p style="font-size:12px;color:var(--muted);line-height:1.6">Restore appends backup rows. Keep an old backup before using this.</p>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Show Office restore is atomic. Legacy tables are best-effort and may be partially restored. Existing rows are not deleted.</p>
         <input type="file" accept="application/json,.json" onchange="restoreBackupFile(this)">
       </div>
     </div>
@@ -4208,7 +4230,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260720-483', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260721-491', {scope:'./'})
       .then(reg => {
 
         reg.update();

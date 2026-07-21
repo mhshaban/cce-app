@@ -22,6 +22,24 @@ function healthService(){
   return context.window.CCE.health;
 }
 
+function showOfficeCompetitionService(overrides={}){
+  const context={Intl,Date,Object,String,Error,...overrides};
+  context.window=context;
+  vm.runInNewContext(read('src/modules/show-office/competition-service.js'),context,{filename:'competition-service.js'});
+  return context.window.CCE.showOffice.competitionService;
+}
+
+function backupRuntimeContext({providers={},jsonProviders={},post=async()=>[]}={}){
+  const context={Object,Array,String,Error,console:{warn(){}},sbPost:post,CCE:{restoreProviders:providers,jsonBackupProviders:jsonProviders}};
+  context.window=context;
+  vm.runInNewContext(read('src/services/backup-runtime.js'),context,{filename:'backup-runtime.js'});
+  return context.window.CCE;
+}
+
+function backupRestoreRuntime(options={}){
+  return backupRuntimeContext(options).backupRestore;
+}
+
 test('mobile headers share the home-page safe-area gap',()=>{
   const css=read('src/components/header/header-system.css');
   assert.match(css,/--cce-header-safe-gap:8px/);
@@ -179,6 +197,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260719_training_revenue_instructor_v480.sql',
     'supabase/migrations/20260719_training_split_cutover_v481.sql',
     'supabase/migrations/20260719_training_booking_schedule_v482.sql',
+    'supabase/migrations/20260721_show_office_sprint1_v490.sql',
+    'supabase/migrations/20260721_show_office_sprint1_v491_backup_restore.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -187,6 +207,10 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v481.sql',
     'supabase/verification/preflight_v482.sql',
     'supabase/verification/verify_v482.sql',
+    'supabase/verification/preflight_v490.sql',
+    'supabase/verification/verify_v490.sql',
+    'supabase/verification/preflight_v491.sql',
+    'supabase/verification/verify_v491.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -196,8 +220,222 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v470_compatibility.sql',
     'supabase/rollback/rollback_v480_compatibility.sql',
     'supabase/rollback/rollback_v481_compatibility.sql',
-    'supabase/rollback/rollback_v482_compatibility.sql'
+    'supabase/rollback/rollback_v482_compatibility.sql',
+    'supabase/rollback/rollback_v490_compatibility.sql',
+    'supabase/rollback/rollback_v491_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
+});
+
+test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
+  const html=read('index.html');
+  const core=read('app-core.js');
+  const portal=read('member-portal.js');
+  const module=read('show-office.js');
+  const css=read('show-office.css');
+  const migration=read('supabase/migrations/20260721_show_office_sprint1_v490.sql');
+  for(const marker of [
+    'dash-group-showoffice','nav-show-office','nav-competitions','page-show-office','page-competitions',
+    'showOfficeStats','competitionSearch','competitionStatusFilter','competitionTable'
+  ]) assert.ok(html.includes(marker),`missing Show Office UI marker ${marker}`);
+  assert.match(core,/showoffice:\['show-office','competitions'\]/);
+  assert.match(portal,/'show-office': \['show_office\.view', 'show_office\.competitions\.view'\]/);
+  assert.match(module,/show_office\.competitions\.create/);
+  assert.match(module,/show_office\.competitions\.update/);
+  assert.match(module,/show_office\.competitions\.delete/);
+  assert.doesNotMatch(module,/localStorage\.(?:getItem|setItem)/);
+  assert.doesNotMatch(core,/show_office_competitions/);
+  assert.match(html,/src\/modules\/show-office\/competition-service\.js/);
+  assert.match(migration,/create table if not exists public\.show_office_competitions/i);
+  assert.match(migration,/status in \('Draft','Open','Running','Finished'\)/);
+  assert.match(migration,/enable row level security/i);
+  assert.match(migration,/cce_show_office_competitions_(select|insert|update|delete)/);
+  assert.match(css,/min-height:44px/);
+  assert.match(css,/@media\(max-width:850px\)/);
+  assert.match(css,/@media\(max-width:560px\)/);
+});
+
+test('Show Office competition service validates fields and Sprint 1 dashboard totals',()=>{
+  const service=showOfficeCompetitionService();
+  assert.deepEqual([...service.STATUSES],['Draft','Open','Running','Finished']);
+  const valid=service.validate({
+    competition_name:'  Summer Cup  ',competition_date:'2026-07-21',venue:' CCE ',status:'Open'
+  });
+  assert.equal(valid.competition_name,'Summer Cup');
+  assert.equal(valid.venue,'CCE');
+  assert.equal(valid.organizer,null);
+  assert.throws(()=>service.validate({competition_name:'',competition_date:'2026-07-21'}),/name is required/i);
+  assert.throws(()=>service.validate({competition_name:'Cup',competition_date:'21-07-2026'}),/valid competition date/i);
+  assert.throws(()=>service.validate({competition_name:'Cup',competition_date:'2026-07-21',status:'Archived'}),/valid competition status/i);
+  const stats=service.dashboardStats([
+    {competition_date:'2026-07-21'},{competition_date:'2026-07-22'}
+  ],'2026-07-21');
+  assert.deepEqual({...stats},{competitions:2,classes:0,entries:0,today:1});
+});
+
+test('Show Office JSON backup reads every competition through keyset pagination',async()=>{
+  const competitions=Array.from({length:1005},(_,index)=>({
+    id:index+1,competition_name:`Cup ${index+1}`,competition_date:'2026-07-21',status:'Draft'
+  }));
+  const queries=[];
+  const service=showOfficeCompetitionService({
+    sbGet:async(_table,query)=>{
+      queries.push(query);
+      const cursor=Number(query.match(/id=gt\.([^&]+)/)?.[1]||0);
+      return competitions.filter(row=>row.id>cursor).slice(0,400);
+    }
+  });
+  const payload=await service.jsonBackup();
+  assert.equal(payload.competitions.length,1005);
+  assert.equal(payload.competitions[0].id,1);
+  assert.equal(payload.competitions.at(-1).id,1005);
+  assert.equal(queries.length,4);
+  assert.ok(queries.every(query=>query.includes('order=id.asc')));
+});
+
+test('a failed JSON module provider aborts backup creation and prevents download',async()=>{
+  const CCE=backupRuntimeContext({jsonProviders:{
+    showOffice:async()=>{throw new Error('Supabase unavailable');}
+  }});
+  await assert.rejects(
+    CCE.backupRuntime.createJsonBackup({app:'CCE'}),
+    /module “showOffice”: Supabase unavailable/
+  );
+
+  const core=read('app-core.js');
+  const start=core.indexOf('async function backupObject');
+  const end=core.indexOf('function exportCsvBundle',start);
+  let downloads=0;
+  const alerts=[];
+  const context={
+    window:null,CCE,Date,JSON,
+    income:[],expenses:[],horses:[],breeding:[],schedule_data:[],instructors_data:[],booking_requests:[],
+    readAuditLog:()=>[],downloadTextFile:()=>{downloads+=1;},queueAudit:()=>{},
+    alert:message=>alerts.push(message),userSafeError:error=>error.message
+  };
+  context.window=context;
+  vm.runInNewContext(core.slice(start,end),context,{filename:'app-core-backup.js'});
+  await context.downloadJsonBackup();
+  assert.equal(downloads,0);
+  assert.match(alerts[0],/showOffice.*Supabase unavailable/);
+});
+
+test('Show Office backup payloads are validated, sanitized and restored through one RPC',async()=>{
+  let rpcCall=null;
+  const service=showOfficeCompetitionService({
+    sbRpc:async(fn,payload)=>{
+      rpcCall={fn,payload};
+      return {module:'showOffice',total:1,imported:1,duplicates:0,invalid:0};
+    }
+  });
+  const source={
+    id:88,competition_name:'  Restore Cup  ',competition_date:'2026-10-01',status:'Open',
+    created_by:'00000000-0000-4000-8000-000000000099',updated_by:'00000000-0000-4000-8000-000000000098',
+    created_at:'2020-01-01T00:00:00Z',updated_at:'2020-01-02T00:00:00Z'
+  };
+  const prepared=service.validateBackupPayload({competitions:[source]});
+  assert.deepEqual(JSON.parse(JSON.stringify(prepared)),[{
+    competition_name:'Restore Cup',competition_date:'2026-10-01',venue:null,organizer:null,
+    chief_judge:null,course_designer:null,status:'Open',notes:null
+  }]);
+  const summary=await service.restoreBackup({competitions:[source]});
+  assert.deepEqual({...summary},{module:'showOffice',total:1,imported:1,duplicates:0,invalid:0});
+  assert.equal(rpcCall.fn,'cce_restore_show_office_competitions');
+  assert.deepEqual(JSON.parse(JSON.stringify(rpcCall.payload.p_competitions)),JSON.parse(JSON.stringify(prepared)));
+  assert.throws(()=>service.validateBackupPayload({competitions:[{competition_name:'Bad',competition_date:'2026-10-01',status:'Archived'}]}),/Competition 1:.*status/i);
+  assert.throws(()=>service.validateBackupPayload({competitions:[{competition_name:7,competition_date:'2026-10-01'}]}),/competition_name must be text/i);
+  assert.throws(()=>service.validateBackupPayload({}),/competitions array/i);
+});
+
+test('backup restore planning supports legacy backups and optional module payloads',async()=>{
+  const posts=[];
+  let restored=null;
+  const runtime=backupRestoreRuntime({
+    providers:{showOffice:{
+      validate:payload=>{
+        if(!Array.isArray(payload?.competitions))throw new Error('invalid Show Office payload');
+        return payload.competitions.map(row=>({competition_name:String(row.competition_name)}));
+      },
+      restore:async prepared=>{
+        restored=prepared;
+        return {module:'showOffice',total:prepared.length,imported:prepared.length,duplicates:0,invalid:0};
+      }
+    }},
+    post:async(table,row,options)=>{posts.push({table,row,options});return [{id:1,...row}];}
+  });
+
+  const legacyPlan=runtime.plan({version:'4.8.4',income:[{id:44,customer_name:'Legacy rider'}],horses:[]});
+  assert.deepEqual([...legacyPlan.tables],['income','horses']);
+  assert.equal(legacyPlan.modules.length,0);
+  const legacyResult=await runtime.execute(legacyPlan);
+  assert.equal(legacyResult.legacy.imported,1);
+  assert.equal(legacyResult.legacy.failed,0);
+  assert.deepEqual(JSON.parse(JSON.stringify(posts)),[
+    {table:'income',row:{customer_name:'Legacy rider'},options:{skipAudit:true}}
+  ]);
+
+  const missingModulePlan=runtime.plan({version:'4.9.0',income:[],modules:{}});
+  assert.equal(missingModulePlan.modules.length,0);
+  await runtime.execute(missingModulePlan);
+
+  const currentPlan=runtime.plan({version:'4.9.0',modules:{showOffice:{competitions:[{competition_name:'Current Cup'}]}}});
+  assert.equal(currentPlan.tables.length,0);
+  assert.equal(currentPlan.modules.length,1);
+  const currentResult=await runtime.execute(currentPlan);
+  assert.deepEqual(restored,[{competition_name:'Current Cup'}]);
+  assert.equal(currentResult.modules[0].imported,1);
+  assert.throws(()=>runtime.plan({income:[],modules:{showOffice:{competitions:'invalid'}}}),/invalid Show Office payload/);
+
+  const failingLegacyRuntime=backupRestoreRuntime({post:async()=>{throw new Error('legacy row rejected');}});
+  const failingLegacyResult=await failingLegacyRuntime.execute(
+    failingLegacyRuntime.plan({income:[{id:9,customer_name:'Rejected legacy row'}]})
+  );
+  assert.equal(failingLegacyResult.legacy.failed,1);
+  assert.equal(failingLegacyResult.legacy.imported,0);
+  assert.equal(failingLegacyResult.modules.length,0);
+});
+
+test('the current JSON backup format restores Show Office through the registered provider',async()=>{
+  let rpcCall=null;
+  const context={
+    Intl,Date,Object,Array,String,Number,Error,
+    console:{warn(){}},
+    sbPost:async()=>[],
+    sbRpc:async(fn,payload)=>{
+      rpcCall={fn,payload};
+      return {module:'showOffice',total:1,imported:1,duplicates:0,invalid:0};
+    }
+  };
+  context.window=context;
+  context.CCE={};
+  vm.runInNewContext(read('src/services/backup-runtime.js'),context,{filename:'backup-runtime.js'});
+  vm.runInNewContext(read('src/modules/show-office/competition-service.js'),context,{filename:'competition-service.js'});
+  const restorePlan=context.CCE.backupRestore.plan({
+    app:'Country Club Equestrian',version:'4.9.1',income:[],
+    modules:{showOffice:{competitions:[{
+      id:71,competition_name:' Backup Format Cup ',competition_date:'2026-11-01',status:'Draft',
+      created_by:'00000000-0000-4000-8000-000000000071',updated_by:'00000000-0000-4000-8000-000000000072'
+    }]}}
+  });
+  const result=await context.CCE.backupRestore.execute(restorePlan);
+  assert.equal(result.modules[0].imported,1);
+  assert.equal(rpcCall.fn,'cce_restore_show_office_competitions');
+  assert.deepEqual(JSON.parse(JSON.stringify(rpcCall.payload)),{
+    p_competitions:[{
+      competition_name:'Backup Format Cup',competition_date:'2026-11-01',venue:null,organizer:null,
+      chief_judge:null,course_designer:null,status:'Draft',notes:null
+    }]
+  });
+});
+
+test('Supabase audit helpers accept module-owned before snapshots',()=>{
+  const runtime=read('src/services/supabase-runtime.js');
+  for(const name of ['sbPatch','sbDel']){
+    const end=name==='sbPatch'?'sbDel':'// Horse-health domain';
+    const start=runtime.indexOf(`async function ${name}`);
+    const finish=runtime.indexOf(end,start+1);
+    const block=runtime.slice(start,finish);
+    assert.match(block,/Object\.prototype\.hasOwnProperty\.call\(opts,'before'\)/);
+  }
 });
 
 test('all local entry-point assets exist',()=>{
@@ -349,11 +587,11 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.8.3 cache key',()=>{
+test('all app assets use the v4.9.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok((html.match(/20260720-483/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260720-483/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260720-483/);
-  assert.equal(read('VERSION.txt').trim(),'4.8.3');
+  assert.ok((html.match(/20260721-491/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260721-491/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260721-491/);
+  assert.equal(read('VERSION.txt').trim(),'4.9.1');
 });

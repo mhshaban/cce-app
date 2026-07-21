@@ -37,7 +37,7 @@ async function buildDatabaseThrough(lastMigration=''){
 
 const buildDatabase=()=>buildDatabaseThrough();
 
-test('the full Supabase chain builds and enforces the v4.8.2 contracts',async()=>{
+test('the full Supabase chain builds and enforces the current contracts',async()=>{
   const db=await buildDatabase();
   try{
     const services=await db.query(`
@@ -145,6 +145,62 @@ test('the full Supabase chain builds and enforces the v4.8.2 contracts',async()=
          or (p.id='00000000-0000-4000-8000-000000000003' and r.code='reception')
          or (p.id='00000000-0000-4000-8000-000000000004' and r.code='trainer');
     `);
+
+    await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
+    const competition=await db.query(`
+      insert into public.show_office_competitions(
+        competition_name,competition_date,venue,organizer,chief_judge,course_designer,status,notes
+      ) values('CCE Summer Cup','2026-08-01','CCE Arena','Country Club Equestrian','Judge One','Designer One','Draft','Sprint 1')
+      returning id,competition_name,status,created_by,updated_by
+    `);
+    assert.equal(competition.rows[0].competition_name,'CCE Summer Cup');
+    assert.equal(competition.rows[0].status,'Draft');
+    assert.equal(competition.rows[0].created_by,'00000000-0000-4000-8000-000000000002');
+    assert.equal(competition.rows[0].updated_by,'00000000-0000-4000-8000-000000000002');
+    const competitionId=competition.rows[0].id;
+    const updatedCompetition=await db.query(`
+      update public.show_office_competitions set status='Open',venue='Main Arena'
+      where id=$1 returning status,venue,created_by,updated_by
+    `,[competitionId]);
+    assert.deepEqual({...updatedCompetition.rows[0]},
+      {status:'Open',venue:'Main Arena',created_by:'00000000-0000-4000-8000-000000000002',updated_by:'00000000-0000-4000-8000-000000000002'});
+    await assert.rejects(
+      db.exec(`update public.show_office_competitions set status='Archived' where id=${competitionId}`),
+      /show_office_competitions_status_check/
+    );
+    await assert.rejects(
+      db.exec(`insert into public.show_office_competitions(competition_name,competition_date) values(' CCE Summer Cup ','2026-08-01')`),
+      /show_office_competitions_name_date_uidx/
+    );
+    for (const [column,length,constraint] of [
+      ['competition_name',181,'show_office_competitions_name_length_check'],
+      ['venue',181,'show_office_competitions_venue_length_check'],
+      ['organizer',181,'show_office_competitions_organizer_length_check'],
+      ['chief_judge',181,'show_office_competitions_chief_judge_length_check'],
+      ['course_designer',181,'show_office_competitions_course_designer_length_check'],
+      ['notes',4001,'show_office_competitions_notes_length_check']
+    ]) {
+      await assert.rejects(
+        db.exec(`update public.show_office_competitions set ${column}=repeat('x',${length}) where id=${competitionId}`),
+        new RegExp(constraint)
+      );
+    }
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000003'; set role authenticated`);
+    const hiddenCompetition=await db.query(`select id from public.show_office_competitions where id=$1`,[competitionId]);
+    assert.equal(hiddenCompetition.rows.length,0);
+    await assert.rejects(
+      db.exec(`insert into public.show_office_competitions(competition_name,competition_date) values('Unauthorized Cup','2026-08-02')`),
+      /row-level security policy/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
+    await db.exec(`delete from public.show_office_competitions where id=${competitionId}`);
+    const deletedCompetition=await db.query(`select count(*)::int as rows from public.show_office_competitions where id=$1`,[competitionId]);
+    assert.equal(deletedCompetition.rows[0].rows,0);
+    await db.exec('reset role');
 
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
     await assert.rejects(
@@ -364,8 +420,143 @@ test('the full Supabase chain builds and enforces the v4.8.2 contracts',async()=
     assert.equal(reassigned.rows[0].instructor,'Trainer Sara');
 
     await db.exec(read('supabase/verification/preflight_v481.sql'));
+    await db.exec(read('supabase/verification/preflight_v490.sql'));
+    await db.exec(read('supabase/verification/preflight_v491.sql'));
     await db.exec(read('supabase/verification/verify_v470.sql'));
     await db.exec(read('supabase/verification/verify_v481.sql'));
+    await db.exec(read('supabase/verification/verify_v490.sql'));
+    await db.exec(read('supabase/verification/verify_v491.sql'));
+  }finally{
+    await db.close();
+  }
+});
+
+test('Show Office backup restore is atomic, duplicate-safe and owns audit identities',async()=>{
+  const db=await buildDatabase();
+  const creator='00000000-0000-4000-8000-000000000020';
+  const restorer='00000000-0000-4000-8000-000000000021';
+  const unauthorized='00000000-0000-4000-8000-000000000022';
+  const asJson=value=>JSON.parse(JSON.stringify(value));
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${creator}','restore-creator@example.com'),
+        ('${restorer}','restore-operator@example.com'),
+        ('${unauthorized}','restore-reception@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${creator}' and r.code='manager')
+         or (p.id='${restorer}' and r.code='manager')
+         or (p.id='${unauthorized}' and r.code='reception');
+      set "request.jwt.claim.sub"='${creator}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status,notes)
+      values('Existing Restore Cup','2026-10-01','Draft','Original record');
+      reset role;
+    `);
+
+    const payload=[
+      {
+        id:900,competition_name:' existing restore cup ',competition_date:'2026-10-01',status:'Finished',
+        notes:'Must not overwrite',created_by:restorer,updated_by:restorer
+      },
+      {
+        id:901,competition_name:' Restored Autumn Cup ',competition_date:'2026-10-02',venue:' CCE Arena ',status:'Open',
+        created_by:creator,updated_by:creator,created_at:'2020-01-01T00:00:00Z',updated_at:'2020-01-02T00:00:00Z'
+      },
+      {competition_name:'restored autumn cup',competition_date:'2026-10-02',status:'Open'}
+    ];
+    await db.exec(`set "request.jwt.claim.sub"='${restorer}'; set role authenticated`);
+    const restored=await db.query(
+      `select public.cce_restore_show_office_competitions($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.deepEqual(asJson(restored.rows[0].result),{
+      module:'showOffice',total:3,imported:1,duplicates:2,invalid:0
+    });
+
+    const rows=await db.query(`
+      select competition_name,competition_date::text,status,notes,venue,created_by,updated_by
+      from public.show_office_competitions order by competition_date
+    `);
+    assert.deepEqual(rows.rows.map(row=>({...row})),[
+      {
+        competition_name:'Existing Restore Cup',competition_date:'2026-10-01',status:'Draft',
+        notes:'Original record',venue:null,created_by:creator,updated_by:creator
+      },
+      {
+        competition_name:'Restored Autumn Cup',competition_date:'2026-10-02',status:'Open',
+        notes:null,venue:'CCE Arena',created_by:restorer,updated_by:restorer
+      }
+    ]);
+
+    const repeated=await db.query(
+      `select public.cce_restore_show_office_competitions($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.deepEqual(asJson(repeated.rows[0].result),{
+      module:'showOffice',total:3,imported:0,duplicates:3,invalid:0
+    });
+
+    const invalidPayload=[
+      {competition_name:'Atomic Valid Cup',competition_date:'2026-10-03',status:'Draft'},
+      {competition_name:'Atomic Invalid Cup',competition_date:'2026-10-04',status:'Archived'}
+    ];
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_competitions($1::jsonb)`,[JSON.stringify(invalidPayload)]),
+      /invalid status/
+    );
+    const atomic=await db.query(`select count(*)::int as rows from public.show_office_competitions where competition_name='Atomic Valid Cup'`);
+    assert.equal(atomic.rows[0].rows,0);
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_competitions('{}'::jsonb)`),
+      /must be a JSON array/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${unauthorized}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_competitions('[{"competition_name":"Denied Cup","competition_date":"2026-10-05"}]'::jsonb)`),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.9 compatibility rollbacks preserve competitions and are re-applicable',async()=>{
+  const db=await buildDatabase();
+  try{
+    await db.exec(`
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Rollback Safety Cup','2026-09-01','Draft')
+    `);
+    await db.exec(read('supabase/rollback/rollback_v491_compatibility.sql'));
+    const restoreRemoved=await db.query(`select to_regprocedure('public.cce_restore_show_office_competitions(jsonb)') is null as removed`);
+    assert.equal(restoreRemoved.rows[0].removed,true);
+    await db.exec(read('supabase/migrations/20260721_show_office_sprint1_v491_backup_restore.sql'));
+    await db.exec(read('supabase/rollback/rollback_v490_compatibility.sql'));
+    const preserved=await db.query(`
+      select competition_name,status from public.show_office_competitions
+      where competition_name='Rollback Safety Cup'
+    `);
+    assert.deepEqual({...preserved.rows[0]},{competition_name:'Rollback Safety Cup',status:'Draft'});
+
+    await db.exec(read('supabase/migrations/20260721_show_office_sprint1_v490.sql'));
+    await db.exec(`
+      insert into auth.users(id,email) values('00000000-0000-4000-8000-000000000010','showoffice@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where p.id='00000000-0000-4000-8000-000000000010' and r.code='manager';
+      set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000010';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Reapplied Cup','2026-09-02','Open');
+      reset role;
+    `);
+    const restored=await db.query(`select count(*)::int as rows from public.show_office_competitions`);
+    assert.equal(restored.rows[0].rows,2);
   }finally{
     await db.close();
   }
