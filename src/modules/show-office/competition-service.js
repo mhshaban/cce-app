@@ -7,6 +7,7 @@
   const showOffice = window.CCE.showOffice = window.CCE.showOffice || {};
   const TABLE = 'show_office_competitions';
   const RESTORE_RPC = 'cce_restore_show_office_competitions';
+  const CLASS_DIRECTORY_RPC = 'cce_show_office_class_competitions';
   const BACKUP_PAGE_SIZE = 1000;
   const STATUSES = Object.freeze(['Draft', 'Open', 'Running', 'Finished']);
   const BACKUP_FIELDS = Object.freeze([
@@ -85,6 +86,16 @@
   async function list() {
     const rows = await sbGet(TABLE, 'select=*&order=competition_date.desc,id.desc&limit=2000');
     return (Array.isArray(rows) ? rows : []).map(normalize);
+  }
+
+  async function listClassDirectory() {
+    const rows = await sbRpc(CLASS_DIRECTORY_RPC);
+    if (!Array.isArray(rows)) throw new Error('Supabase returned an invalid competition directory.');
+    return rows.map(row => ({
+      id: row?.id,
+      competition_name: text(row?.competition_name),
+      competition_date: text(row?.competition_date)
+    }));
   }
 
   async function listAll() {
@@ -217,6 +228,7 @@
   showOffice.competitionService = Object.freeze({
     TABLE,
     RESTORE_RPC,
+    CLASS_DIRECTORY_RPC,
     BACKUP_PAGE_SIZE,
     STATUSES,
     normalize,
@@ -224,6 +236,7 @@
     dashboardStats,
     bahrainToday,
     list,
+    listClassDirectory,
     listAll,
     create,
     update,
@@ -233,13 +246,7 @@
     jsonBackup,
     workbookBackup
   });
-  window.CCE.backupProviders = window.CCE.backupProviders || {};
-  window.CCE.backupProviders.showOffice = workbookBackup;
-  window.CCE.jsonBackupProviders = window.CCE.jsonBackupProviders || {};
-  window.CCE.jsonBackupProviders.showOffice = jsonBackup;
-  window.CCE.restoreProviders = window.CCE.restoreProviders || {};
-  window.CCE.restoreProviders.showOffice = Object.freeze({
-    validate: validateBackupPayload,
-    restore: restorePrepared
-  });
+  // Sprint 2 composes competitions and classes through show-office-module-service.js.
+  // Keeping provider registration at the module boundary prevents domain services
+  // from overwriting one another as Show Office expands.
 })();

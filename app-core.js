@@ -270,7 +270,7 @@ const DASH_GROUPS={
   finance:['income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
   horses:['horses','health','breeding'],
-  showoffice:['show-office','competitions'],
+  showoffice:['show-office','competitions','show-office-classes'],
   management:['users','notifications','audit','tools']
 };
 function dashGroupForPage(id){
@@ -303,6 +303,7 @@ function showDashPage(id, btn) {
   if(id==='tools') renderToolsPanel();
   if(id==='show-office'&&typeof renderShowOfficeDashboard==='function') renderShowOfficeDashboard();
   if(id==='competitions'&&typeof renderCompetitions==='function') renderCompetitions();
+  if(id==='show-office-classes'&&typeof renderShowOfficeClasses==='function') renderShowOfficeClasses();
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',()=>updateDashGroupedNav('dashboard'));
@@ -565,13 +566,17 @@ async function downloadBackup(){
   btn.textContent='⏳ Preparing...';btn.disabled=true;
   try{
     // Fetch all data
-    const moduleBackupProviders=Object.values(window.CCE?.backupProviders||{}).filter(provider=>typeof provider==='function');
+    const moduleBackupProviders=Object.entries(window.CCE?.backupProviders||{});
     const [inc,exp,hor,bre,moduleBackups]=await Promise.all([
       sbGet('income','select=*&limit=5000'),
       sbGet('expenses','select=*&limit=5000'),
       sbGet('horses','select=*&limit=500'),
       sbGet('breeding','select=*&limit=500'),
-      Promise.all(moduleBackupProviders.map(provider=>provider())),
+      Promise.all(moduleBackupProviders.map(async([name,provider])=>{
+        if(typeof provider!=='function')throw new Error(`Backup failed for module “${name}”: provider is not configured correctly.`);
+        try{return await provider();}
+        catch(error){throw new Error(`Backup failed for module “${name}”: ${error?.message||error}`);}
+      })),
     ]);
 
     const wb=XLSX.utils.book_new();
@@ -624,7 +629,7 @@ async function downloadBackup(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(breData), 'Breeding');
 
     // Domain modules contribute their own backup sheets without coupling their schema to app-core.
-    moduleBackups.filter(item=>item&&item.sheet&&Array.isArray(item.rows)).forEach(item=>{
+    moduleBackups.flatMap(item=>Array.isArray(item)?item:[item]).filter(item=>item&&item.sheet&&Array.isArray(item.rows)).forEach(item=>{
       XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(item.rows),String(item.sheet).slice(0,31));
     });
 
@@ -4143,7 +4148,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.9.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.10.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4182,14 +4187,20 @@ async function restoreBackupFile(input){
     restorePlan.tables.length?restorePlan.tables.length+' legacy table(s)':'',
     restorePlan.modules.length?restorePlan.modules.length+' module(s)':''
   ].filter(Boolean).join(' and ');
-  if(!confirm('Restore will append '+scope+' to Supabase. Show Office restore is atomic; legacy tables are best-effort and may partially complete. Existing data will not be deleted and duplicate competitions will be skipped. Continue?'))return;
+  if(!confirm('Restore will append '+scope+' to Supabase. Show Office restore is atomic; legacy tables are best-effort and may partially complete. Existing data will not be deleted and duplicate Show Office records will be skipped. Continue?'))return;
   let result;
   try{result=await window.CCE.backupRestore.execute(restorePlan);}catch(error){alert('Restore failed: '+userSafeError(error));return;}
   const moduleImported=result.modules.reduce((sum,item)=>sum+Number(item.imported||0),0);
   const moduleDuplicates=result.modules.reduce((sum,item)=>sum+Number(item.duplicates||0),0);
   const imported=result.legacy.imported+moduleImported;
   queueAudit('restore','backup','json',null,{legacy:result.legacy,modules:result.modules,ignored_modules:result.ignoredModules,count:imported,module_duplicates:moduleDuplicates});
-  const moduleDetail=result.modules.map(item=>`${item.module==='showOffice'?'Show Office':String(item.module||'Module')}: ${item.imported} imported, ${item.duplicates} duplicate${item.duplicates===1?'':'s'} skipped.`).join('\n');
+  const moduleDetail=result.modules.map(item=>{
+    const label=item.module==='showOffice'?'Show Office':String(item.module||'Module');
+    const entities=item.entities&&typeof item.entities==='object'
+      ? Object.entries(item.entities).map(([name,summary])=>`${name}: ${summary.imported} imported, ${summary.duplicates} duplicates`).join('; ')
+      : '';
+    return `${label}: ${item.imported} imported, ${item.duplicates} duplicate${item.duplicates===1?'':'s'} skipped.${entities?' '+entities+'.':''}`;
+  }).join('\n');
   const legacyDetail=result.legacy.failed?`\nLegacy rows failed: ${result.legacy.failed}. Legacy table restore is best-effort; review the console for row errors.`:'';
   alert('Restore completed. Imported '+imported+' rows.'+legacyDetail+(moduleDetail?'\n'+moduleDetail:''));
   await loadAll();
@@ -4230,7 +4241,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260721-491', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260722-4100', {scope:'./'})
       .then(reg => {
 
         reg.update();

@@ -54,6 +54,21 @@ async function sbGet(t,q=''){
   if(!r.ok)throw new Error(await r.text());
   return r.json();
 }
+async function sbCount(t,q=''){
+  const query=String(q||'').replace(/^&+|&+$/g,'');
+  const suffix=['select=id',query].filter(Boolean).join('&');
+  const headers=buildHeaders('count=exact');
+  headers.Range='0-0';
+  const r=await fetch(`${SB_URL}/rest/v1/${t}?${suffix}`,{method:'HEAD',headers});
+  if(!r.ok)throw new Error(await r.text());
+  const range=r.headers.get('content-range')||'';
+  const slash=range.lastIndexOf('/');
+  const totalText=slash>=0?range.slice(slash+1):'';
+  if(!/^\d+$/.test(totalText))throw new Error('Supabase returned an invalid count response.');
+  const total=Number(totalText);
+  if(!Number.isInteger(total)||total<0)throw new Error('Supabase returned an invalid count response.');
+  return total;
+}
 function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests})[t]||[];}
 async function sbPost(t,d,opts={}){
   const data={...d};delete data.id;

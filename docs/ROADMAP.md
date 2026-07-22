@@ -37,7 +37,7 @@
 - [x] Sprint 1: Dashboard بإجماليات البطولات والفئات والمشاركات وبطولات اليوم.
 - [x] Sprint 1: Competition CRUD والبحث وفلتر الحالة مع RLS وصلاحيات مستقلة.
 - [x] Sprint 1.1: استعادة نسخ Show Office الحالية والقديمة مع تحقق ذري ومنع التكرار وحفظ هوية التدقيق.
-- [ ] Sprint 2: Classes.
+- [x] Sprint 2: Classes مع CRUD وترتيب تشغيلي وصلاحيات ونسخ/استعادة ذرية.
 - [ ] Sprint 3: Entries وربط Rider/Horse/Stable بالسجلات القائمة.
 - [ ] Sprint 4: Judge Panel وحساب الترتيب.
 - [ ] Sprint 5: Live Results.

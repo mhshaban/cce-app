@@ -22,15 +22,19 @@
 | دليل المدربين للنماذج | `id`, `name`, `active` فقط عبر `cce_instructor_directory` | صلاحية دخل أو جدول أو مدربين مناسبة |
 | التاريخ الصحي | `horse_health_events` | حسب `event_scope` والصلاحية المقابلة |
 | المسابقات | `show_office_competitions` | `show_office.view` أو `show_office.competitions.view` |
+| دليل مسابقات الفئات | `cce_show_office_class_competitions()` ويعيد `id / competition_name / competition_date` فقط | إحدى صلاحيات عرض Show Office أو المسابقات أو الفئات |
+| فئات البطولات | `show_office_classes` | `show_office.view` أو `show_office.classes.view` |
 
 ## صلاحيات Show Office
 
 - عرض Dashboard أو قائمة المسابقات لا يمنح صلاحية التعديل تلقائيًا.
 - الإنشاء والتعديل والحذف تستخدم `show_office.competitions.create/update/delete` منفصلة.
+- تستخدم Classes مفاتيح `show_office.classes.view/create/update/delete` المستقلة؛ العرض فقط لا يظهر أزرار الإنشاء أو التعديل أو الحذف.
+- لا توسع `show_office.classes.view` صلاحية قراءة جدول المسابقات. يستخدم اختيار البطولة RPC محدودة الحقول وتتحقق من الصلاحية داخل دالة `Security Definer`.
 - تحصل أدوار Super Admin وManager على الصلاحيات افتراضيًا؛ بقية الأدوار تحتاج منحًا صريحًا من Users & Permissions.
 - إخفاء الوحدة في الواجهة لتحسين التجربة فقط، بينما تفرض RLS الحماية الفعلية على الجدول.
 - يثبت Trigger هوية المنشئ وآخر معدل من جلسة Supabase، ولا يقبل تغيير `created_by` أو `created_at` عبر تحديث المتصفح.
-- تتطلب RPC الاستعادة `show_office.competitions.create` وتتحقق منها داخل دالة Security Definer قبل تجاوز RLS.
+- تتطلب RPC الاستعادة المجمعة صلاحيتي `show_office.competitions.create` و`show_office.classes.create` وتتحقق منهما داخل دالة Security Definer قبل تجاوز RLS.
 - لا تثق الاستعادة بـ IDs أو هويات التدقيق أو الطوابع القادمة من JSON؛ السجلات الجديدة تحمل هوية منفذ الاستعادة، ولا تتغير السجلات المكررة.
 - تتحقق JavaScript وPostgreSQL من بنية الصفوف والحالات والتواريخ والأطوال، وتُرفض الدفعة كاملة قبل الكتابة عند وجود سجل غير صالح.
 - تفرض قيود الجدول حدود 180 حرفًا للحقول النصية القصيرة و4,000 للملاحظات حتى على الطلبات المصادق عليها التي تتجاوز الواجهة.
