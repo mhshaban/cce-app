@@ -185,6 +185,47 @@ test('the full Supabase chain builds and enforces the current contracts',async()
         new RegExp(constraint)
       );
     }
+    const competitionClass=await db.query(`
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,height_cm,competition_type,
+        allowed_time_seconds,time_limit_seconds,jump_off,entry_fee_bd,notes
+      ) values($1,'1A',1,'Open Jumping 100 cm',100,'Table A',72,144,true,12.500,'Sprint 2 class')
+      returning id,competition_id,class_number,sort_order,class_name,height_cm,competition_type,
+                allowed_time_seconds,time_limit_seconds,jump_off,entry_fee_bd::text,created_by,updated_by
+    `,[competitionId]);
+    assert.deepEqual({...competitionClass.rows[0]}, {
+      id:competitionClass.rows[0].id,competition_id:competitionId,class_number:'1A',sort_order:1,
+      class_name:'Open Jumping 100 cm',height_cm:100,competition_type:'Table A',
+      allowed_time_seconds:72,time_limit_seconds:144,jump_off:true,entry_fee_bd:'12.500',
+      created_by:'00000000-0000-4000-8000-000000000002',
+      updated_by:'00000000-0000-4000-8000-000000000002'
+    });
+    const classId=competitionClass.rows[0].id;
+    await assert.rejects(
+      db.exec(`insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
+               values(${competitionId},' 1a ',2,'Duplicate number','Table A')`),
+      /show_office_classes_competition_number_uidx/
+    );
+    for (const [column,value,constraint] of [
+      ['class_number',`repeat('n',31)`,'show_office_classes_number_length_check'],
+      ['sort_order','0','show_office_classes_sort_order_check'],
+      ['class_name',`repeat('n',181)`,'show_office_classes_name_length_check'],
+      ['height_cm','0','show_office_classes_height_check'],
+      ['competition_type',`repeat('t',121)`,'show_office_classes_type_length_check'],
+      ['allowed_time_seconds','0','show_office_classes_allowed_time_check'],
+      ['time_limit_seconds','0','show_office_classes_time_limit_check'],
+      ['entry_fee_bd','-1','show_office_classes_entry_fee_check'],
+      ['notes',`repeat('x',4001)`,'show_office_classes_notes_length_check']
+    ]) {
+      await assert.rejects(
+        db.exec(`update public.show_office_classes set ${column}=${value} where id=${classId}`),
+        new RegExp(constraint)
+      );
+    }
+    await assert.rejects(
+      db.exec(`update public.show_office_classes set allowed_time_seconds=72,time_limit_seconds=71 where id=${classId}`),
+      /show_office_classes_time_order_check/
+    );
     await db.exec('reset role');
 
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000003'; set role authenticated`);
@@ -194,9 +235,68 @@ test('the full Supabase chain builds and enforces the current contracts',async()
       db.exec(`insert into public.show_office_competitions(competition_name,competition_date) values('Unauthorized Cup','2026-08-02')`),
       /row-level security policy/
     );
+    const hiddenClass=await db.query(`select id from public.show_office_classes where id=$1`,[classId]);
+    assert.equal(hiddenClass.rows.length,0);
+    await assert.rejects(
+      db.query(`select * from public.cce_show_office_class_competitions()`),
+      /Permission denied/
+    );
+    await assert.rejects(
+      db.exec(`insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
+               values(${competitionId},'2',2,'Unauthorized class','Table A')`),
+      /row-level security policy/
+    );
     await db.exec('reset role');
 
+    await db.exec(`
+      insert into public.role_permissions(role_id,permission_code,allowed)
+      select id,'show_office.classes.view',true from public.app_roles where code='reception'
+      on conflict(role_id,permission_code) do update set allowed=true;
+      set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000003';
+      set role authenticated;
+    `);
+    const viewOnlyCompetition=await db.query(`select * from public.show_office_competitions where id=$1`,[competitionId]);
+    const classCompetitionDirectory=await db.query(`
+      select * from public.cce_show_office_class_competitions() where id=$1
+    `,[competitionId]);
+    const viewOnlyClass=await db.query(`select class_name from public.show_office_classes where id=$1`,[classId]);
+    assert.equal(viewOnlyCompetition.rows.length,0);
+    assert.deepEqual(Object.keys({...classCompetitionDirectory.rows[0]}).sort(),[
+      'competition_date','competition_name','id'
+    ]);
+    assert.equal(classCompetitionDirectory.rows[0].competition_name,'CCE Summer Cup');
+    assert.equal(viewOnlyClass.rows[0].class_name,'Open Jumping 100 cm');
+    await assert.rejects(
+      db.exec(`insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
+               values(${competitionId},'2',2,'View-only write','Table A')`),
+      /row-level security policy/
+    );
+    const viewOnlyUpdate=await db.query(`update public.show_office_classes set class_name='Blocked update' where id=$1 returning id`,[classId]);
+    const viewOnlyDelete=await db.query(`delete from public.show_office_classes where id=$1 returning id`,[classId]);
+    assert.equal(viewOnlyUpdate.rows.length,0);
+    assert.equal(viewOnlyDelete.rows.length,0);
+    await db.exec(`
+      reset role;
+      update public.role_permissions rp set allowed=false
+      from public.app_roles r
+      where rp.role_id=r.id and r.code='reception' and rp.permission_code='show_office.classes.view';
+    `);
+
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
+    await assert.rejects(
+      db.exec(`delete from public.show_office_competitions where id=${competitionId}`),
+      /show_office_classes_competition_id_fkey/
+    );
+    const updatedClass=await db.query(`
+      update public.show_office_classes set class_name='Open Jumping 105 cm',height_cm=105
+      where id=$1 returning class_name,height_cm,created_by,updated_by
+    `,[classId]);
+    assert.deepEqual({...updatedClass.rows[0]}, {
+      class_name:'Open Jumping 105 cm',height_cm:105,
+      created_by:'00000000-0000-4000-8000-000000000002',
+      updated_by:'00000000-0000-4000-8000-000000000002'
+    });
+    await db.exec(`delete from public.show_office_classes where id=${classId}`);
     await db.exec(`delete from public.show_office_competitions where id=${competitionId}`);
     const deletedCompetition=await db.query(`select count(*)::int as rows from public.show_office_competitions where id=$1`,[competitionId]);
     assert.equal(deletedCompetition.rows[0].rows,0);
@@ -422,10 +522,12 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     await db.exec(read('supabase/verification/preflight_v481.sql'));
     await db.exec(read('supabase/verification/preflight_v490.sql'));
     await db.exec(read('supabase/verification/preflight_v491.sql'));
+    await db.exec(read('supabase/verification/preflight_v4100.sql'));
     await db.exec(read('supabase/verification/verify_v470.sql'));
     await db.exec(read('supabase/verification/verify_v481.sql'));
     await db.exec(read('supabase/verification/verify_v490.sql'));
     await db.exec(read('supabase/verification/verify_v491.sql'));
+    await db.exec(read('supabase/verification/verify_v4100.sql'));
   }finally{
     await db.close();
   }
@@ -520,6 +622,164 @@ test('Show Office backup restore is atomic, duplicate-safe and owns audit identi
       /Permission denied/
     );
     await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('Show Office Sprint 2 restore keeps competitions and classes atomic and portable',async()=>{
+  const db=await buildDatabase();
+  const creator='00000000-0000-4000-8000-000000000030';
+  const restorer='00000000-0000-4000-8000-000000000031';
+  const unauthorized='00000000-0000-4000-8000-000000000032';
+  const asJson=value=>JSON.parse(JSON.stringify(value));
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${creator}','class-creator@example.com'),
+        ('${restorer}','class-restorer@example.com'),
+        ('${unauthorized}','class-reception@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${creator}' and r.code='manager')
+         or (p.id='${restorer}' and r.code='manager')
+         or (p.id='${unauthorized}' and r.code='reception');
+      set "request.jwt.claim.sub"='${creator}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Existing Class Cup','2026-12-01','Open');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type
+      ) select id,'1',1,'Existing class','Table A'
+        from public.show_office_competitions where competition_name='Existing Class Cup';
+      reset role;
+    `);
+
+    const payload={
+      competitions:[
+        {competition_name:' existing class cup ',competition_date:'2026-12-01',status:'Finished'},
+        {competition_name:' Restored Winter Cup ',competition_date:'2026-12-02',status:'Draft',created_by:creator}
+      ],
+      classes:[
+        {
+          competition_name:'Existing Class Cup',competition_date:'2026-12-01',class_number:' 1 ',sort_order:1,
+          class_name:'Must not overwrite',competition_type:'Table A',jump_off:false,entry_fee_bd:0
+        },
+        {
+          competition_name:'Restored Winter Cup',competition_date:'2026-12-02',class_number:' 2A ',sort_order:2,
+          class_name:'Winter Grand Prix',height_cm:130,competition_type:'Table A',allowed_time_seconds:75,
+          time_limit_seconds:150,jump_off:true,entry_fee_bd:20.500,notes:'Imported class',
+          created_by:creator,updated_by:creator
+        }
+      ]
+    };
+    await db.exec(`set "request.jwt.claim.sub"='${restorer}'; set role authenticated`);
+    const restored=await db.query(
+      `select public.cce_restore_show_office_module($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.deepEqual(asJson(restored.rows[0].result),{
+      module:'showOffice',total:4,imported:2,duplicates:2,invalid:0,
+      entities:{
+        competitions:{total:2,imported:1,duplicates:1,invalid:0},
+        classes:{total:2,imported:1,duplicates:1,invalid:0}
+      }
+    });
+    const imported=await db.query(`
+      select c.competition_name,c.created_by,c.updated_by,
+             cl.class_number,cl.class_name,cl.height_cm,cl.competition_type,
+             cl.entry_fee_bd::text,cl.created_by as class_created_by,cl.updated_by as class_updated_by
+      from public.show_office_competitions c
+      join public.show_office_classes cl on cl.competition_id=c.id
+      where c.competition_name='Restored Winter Cup'
+    `);
+    assert.deepEqual({...imported.rows[0]}, {
+      competition_name:'Restored Winter Cup',created_by:restorer,updated_by:restorer,
+      class_number:'2A',class_name:'Winter Grand Prix',height_cm:130,competition_type:'Table A',
+      entry_fee_bd:'20.500',class_created_by:restorer,class_updated_by:restorer
+    });
+
+    const repeated=await db.query(
+      `select public.cce_restore_show_office_module($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.deepEqual(asJson(repeated.rows[0].result),{
+      module:'showOffice',total:4,imported:0,duplicates:4,invalid:0,
+      entities:{
+        competitions:{total:2,imported:0,duplicates:2,invalid:0},
+        classes:{total:2,imported:0,duplicates:2,invalid:0}
+      }
+    });
+
+    const atomicPayload={
+      competitions:[{competition_name:'Atomic Sprint 2 Cup',competition_date:'2026-12-03',status:'Draft'}],
+      classes:[{
+        competition_name:'Missing Parent Cup',competition_date:'2026-12-04',class_number:'1',sort_order:1,
+        class_name:'Invalid parent',competition_type:'Table A'
+      }]
+    };
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(atomicPayload)]),
+      /references an unavailable competition/
+    );
+    const atomic=await db.query(`select count(*)::int as rows from public.show_office_competitions where competition_name='Atomic Sprint 2 Cup'`);
+    assert.equal(atomic.rows[0].rows,0);
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${unauthorized}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify({competitions:[],classes:[]})]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.10 compatibility rollback preserves classes and Sprint 2 can be re-applied',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000040';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','class-rollback@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Class Rollback Cup','2027-01-10','Draft');
+      insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
+      select id,'1',1,'Preserved class','Table A'
+      from public.show_office_competitions where competition_name='Class Rollback Cup';
+      reset role;
+    `);
+    await db.exec(read('supabase/rollback/rollback_v4100_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        (select count(*)::int from public.show_office_classes) as class_rows,
+        to_regprocedure('public.cce_restore_show_office_module(jsonb)') is null as restore_removed,
+        to_regprocedure('public.cce_show_office_class_competitions()') is null as directory_removed,
+        (select count(*)::int from pg_policies where schemaname='public' and tablename='show_office_classes') as policies,
+        (select bool_and(allowed is false) from public.role_permissions where permission_code like 'show_office.classes.%') as defaults_disabled
+    `);
+    assert.deepEqual({...rolledBack.rows[0]}, {
+      class_rows:1,restore_removed:true,directory_removed:true,policies:0,defaults_disabled:true
+    });
+
+    await db.exec(read('supabase/migrations/20260722_show_office_sprint2_classes_v4100.sql'));
+    const reapplied=await db.query(`
+      select
+        (select count(*)::int from public.show_office_classes) as class_rows,
+        to_regprocedure('public.cce_restore_show_office_module(jsonb)') is not null as restore_ready,
+        to_regprocedure('public.cce_show_office_class_competitions()') is not null as directory_ready,
+        (select count(*)::int from pg_policies where schemaname='public' and tablename='show_office_classes') as policies,
+        (select count(*)::int from public.role_permissions rp join public.app_roles r on r.id=rp.role_id
+          where r.code in ('manager','super_admin') and rp.permission_code like 'show_office.classes.%' and rp.allowed) as defaults_enabled
+    `);
+    assert.deepEqual({...reapplied.rows[0]}, {
+      class_rows:1,restore_ready:true,directory_ready:true,policies:4,defaults_enabled:8
+    });
   }finally{
     await db.close();
   }

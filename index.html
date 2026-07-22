@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260721-491"></script>
+<script src="app-bootstrap.js?v=20260722-4100"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260721-491" rel="stylesheet"/>
-<link href="member-portal.css?v=20260721-491" rel="stylesheet"/>
-<link href="show-office.css?v=20260721-491" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260721-491" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260721-491" rel="stylesheet"/>
+<link href="app-core.css?v=20260722-4100" rel="stylesheet"/>
+<link href="member-portal.css?v=20260722-4100" rel="stylesheet"/>
+<link href="show-office.css?v=20260722-4100" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260722-4100" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260722-4100" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -861,6 +861,7 @@
 <button class="nav-btn" data-dash-group="horses" id="nav-breeding" onclick="showDashPage('breeding',this)">🔬 Breeding</button>
 <button class="nav-btn" data-dash-group="showoffice" id="nav-show-office" onclick="showDashPage('show-office',this)">🏆 Overview</button>
 <button class="nav-btn" data-dash-group="showoffice" id="nav-competitions" onclick="showDashPage('competitions',this)">🏅 Competitions</button>
+<button class="nav-btn" data-dash-group="showoffice" id="nav-show-office-classes" onclick="showDashPage('show-office-classes',this)">🏇 Classes</button>
 <button class="nav-btn" data-dash-group="management" id="nav-users" onclick="showDashPage('users',this)">👥 Users &amp; Permissions</button>
 <button class="nav-btn" data-dash-group="management" id="nav-notifications" onclick="showDashPage('notifications',this)">🔔 Notifications</button>
 <button class="nav-btn" data-dash-group="management" id="nav-audit" onclick="showDashPage('audit',this)">📝 Audit Log</button>
@@ -898,7 +899,7 @@
 <div class="show-office-stats" id="showOfficeStats"></div>
 <div class="show-office-grid">
   <button class="show-office-launch" onclick="showDashPage('competitions')"><span>🏅</span><strong>Competitions</strong><small>Create and manage events</small></button>
-  <button class="show-office-launch is-coming" type="button"><span>🏇</span><strong>Classes</strong><small>Coming in Sprint 2</small></button>
+  <button class="show-office-launch" onclick="showDashPage('show-office-classes')"><span>🏇</span><strong>Classes</strong><small>Build the competition programme</small></button>
   <button class="show-office-launch is-coming" type="button"><span>👥</span><strong>Entries</strong><small>Coming in Sprint 3</small></button>
   <button class="show-office-launch is-coming" type="button"><span>⚖️</span><strong>Judge Panel</strong><small>Competition engine planned</small></button>
 </div>
@@ -914,6 +915,22 @@
   <select id="competitionStatusFilter" onchange="renderCompetitions()"><option value="">All statuses</option><option>Draft</option><option>Open</option><option>Running</option><option>Finished</option></select>
 </div>
 <div class="card"><div class="card-title">🏅 Competition List — <span id="competitionCount">0</span></div><div class="tbl-wrap" id="competitionTable"></div></div>
+</div>
+<div class="section" id="page-show-office-classes">
+<div class="show-office-page-head">
+  <div><span class="show-office-kicker">SHOW OFFICE</span><h2>Classes</h2><p>Build and order the classes inside each competition.</p></div>
+  <button class="btn btn-amber" data-show-office-permission="show_office.classes.create" id="showOfficeClassCreate" onclick="openClassEditor()">＋ New Class</button>
+</div>
+<div class="card so-class-context">
+  <label for="showOfficeClassCompetition">Competition</label>
+  <select id="showOfficeClassCompetition" onchange="selectShowOfficeCompetition(this.value)"><option value="">Loading competitions…</option></select>
+</div>
+<div class="search-bar show-office-filters so-class-filters">
+  <input id="showOfficeClassSearch" oninput="renderShowOfficeClasses()" placeholder="🔍 Search class number, name, height or type..." type="search"/>
+  <select id="showOfficeClassTypeFilter" onchange="renderShowOfficeClasses()"><option value="">All types</option></select>
+  <select id="showOfficeClassJumpOffFilter" onchange="renderShowOfficeClasses()"><option value="">All jump-off options</option><option value="yes">Jump-Off</option><option value="no">No Jump-Off</option></select>
+</div>
+<div class="card"><div class="card-title">🏇 Class List — <span id="showOfficeClassCount">0</span></div><div id="showOfficeClassTable"></div></div>
 </div>
 <div class="section" id="page-income">
 <div class="card"><div class="card-title" onclick="toggleForm('incForm')" style="cursor:pointer">➕ Add New Session <span style="margin-left:auto;font-size:12px;color:var(--muted)">▼ expand</span></div>
@@ -1207,26 +1224,28 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260721-491"></script>
-<script src="src/core/config.js?v=20260721-491"></script>
-<script src="src/core/store.js?v=20260721-491"></script>
-<script src="src/services/supabase-runtime.js?v=20260721-491"></script>
-<script src="src/services/backup-runtime.js?v=20260721-491"></script>
-<script src="src/modules/show-office/competition-service.js?v=20260721-491"></script>
-<script src="src/modules/horses/horse-service.js?v=20260721-491"></script>
-<script src="src/modules/health/health-service.js?v=20260721-491"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260721-491"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260721-491"></script>
-<script src="app-core.js?v=20260721-491"></script>
-<script src="app-branding.js?v=20260721-491"></script>
-<script src="show-office.js?v=20260721-491"></script>
-<script src="horse-health.js?v=20260721-491"></script>
-<script src="member-portal.js?v=20260721-491"></script>
-<script src="src/components/header/header-system.js?v=20260721-491"></script>
+<script src="src/core/events.js?v=20260722-4100"></script>
+<script src="src/core/config.js?v=20260722-4100"></script>
+<script src="src/core/store.js?v=20260722-4100"></script>
+<script src="src/services/supabase-runtime.js?v=20260722-4100"></script>
+<script src="src/services/backup-runtime.js?v=20260722-4100"></script>
+<script src="src/modules/show-office/competition-service.js?v=20260722-4100"></script>
+<script src="src/modules/show-office/class-service.js?v=20260722-4100"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20260722-4100"></script>
+<script src="src/modules/horses/horse-service.js?v=20260722-4100"></script>
+<script src="src/modules/health/health-service.js?v=20260722-4100"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260722-4100"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260722-4100"></script>
+<script src="app-core.js?v=20260722-4100"></script>
+<script src="app-branding.js?v=20260722-4100"></script>
+<script src="show-office.js?v=20260722-4100"></script>
+<script src="horse-health.js?v=20260722-4100"></script>
+<script src="member-portal.js?v=20260722-4100"></script>
+<script src="src/components/header/header-system.js?v=20260722-4100"></script>
 </body>
 </html>

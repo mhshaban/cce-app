@@ -10,6 +10,7 @@
     dashboard: ['dashboard.view'],
     'show-office': ['show_office.view', 'show_office.competitions.view'],
     competitions: ['show_office.competitions.view'],
+    'show-office-classes': ['show_office.classes.view'],
     income: ['income.view'],
     expenses: ['expenses.view'],
     overdue: ['income.view', 'expenses.view'],
@@ -310,8 +311,8 @@
 
   function firstAllowedDashboardPage() {
     const order = prefersSchedule()
-      ? ['schedule','bookings','horses','dashboard','show-office','competitions','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
-      : ['dashboard','show-office','competitions','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
+      : ['dashboard','show-office','competitions','show-office-classes','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
@@ -323,7 +324,7 @@
     }
     legacyShowDashPage(id, btn);
     if (id === 'users') loadAccessAdmin();
-    if (id === 'show-office' || id === 'competitions') window.CCE?.showOffice?.open?.(id);
+    if (id === 'show-office' || id === 'competitions' || id === 'show-office-classes') window.CCE?.showOffice?.open?.(id);
     window.setTimeout(stripDisallowedActions, 0);
   };
 
@@ -437,7 +438,7 @@
       const canReadInstructorTable = hasPermission('instructors.view');
       const needHealth = hasAny(['horse_health.view','horse_medical.view','horse_vaccinations.view','horse_care.view','horse_events.view']);
       const needHorses = hasAny(['horses.view','dashboard.view','schedule.view']) || needHealth;
-      const needShowOffice = hasAny(['show_office.view','show_office.competitions.view']);
+      const needShowOffice = hasAny(['show_office.view','show_office.competitions.view','show_office.classes.view']);
       [income, expenses, horses, breeding, schedule_data, instructors_data, booking_requests] = await Promise.all([
         safeGet('income','select=*&limit=2000',needIncome),
         safeGet('expenses','select=*&limit=1000',needExpenses),
