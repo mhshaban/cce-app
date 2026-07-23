@@ -226,6 +226,56 @@ test('the full Supabase chain builds and enforces the current contracts',async()
       db.exec(`update public.show_office_classes set allowed_time_seconds=72,time_limit_seconds=71 where id=${classId}`),
       /show_office_classes_time_order_check/
     );
+    const savedEntry=await db.query(`
+      select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>7,p_rider_name=>' Sara Rider ',
+        p_horse_name=>' Nabd Entry ',p_stable_name=>' CCE Show Team '
+      ) as result
+    `,[classId]);
+    const entry=savedEntry.rows[0].result;
+    assert.equal(entry.start_number,7);
+    assert.equal(entry.rider_name,'Sara Rider');
+    assert.equal(entry.horse_name,'Nabd Entry');
+    assert.equal(entry.stable_name,'CCE Show Team');
+    const entryAudit=await db.query(`
+      select created_by,updated_by from public.show_office_entries where id=$1
+    `,[entry.id]);
+    assert.deepEqual({...entryAudit.rows[0]}, {
+      created_by:'00000000-0000-4000-8000-000000000002',
+      updated_by:'00000000-0000-4000-8000-000000000002'
+    });
+    const reusedNames=await db.query(`
+      select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>7,p_entry_id=>$2,
+        p_rider_name=>'sara rider',p_horse_name=>'NABD ENTRY',p_stable_name=>'cce show team'
+      ) as result
+    `,[classId,entry.id]);
+    assert.equal(reusedNames.rows[0].result.rider_id,entry.rider_id);
+    assert.equal(reusedNames.rows[0].result.horse_id,entry.horse_id);
+    const registryCounts=await db.query(`
+      select (select count(*)::int from public.show_office_riders) as riders,
+             (select count(*)::int from public.show_office_horses) as horses,
+             (select count(*)::int from public.show_office_stables) as stables
+    `);
+    assert.deepEqual({...registryCounts.rows[0]}, {riders:1,horses:1,stables:1});
+    await assert.rejects(
+      db.query(`select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>7,p_rider_name=>'Other Rider',p_horse_name=>'Other Horse'
+      )`,[classId]),
+      /show_office_entries_class_start_uidx/
+    );
+    await assert.rejects(
+      db.query(`select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>8,p_rider_id=>$2,p_horse_id=>$3
+      )`,[classId,entry.rider_id,entry.horse_id]),
+      /show_office_entries_class_pair_uidx/
+    );
+    await assert.rejects(
+      db.query(`select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>8,p_rider_name=>repeat('r',181),p_horse_name=>'Valid Horse'
+      )`,[classId]),
+      /valid rider name/i
+    );
     await db.exec('reset role');
 
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000003'; set role authenticated`);
@@ -237,6 +287,8 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     );
     const hiddenClass=await db.query(`select id from public.show_office_classes where id=$1`,[classId]);
     assert.equal(hiddenClass.rows.length,0);
+    const hiddenEntry=await db.query(`select id from public.show_office_entries where id=$1`,[entry.id]);
+    assert.equal(hiddenEntry.rows.length,0);
     await assert.rejects(
       db.query(`select * from public.cce_show_office_class_competitions()`),
       /Permission denied/
@@ -246,11 +298,18 @@ test('the full Supabase chain builds and enforces the current contracts',async()
                values(${competitionId},'2',2,'Unauthorized class','Table A')`),
       /row-level security policy/
     );
+    await assert.rejects(
+      db.query(`select public.cce_show_office_entries_page($1,'',100,0)`,[classId]),
+      /Permission denied/
+    );
     await db.exec('reset role');
 
     await db.exec(`
       insert into public.role_permissions(role_id,permission_code,allowed)
       select id,'show_office.classes.view',true from public.app_roles where code='reception'
+      on conflict(role_id,permission_code) do update set allowed=true;
+      insert into public.role_permissions(role_id,permission_code,allowed)
+      select id,'show_office.entries.view',true from public.app_roles where code='reception'
       on conflict(role_id,permission_code) do update set allowed=true;
       set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000003';
       set role authenticated;
@@ -266,6 +325,13 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     ]);
     assert.equal(classCompetitionDirectory.rows[0].competition_name,'CCE Summer Cup');
     assert.equal(viewOnlyClass.rows[0].class_name,'Open Jumping 100 cm');
+    const viewOnlyEntry=await db.query(`select start_number from public.show_office_entries where id=$1`,[entry.id]);
+    assert.equal(viewOnlyEntry.rows[0].start_number,7);
+    const entryPage=await db.query(`select public.cce_show_office_entries_page($1,'Sara',100,0) as result`,[classId]);
+    assert.equal(entryPage.rows[0].result.total,1);
+    assert.equal(entryPage.rows[0].result.rows[0].horse_name,'Nabd Entry');
+    const entryDirectoryResult=await db.query(`select public.cce_show_office_entry_directory('Nabd',10) as result`);
+    assert.equal(entryDirectoryResult.rows[0].result.horses[0].horse_name,'Nabd Entry');
     await assert.rejects(
       db.exec(`insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
                values(${competitionId},'2',2,'View-only write','Table A')`),
@@ -275,17 +341,34 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     const viewOnlyDelete=await db.query(`delete from public.show_office_classes where id=$1 returning id`,[classId]);
     assert.equal(viewOnlyUpdate.rows.length,0);
     assert.equal(viewOnlyDelete.rows.length,0);
+    await assert.rejects(
+      db.query(`select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>9,p_rider_name=>'Blocked Rider',p_horse_name=>'Blocked Horse'
+      )`,[classId]),
+      /Permission denied/
+    );
+    const viewOnlyEntryUpdate=await db.query(`update public.show_office_entries set start_number=9 where id=$1 returning id`,[entry.id]);
+    const viewOnlyEntryDelete=await db.query(`delete from public.show_office_entries where id=$1 returning id`,[entry.id]);
+    assert.equal(viewOnlyEntryUpdate.rows.length,0);
+    assert.equal(viewOnlyEntryDelete.rows.length,0);
     await db.exec(`
       reset role;
       update public.role_permissions rp set allowed=false
       from public.app_roles r
       where rp.role_id=r.id and r.code='reception' and rp.permission_code='show_office.classes.view';
+      update public.role_permissions rp set allowed=false
+      from public.app_roles r
+      where rp.role_id=r.id and r.code='reception' and rp.permission_code='show_office.entries.view';
     `);
 
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000002'; set role authenticated`);
     await assert.rejects(
       db.exec(`delete from public.show_office_competitions where id=${competitionId}`),
       /show_office_classes_competition_id_fkey/
+    );
+    await assert.rejects(
+      db.exec(`delete from public.show_office_classes where id=${classId}`),
+      /show_office_entries_class_id_fkey/
     );
     const updatedClass=await db.query(`
       update public.show_office_classes set class_name='Open Jumping 105 cm',height_cm=105
@@ -296,6 +379,13 @@ test('the full Supabase chain builds and enforces the current contracts',async()
       created_by:'00000000-0000-4000-8000-000000000002',
       updated_by:'00000000-0000-4000-8000-000000000002'
     });
+    const updatedEntry=await db.query(`
+      select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>17,p_entry_id=>$2,p_rider_id=>$3,p_horse_id=>$4,p_stable_id=>$5
+      ) as result
+    `,[classId,entry.id,entry.rider_id,entry.horse_id,entry.stable_id]);
+    assert.equal(updatedEntry.rows[0].result.start_number,17);
+    await db.exec(`delete from public.show_office_entries where id=${entry.id}`);
     await db.exec(`delete from public.show_office_classes where id=${classId}`);
     await db.exec(`delete from public.show_office_competitions where id=${competitionId}`);
     const deletedCompetition=await db.query(`select count(*)::int as rows from public.show_office_competitions where id=$1`,[competitionId]);
@@ -523,11 +613,13 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     await db.exec(read('supabase/verification/preflight_v490.sql'));
     await db.exec(read('supabase/verification/preflight_v491.sql'));
     await db.exec(read('supabase/verification/preflight_v4100.sql'));
+    await db.exec(read('supabase/verification/preflight_v4110.sql'));
     await db.exec(read('supabase/verification/verify_v470.sql'));
     await db.exec(read('supabase/verification/verify_v481.sql'));
     await db.exec(read('supabase/verification/verify_v490.sql'));
     await db.exec(read('supabase/verification/verify_v491.sql'));
     await db.exec(read('supabase/verification/verify_v4100.sql'));
+    await db.exec(read('supabase/verification/verify_v4110.sql'));
   }finally{
     await db.close();
   }
@@ -682,7 +774,11 @@ test('Show Office Sprint 2 restore keeps competitions and classes atomic and por
       module:'showOffice',total:4,imported:2,duplicates:2,invalid:0,
       entities:{
         competitions:{total:2,imported:1,duplicates:1,invalid:0},
-        classes:{total:2,imported:1,duplicates:1,invalid:0}
+        classes:{total:2,imported:1,duplicates:1,invalid:0},
+        riders:{total:0,imported:0,duplicates:0,invalid:0},
+        horses:{total:0,imported:0,duplicates:0,invalid:0},
+        stables:{total:0,imported:0,duplicates:0,invalid:0},
+        entries:{total:0,imported:0,duplicates:0,invalid:0}
       }
     });
     const imported=await db.query(`
@@ -707,7 +803,11 @@ test('Show Office Sprint 2 restore keeps competitions and classes atomic and por
       module:'showOffice',total:4,imported:0,duplicates:4,invalid:0,
       entities:{
         competitions:{total:2,imported:0,duplicates:2,invalid:0},
-        classes:{total:2,imported:0,duplicates:2,invalid:0}
+        classes:{total:2,imported:0,duplicates:2,invalid:0},
+        riders:{total:0,imported:0,duplicates:0,invalid:0},
+        horses:{total:0,imported:0,duplicates:0,invalid:0},
+        stables:{total:0,imported:0,duplicates:0,invalid:0},
+        entries:{total:0,imported:0,duplicates:0,invalid:0}
       }
     });
 
@@ -732,6 +832,172 @@ test('Show Office Sprint 2 restore keeps competitions and classes atomic and por
       /Permission denied/
     );
     await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('Show Office Sprint 3 restore is atomic, portable, duplicate-safe and backward compatible',async()=>{
+  const db=await buildDatabase();
+  const restorer='00000000-0000-4000-8000-000000000035';
+  const unauthorized='00000000-0000-4000-8000-000000000036';
+  const riderRef='00000000-0000-4000-8000-000000000135';
+  const horseRef='00000000-0000-4000-8000-000000000136';
+  const stableRef='00000000-0000-4000-8000-000000000137';
+  const entryRef='00000000-0000-4000-8000-000000000138';
+  const asJson=value=>JSON.parse(JSON.stringify(value));
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${restorer}','entry-restorer@example.com'),
+        ('${unauthorized}','entry-unauthorized@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${restorer}' and r.code='manager')
+         or (p.id='${unauthorized}' and r.code='reception');
+    `);
+    const payload={
+      competitions:[{competition_name:'Portable Entry Cup',competition_date:'2027-02-01',status:'Open'}],
+      classes:[{
+        competition_name:'Portable Entry Cup',competition_date:'2027-02-01',class_number:'1A',
+        sort_order:1,class_name:'Entry Class',competition_type:'Table A',jump_off:false,entry_fee_bd:5
+      }],
+      riders:[{rider_ref:riderRef,rider_name:'Portable Rider'}],
+      horses:[{horse_ref:horseRef,horse_name:'Portable Horse'}],
+      stables:[{stable_ref:stableRef,stable_name:'Portable Stable'}],
+      entries:[{
+        entry_ref:entryRef,competition_name:'Portable Entry Cup',competition_date:'2027-02-01',
+        class_number:'1A',start_number:21,rider_ref:riderRef,horse_ref:horseRef,stable_ref:stableRef
+      }]
+    };
+    await db.exec(`set "request.jwt.claim.sub"='${restorer}'; set role authenticated`);
+    const restored=await db.query(`select public.cce_restore_show_office_module($1::jsonb) as result`,[JSON.stringify(payload)]);
+    assert.deepEqual(asJson(restored.rows[0].result),{
+      module:'showOffice',total:6,imported:6,duplicates:0,invalid:0,
+      entities:{
+        competitions:{total:1,imported:1,duplicates:0,invalid:0},
+        classes:{total:1,imported:1,duplicates:0,invalid:0},
+        riders:{total:1,imported:1,duplicates:0,invalid:0},
+        horses:{total:1,imported:1,duplicates:0,invalid:0},
+        stables:{total:1,imported:1,duplicates:0,invalid:0},
+        entries:{total:1,imported:1,duplicates:0,invalid:0}
+      }
+    });
+    const imported=await db.query(`
+      select e.entry_ref,e.start_number,r.rider_name,h.horse_name,s.stable_name,
+             e.created_by,e.updated_by
+      from public.show_office_entries e
+      join public.show_office_riders r on r.id=e.rider_id
+      join public.show_office_horses h on h.id=e.horse_id
+      left join public.show_office_stables s on s.id=e.stable_id
+      where e.entry_ref=$1
+    `,[entryRef]);
+    assert.deepEqual({...imported.rows[0]}, {
+      entry_ref:entryRef,start_number:21,rider_name:'Portable Rider',horse_name:'Portable Horse',
+      stable_name:'Portable Stable',created_by:restorer,updated_by:restorer
+    });
+    const repeated=await db.query(`select public.cce_restore_show_office_module($1::jsonb) as result`,[JSON.stringify(payload)]);
+    assert.equal(repeated.rows[0].result.imported,0);
+    assert.equal(repeated.rows[0].result.duplicates,6);
+
+    const collisionPayload={
+      competitions:[{competition_name:'Cross Environment Cup',competition_date:'2027-02-03',status:'Draft'}],
+      classes:[{competition_name:'Cross Environment Cup',competition_date:'2027-02-03',class_number:'2',sort_order:1,class_name:'Cross Environment',competition_type:'Table A'}],
+      riders:[{rider_ref:'00000000-0000-4000-8000-000000000235',rider_name:'portable rider'}],
+      horses:[{horse_ref:'00000000-0000-4000-8000-000000000236',horse_name:'PORTABLE HORSE'}],
+      stables:[{stable_ref:'00000000-0000-4000-8000-000000000237',stable_name:'Portable Stable'}],
+      entries:[{
+        entry_ref:'00000000-0000-4000-8000-000000000238',competition_name:'Cross Environment Cup',
+        competition_date:'2027-02-03',class_number:'2',start_number:22,
+        rider_ref:'00000000-0000-4000-8000-000000000235',
+        horse_ref:'00000000-0000-4000-8000-000000000236',
+        stable_ref:'00000000-0000-4000-8000-000000000237'
+      }]
+    };
+    const collision=await db.query(`select public.cce_restore_show_office_module($1::jsonb) as result`,[JSON.stringify(collisionPayload)]);
+    assert.equal(collision.rows[0].result.imported,3);
+    assert.equal(collision.rows[0].result.duplicates,3);
+    const collisionEntry=await db.query(`
+      select r.rider_ref,h.horse_ref,s.stable_ref
+      from public.show_office_entries e
+      join public.show_office_riders r on r.id=e.rider_id
+      join public.show_office_horses h on h.id=e.horse_id
+      join public.show_office_stables s on s.id=e.stable_id
+      where e.entry_ref='00000000-0000-4000-8000-000000000238'
+    `);
+    assert.deepEqual({...collisionEntry.rows[0]}, {rider_ref:riderRef,horse_ref:horseRef,stable_ref:stableRef});
+
+    const atomicPayload={
+      competitions:[{competition_name:'Atomic Entry Cup',competition_date:'2027-02-02',status:'Draft'}],
+      classes:[{competition_name:'Atomic Entry Cup',competition_date:'2027-02-02',class_number:'1',sort_order:1,class_name:'Atomic',competition_type:'Table A'}],
+      riders:[],horses:[],stables:[],
+      entries:[{
+        entry_ref:'00000000-0000-4000-8000-000000000139',competition_name:'Atomic Entry Cup',
+        competition_date:'2027-02-02',class_number:'1',start_number:1,
+        rider_ref:'00000000-0000-4000-8000-000000000199',horse_ref:horseRef,stable_ref:null
+      }]
+    };
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(atomicPayload)]),
+      /references an unavailable rider, horse or stable/
+    );
+    const atomic=await db.query(`select count(*)::int as rows from public.show_office_competitions where competition_name='Atomic Entry Cup'`);
+    assert.equal(atomic.rows[0].rows,0);
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${unauthorized}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(payload)]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000045';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','entry-rollback@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      set "request.jwt.claim.sub"='${manager}'; set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Entry Rollback Cup','2027-03-01','Draft');
+      insert into public.show_office_classes(competition_id,class_number,sort_order,class_name,competition_type)
+      select id,'1',1,'Preserved entry class','Table A' from public.show_office_competitions
+      where competition_name='Entry Rollback Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Preserved entry class'),
+        p_start_number=>1,p_rider_name=>'Preserved Rider',p_horse_name=>'Preserved Horse'
+      );
+      reset role;
+    `);
+    await db.exec(read('supabase/rollback/rollback_v4110_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        (select count(*)::int from public.show_office_entries) as entry_rows,
+        to_regprocedure('public.cce_save_show_office_entry(bigint,integer,bigint,bigint,text,bigint,bigint,text,bigint,text)') is null as save_removed,
+        to_regprocedure('public.cce_restore_show_office_module(jsonb)') is not null as core_restore_ready,
+        (select count(*)::int from pg_policies where schemaname='public' and tablename='show_office_entries') as policies,
+        (select bool_and(allowed is false) from public.role_permissions where permission_code like 'show_office.entries.%') as defaults_disabled
+    `);
+    assert.deepEqual({...rolledBack.rows[0]}, {
+      entry_rows:1,save_removed:true,core_restore_ready:true,policies:0,defaults_disabled:true
+    });
+    await db.exec(read('supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql'));
+    const reapplied=await db.query(`
+      select
+        (select count(*)::int from public.show_office_entries) as entry_rows,
+        to_regprocedure('public.cce_save_show_office_entry(bigint,integer,bigint,bigint,text,bigint,bigint,text,bigint,text)') is not null as save_ready,
+        (select count(*)::int from pg_policies where schemaname='public' and tablename='show_office_entries') as policies,
+        (select count(*)::int from public.role_permissions rp join public.app_roles r on r.id=rp.role_id
+          where r.code in ('manager','super_admin') and rp.permission_code like 'show_office.entries.%' and rp.allowed) as defaults_enabled
+    `);
+    assert.deepEqual({...reapplied.rows[0]}, {entry_rows:1,save_ready:true,policies:4,defaults_enabled:8});
   }finally{
     await db.close();
   }

@@ -1,5 +1,5 @@
 // Show Office module orchestration for aggregate backup, restore and workbook export.
-// Domain CRUD remains in competition-service.js and class-service.js.
+// Domain CRUD remains in competition-service.js, class-service.js and entry-service.js.
 (function () {
   'use strict';
 
@@ -10,31 +10,43 @@
 
   const competitionService = () => showOffice.competitionService;
   const classService = () => showOffice.classService;
+  const entryService = () => showOffice.entryService;
 
   function servicesReady() {
-    if (!competitionService() || !classService()) throw new Error('Show Office domain services are unavailable.');
+    if (!competitionService() || !classService() || !entryService()) {
+      throw new Error('Show Office domain services are unavailable.');
+    }
   }
 
   async function snapshot() {
     servicesReady();
-    const [competitions, classes] = await Promise.all([
+    const [competitions, classes, entryData] = await Promise.all([
       competitionService().listAll(),
-      classService().listAll()
+      classService().listAll(),
+      entryService().listAll()
     ]);
     const competitionsById = new Map(competitions.map(row => [String(row.id), row]));
-    return Object.freeze({competitions, classes, competitionsById});
+    const classesById = new Map(classes.map(row => [String(row.id), row]));
+    return Object.freeze({competitions, classes, entryData, competitionsById, classesById});
   }
 
   async function jsonBackup() {
     const data = await snapshot();
+    const entries = entryService().backupPayload(
+      data.entryData, data.competitionsById, data.classesById
+    );
     return {
       competitions: data.competitions,
-      classes: classService().backupRows(data.classes, data.competitionsById)
+      classes: classService().backupRows(data.classes, data.competitionsById),
+      ...entries
     };
   }
 
   async function workbookBackup() {
     const data = await snapshot();
+    const entryPayload = entryService().backupPayload(
+      data.entryData, data.competitionsById, data.classesById
+    );
     return [
       {
         sheet: 'Competitions',
@@ -56,7 +68,7 @@
         sheet: 'Competition Classes',
         rows: classService().workbookRows(data.classes, data.competitionsById)
       }
-    ];
+    ].concat(entryService().workbookSheets(entryPayload));
   }
 
   function validateBackupPayload(payload) {
@@ -64,11 +76,13 @@
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('Show Office backup must contain an object.');
     }
+    const entryPayload = entryService().validateBackupPayload(payload);
     return Object.freeze({
       competitions: competitionService().validateBackupPayload(payload),
       classes: classService().validateBackupPayload(
         Object.prototype.hasOwnProperty.call(payload, 'classes') ? payload.classes : []
-      )
+      ),
+      ...entryPayload
     });
   }
 
@@ -96,15 +110,21 @@
     }
     const competitions = entitySummary(value.entities?.competitions, 'competition');
     const classes = entitySummary(value.entities?.classes, 'class');
+    const riders = entitySummary(value.entities?.riders, 'rider');
+    const horses = entitySummary(value.entities?.horses, 'horse');
+    const stables = entitySummary(value.entities?.stables, 'stable');
+    const entries = entitySummary(value.entities?.entries, 'entry');
     const result = {
       module: 'showOffice',
       total: Number(value.total),
       imported: Number(value.imported),
       duplicates: Number(value.duplicates),
       invalid: Number(value.invalid || 0),
-      entities: Object.freeze({competitions, classes})
+      entities: Object.freeze({competitions, classes, riders, horses, stables, entries})
     };
-    const expectedTotal = prepared.competitions.length + prepared.classes.length;
+    const expectedTotal = prepared.competitions.length + prepared.classes.length
+      + prepared.riders.length + prepared.horses.length + prepared.stables.length
+      + prepared.entries.length;
     if (text(value.module) !== 'showOffice'
         || ![result.total, result.imported, result.duplicates, result.invalid].every(Number.isInteger)
         || [result.total, result.imported, result.duplicates, result.invalid].some(number => number < 0)
@@ -112,18 +132,27 @@
         || result.imported + result.duplicates + result.invalid !== result.total
         || competitions.total !== prepared.competitions.length
         || classes.total !== prepared.classes.length
-        || competitions.total + classes.total !== result.total
-        || competitions.imported + classes.imported !== result.imported
-        || competitions.duplicates + classes.duplicates !== result.duplicates
-        || competitions.invalid + classes.invalid !== result.invalid) {
+        || riders.total !== prepared.riders.length
+        || horses.total !== prepared.horses.length
+        || stables.total !== prepared.stables.length
+        || entries.total !== prepared.entries.length
+        || competitions.total + classes.total + riders.total + horses.total
+          + stables.total + entries.total !== result.total
+        || competitions.imported + classes.imported + riders.imported + horses.imported
+          + stables.imported + entries.imported !== result.imported
+        || competitions.duplicates + classes.duplicates + riders.duplicates + horses.duplicates
+          + stables.duplicates + entries.duplicates !== result.duplicates
+        || competitions.invalid + classes.invalid + riders.invalid + horses.invalid
+          + stables.invalid + entries.invalid !== result.invalid) {
       throw new Error('Show Office restore returned inconsistent totals.');
     }
     return Object.freeze(result);
   }
 
   async function restorePrepared(prepared) {
-    if (!prepared || !Array.isArray(prepared.competitions) || !Array.isArray(prepared.classes)) {
-      throw new Error('Validated Show Office competitions and classes are required.');
+    if (!prepared || !['competitions','classes','riders','horses','stables','entries']
+      .every(key => Array.isArray(prepared[key]))) {
+      throw new Error('Validated Show Office module data is required.');
     }
     const value = await sbRpc(RESTORE_RPC, {p_payload: prepared});
     return restoreSummary(value, prepared);

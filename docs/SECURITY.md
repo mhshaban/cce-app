@@ -24,20 +24,24 @@
 | المسابقات | `show_office_competitions` | `show_office.view` أو `show_office.competitions.view` |
 | دليل مسابقات الفئات | `cce_show_office_class_competitions()` ويعيد `id / competition_name / competition_date` فقط | إحدى صلاحيات عرض Show Office أو المسابقات أو الفئات |
 | فئات البطولات | `show_office_classes` | `show_office.view` أو `show_office.classes.view` |
+| مشاركات البطولات | `show_office_entries` وRPC صفحة النتائج | `show_office.view` أو `show_office.entries.view` |
+| دليل الفارس والخيل والإسطبل | `cce_show_office_entry_directory()` بحقول تشغيلية محدودة | إحدى صلاحيات عرض أو إنشاء أو تعديل Entries |
 
 ## صلاحيات Show Office
 
 - عرض Dashboard أو قائمة المسابقات لا يمنح صلاحية التعديل تلقائيًا.
 - الإنشاء والتعديل والحذف تستخدم `show_office.competitions.create/update/delete` منفصلة.
 - تستخدم Classes مفاتيح `show_office.classes.view/create/update/delete` المستقلة؛ العرض فقط لا يظهر أزرار الإنشاء أو التعديل أو الحذف.
+- تستخدم Entries مفاتيح `show_office.entries.view/create/update/delete` المستقلة. حساب العرض فقط يستطيع البحث والقراءة ولا يرى أزرار الإنشاء أو التعديل أو الحذف، وتمنع RLS/RPC أي كتابة مباشرة منه.
 - لا توسع `show_office.classes.view` صلاحية قراءة جدول المسابقات. يستخدم اختيار البطولة RPC محدودة الحقول وتتحقق من الصلاحية داخل دالة `Security Definer`.
 - تحصل أدوار Super Admin وManager على الصلاحيات افتراضيًا؛ بقية الأدوار تحتاج منحًا صريحًا من Users & Permissions.
 - إخفاء الوحدة في الواجهة لتحسين التجربة فقط، بينما تفرض RLS الحماية الفعلية على الجدول.
 - يثبت Trigger هوية المنشئ وآخر معدل من جلسة Supabase، ولا يقبل تغيير `created_by` أو `created_at` عبر تحديث المتصفح.
-- تتطلب RPC الاستعادة المجمعة صلاحيتي `show_office.competitions.create` و`show_office.classes.create` وتتحقق منهما داخل دالة Security Definer قبل تجاوز RLS.
+- تتطلب RPC الاستعادة المجمعة صلاحيات الإنشاء لكل كيان موجود في الدفعة: المسابقات والفئات والمشاركات، وتتحقق منها داخل دالة Security Definer قبل تجاوز RLS.
 - لا تثق الاستعادة بـ IDs أو هويات التدقيق أو الطوابع القادمة من JSON؛ السجلات الجديدة تحمل هوية منفذ الاستعادة، ولا تتغير السجلات المكررة.
 - تتحقق JavaScript وPostgreSQL من بنية الصفوف والحالات والتواريخ والأطوال، وتُرفض الدفعة كاملة قبل الكتابة عند وجود سجل غير صالح.
 - تفرض قيود الجدول حدود 180 حرفًا للحقول النصية القصيرة و4,000 للملاحظات حتى على الطلبات المصادق عليها التي تتجاوز الواجهة.
+- لا تمنح الجداول الدائمة Rider/Horse/Stable صلاحية كتابة مباشرة للمتصفح؛ تنشئها RPC المشاركة الذرية بعد فحص الصلاحية، وتمنع الفهارس تكرار الاسم الموحّد.
 
 لا تستخدم نماذج المالية والجدول قراءة `instructors.*` للحصول على قائمة الاختيار عندما لا يملك الحساب صلاحية إدارة المدربين. RPC الدليلية في v4.8.0 لا تعيد كلمة المرور المخزنة أو الهاتف.
 

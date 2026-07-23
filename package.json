@@ -1,11 +1,11 @@
 {
   "name": "cce-stableos",
-  "version": "4.10.0",
+  "version": "4.11.0",
   "private": true,
   "type": "module",
   "description": "Country Club Equestrian stable management platform",
   "scripts": {
-    "check": "node --check app-bootstrap.js && node --check app-branding.js && node --check app-core.js && node --check horse-health.js && node --check member-portal.js && node --check show-office.js && node --check src/components/header/header-system.js && node --check src/core/config.js && node --check src/core/events.js && node --check src/core/store.js && node --check src/modules/health/health-service.js && node --check src/modules/horses/horse-service.js && node --check src/modules/horses/profile/care-panel.js && node --check src/modules/horses/profile/medical-panel.js && node --check src/modules/horses/profile/overview-panel.js && node --check src/modules/horses/profile/profile-shell.js && node --check src/modules/horses/profile/timeline-panel.js && node --check src/modules/horses/profile/vaccinations-panel.js && node --check src/modules/show-office/class-service.js && node --check src/modules/show-office/competition-service.js && node --check src/modules/show-office/show-office-module-service.js && node --check src/modules/timeline/timeline-service.js && node --check src/services/backup-runtime.js && node --check src/services/supabase-runtime.js && node --test tests/*.test.mjs"
+    "check": "node --check app-bootstrap.js && node --check app-branding.js && node --check app-core.js && node --check horse-health.js && node --check member-portal.js && node --check show-office.js && node --check src/components/header/header-system.js && node --check src/core/config.js && node --check src/core/events.js && node --check src/core/store.js && node --check src/modules/health/health-service.js && node --check src/modules/horses/horse-service.js && node --check src/modules/horses/profile/care-panel.js && node --check src/modules/horses/profile/medical-panel.js && node --check src/modules/horses/profile/overview-panel.js && node --check src/modules/horses/profile/profile-shell.js && node --check src/modules/horses/profile/timeline-panel.js && node --check src/modules/horses/profile/vaccinations-panel.js && node --check src/modules/show-office/class-service.js && node --check src/modules/show-office/competition-service.js && node --check src/modules/show-office/entry-service.js && node --check src/modules/show-office/show-office-module-service.js && node --check src/modules/timeline/timeline-service.js && node --check src/services/backup-runtime.js && node --check src/services/supabase-runtime.js && node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.4"

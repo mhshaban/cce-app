@@ -9,7 +9,13 @@
   let competitions = [];
   let classRows = [];
   let classTotal = 0;
+  let entryRows = [];
+  let entryContext = [];
+  let entryTotal = 0;
+  let entryPageTotal = 0;
   let selectedCompetitionId = '';
+  let selectedEntryCompetitionId = '';
+  let selectedEntryClassId = '';
   let loading = false;
   let loaded = false;
   let loadPromise = null;
@@ -19,9 +25,21 @@
   let classesPromise = null;
   let classesError = '';
   let classLoadRequest = 0;
+  let entriesLoading = false;
+  let entriesLoaded = false;
+  let entriesPromise = null;
+  let entriesError = '';
+  let entryLoadRequest = 0;
+  let entryPage = 0;
+  const ENTRY_PAGE_SIZE = 100;
+  let entryDirectory = {riders:[], horses:[], stables:[], core_horses:[]};
+  let entryDirectoryTimer = null;
+  let entrySearchTimer = null;
+  const entryDirectoryLabels = {rider:new Map(), horse:new Map(), stable:new Map()};
 
   const competitionService = () => showOffice.competitionService;
   const classService = () => showOffice.classService;
+  const entryService = () => showOffice.entryService;
   const clean = value => String(value == null ? '' : value).trim();
   const html = value => typeof window.esc === 'function'
     ? window.esc(value)
@@ -30,7 +48,8 @@
   const can = permission => typeof window.canUser === 'function' && window.canUser(permission);
   const canViewCompetitions = () => can('show_office.view') || can('show_office.competitions.view');
   const canViewClasses = () => can('show_office.view') || can('show_office.classes.view');
-  const canView = () => canViewCompetitions() || canViewClasses();
+  const canViewEntries = () => can('show_office.view') || can('show_office.entries.view');
+  const canView = () => canViewCompetitions() || canViewClasses() || canViewEntries();
 
   function competitionById(id) {
     return competitions.find(row => String(row.id) === String(id)) || null;
@@ -38,6 +57,10 @@
 
   function classById(id) {
     return classRows.find(row => String(row.id) === String(id)) || null;
+  }
+
+  function entryById(id) {
+    return entryRows.find(row => String(row.id) === String(id)) || null;
   }
 
   function setCompetitions(rows) {
@@ -63,6 +86,15 @@
     return classRows;
   }
 
+  function setEntries(rows) {
+    entryRows = (Array.isArray(rows) ? rows : []).map(entryService().normalize).sort((left, right) =>
+      Number(left.start_number || 0) - Number(right.start_number || 0)
+      || Number(left.id || 0) - Number(right.id || 0)
+    );
+    if (window.CCE.store) window.CCE.store.set('showOfficeEntries', entryRows);
+    return entryRows;
+  }
+
   function dateLabel(value) {
     if (!value) return 'Date not set';
     const date = new Date(`${value}T00:00:00`);
@@ -84,6 +116,15 @@
     }
     if (/show_office_classes_competition_number_uidx|duplicate key.*class/i.test(message)) {
       return 'This competition already has a class with the same class number.';
+    }
+    if (/show_office_entries_class_start_uidx|duplicate key.*start/i.test(message)) {
+      return 'This class already has the same start number.';
+    }
+    if (/show_office_entries_class_pair_uidx|duplicate key.*pair/i.test(message)) {
+      return 'This rider and horse are already entered in the selected class.';
+    }
+    if (/show_office_entries.*foreign key|show_office_entries_class_id_fkey/i.test(message)) {
+      return 'This class contains entries. Delete its entries before deleting the class.';
     }
     if (/show_office_classes|foreign key|23503/i.test(message)) {
       return 'This competition contains classes. Delete its classes before deleting the competition.';
@@ -162,7 +203,7 @@
       return;
     }
 
-    const totals = {...competitionService().dashboardStats(competitions), classes: classTotal};
+    const totals = {...competitionService().dashboardStats(competitions), classes: classTotal, entries: entryTotal};
     const warning = loadError ? loadWarningHtml(loadError, 'refreshShowOffice()') : '';
     stats.innerHTML = warning + [
       ['Total Competitions', totals.competitions],
@@ -255,6 +296,9 @@
 
   function classActions(row) {
     const actions = [];
+    if (canViewEntries()) {
+      actions.push(`<button class="action-btn so-class-link" onclick="openClassEntries('${attr(row.id)}')" title="Manage Entries">👥</button>`);
+    }
     if (can('show_office.classes.update')) {
       actions.push(`<button class="action-btn" onclick="openClassEditor('${attr(row.id)}')" title="Edit">✏️</button>`);
     }
@@ -369,10 +413,130 @@
       </tr>`).join('')}</tbody></table></div>`;
   }
 
+  function entryContextClass(id) {
+    return entryContext.find(row => String(row.class_id) === String(id)) || null;
+  }
+
+  function entryCompetitions() {
+    const rows = [];
+    const seen = new Set();
+    entryContext.forEach(row => {
+      const id = String(row.competition_id);
+      if (seen.has(id)) return;
+      seen.add(id);
+      rows.push({id, competition_name:row.competition_name, competition_date:row.competition_date});
+    });
+    return rows;
+  }
+
+  function renderEntrySelectors() {
+    const competitionSelector = document.getElementById('showOfficeEntryCompetition');
+    const classSelector = document.getElementById('showOfficeEntryClass');
+    const createButton = document.getElementById('showOfficeEntryCreate');
+    if (!competitionSelector || !classSelector) return;
+    const competitionsForEntries = entryCompetitions();
+    if (!competitionsForEntries.some(row => String(row.id) === selectedEntryCompetitionId)) {
+      selectedEntryCompetitionId = competitionsForEntries[0]?.id || '';
+    }
+    const classes = entryContext.filter(row => String(row.competition_id) === selectedEntryCompetitionId);
+    if (!classes.some(row => String(row.class_id) === selectedEntryClassId)) {
+      selectedEntryClassId = classes[0] ? String(classes[0].class_id) : '';
+      entriesLoaded = false;
+      setEntries([]);
+    }
+    competitionSelector.innerHTML = competitionsForEntries.length
+      ? competitionsForEntries.map(row => `<option value="${attr(row.id)}">${html(row.competition_name)} — ${html(row.competition_date)}</option>`).join('')
+      : '<option value="">No competitions with classes</option>';
+    competitionSelector.value = selectedEntryCompetitionId;
+    competitionSelector.disabled = !competitionsForEntries.length || entriesLoading;
+    classSelector.innerHTML = classes.length
+      ? classes.map(row => `<option value="${attr(row.class_id)}">${html(row.class_number)} · ${html(row.class_name)}</option>`).join('')
+      : '<option value="">No classes available</option>';
+    classSelector.value = selectedEntryClassId;
+    classSelector.disabled = !classes.length || entriesLoading;
+    if (createButton) createButton.disabled = !selectedEntryClassId || entriesLoading;
+  }
+
+  function entryActions(row) {
+    const actions = [];
+    if (can('show_office.entries.update')) {
+      actions.push(`<button class="action-btn" onclick="openEntryEditor('${attr(row.id)}')" title="Edit">✏️</button>`);
+    }
+    if (can('show_office.entries.delete')) {
+      actions.push(`<button class="action-btn so-delete" onclick="deleteShowOfficeEntry('${attr(row.id)}')" title="Delete">🗑️</button>`);
+    }
+    return actions.length ? actions.join('') : '<span class="so-read-only">View only</span>';
+  }
+
+  function entryCard(row) {
+    return `<article class="so-entry-card">
+      <div class="so-entry-card-head"><span class="so-start-number">${html(row.start_number)}</span><span><strong>${html(row.rider_name)}</strong><small>${html(row.horse_name)}</small></span></div>
+      <div class="so-entry-stable">${html(row.stable_name || 'Independent entry')}</div>
+      <div class="so-actions">${entryActions(row)}</div>
+    </article>`;
+  }
+
+  function renderShowOfficeEntries() {
+    const target = document.getElementById('showOfficeEntryTable');
+    const count = document.getElementById('showOfficeEntryCount');
+    const pagination = document.getElementById('showOfficeEntryPagination');
+    if (!target || !count) return;
+    renderEntrySelectors();
+    if (!canViewEntries()) {
+      count.textContent = '0';
+      target.innerHTML = stateHtml('Entry access is not available for this account.', '👥');
+      if (pagination) pagination.innerHTML = '';
+      return;
+    }
+    if (!entryContext.length && loading) {
+      count.textContent = '…';
+      target.innerHTML = stateHtml('Loading competition classes…', '👥');
+      return;
+    }
+    if (!entryContext.length) {
+      count.textContent = '0';
+      target.innerHTML = '<div class="so-empty"><span>🏇</span><strong>Create a class first</strong><p>Every entry belongs to one competition class.</p></div>';
+      if (pagination) pagination.innerHTML = '';
+      return;
+    }
+    if (entriesLoading && !entriesLoaded) {
+      count.textContent = '…';
+      target.innerHTML = stateHtml('Loading entries…', '👥');
+      return;
+    }
+    if (entriesError && !entriesLoaded) {
+      count.textContent = '0';
+      target.innerHTML = `${stateHtml(entriesError, '⚠️')}<button class="btn btn-amber" onclick="refreshShowOfficeEntries()">Try again</button>`;
+      return;
+    }
+    if (!entriesLoaded) {
+      count.textContent = '0';
+      target.innerHTML = stateHtml('Select a class to load its entries.', '👥');
+      return;
+    }
+    const warning = entriesError ? loadWarningHtml(entriesError, 'refreshShowOfficeEntries()') : '';
+    const from = entryPageTotal ? entryPage * ENTRY_PAGE_SIZE + 1 : 0;
+    const to = Math.min((entryPage + 1) * ENTRY_PAGE_SIZE, entryPageTotal);
+    count.textContent = entryPageTotal ? `${from}–${to} / ${entryPageTotal}` : '0';
+    if (!entryRows.length) {
+      target.innerHTML = warning + '<div class="so-empty"><span>👥</span><strong>No matching entries</strong><p>Add an entry or change the search.</p></div>';
+    } else {
+      target.innerHTML = `${warning}<div class="so-entry-cards">${entryRows.map(entryCard).join('')}</div><div class="so-entry-table-wrap"><table class="so-table so-entry-table"><thead><tr><th>Start No.</th><th>Rider</th><th>Horse</th><th>Stable / Club</th><th>Actions</th></tr></thead><tbody>${entryRows.map(row => `
+        <tr><td><span class="so-start-number">${html(row.start_number)}</span></td><td><strong>${html(row.rider_name)}</strong></td><td>${html(row.horse_name)}</td><td>${html(row.stable_name || '—')}</td><td><div class="so-actions">${entryActions(row)}</div></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    if (pagination) {
+      const pages = Math.max(1, Math.ceil(entryPageTotal / ENTRY_PAGE_SIZE));
+      pagination.innerHTML = entryPageTotal > ENTRY_PAGE_SIZE
+        ? `<button class="action-btn" ${entryPage<=0?'disabled':''} onclick="changeShowOfficeEntryPage(-1)">Previous</button><span>Page ${entryPage+1} of ${pages}</span><button class="action-btn" ${entryPage+1>=pages?'disabled':''} onclick="changeShowOfficeEntryPage(1)">Next</button>`
+        : '';
+    }
+  }
+
   function render() {
     renderShowOfficeDashboard();
     renderCompetitions();
     renderShowOfficeClasses();
+    renderShowOfficeEntries();
     document.querySelectorAll('[data-show-office-permission]').forEach(node => {
       node.style.display = can(node.dataset.showOfficePermission) ? '' : 'none';
     });
@@ -389,12 +553,21 @@
     render();
     loadPromise = (async () => {
       try {
-        const [competitionRows, totalClasses] = await Promise.all([
-          canViewCompetitions() ? competitionService().list() : competitionService().listClassDirectory(),
-          canViewClasses() ? classService().countAll() : Promise.resolve(0)
+        const [competitionRows, totalClasses, totalEntries, contextRows] = await Promise.all([
+          canViewCompetitions() ? competitionService().list()
+            : canViewClasses() ? competitionService().listClassDirectory() : Promise.resolve([]),
+          canViewClasses() ? classService().countAll() : Promise.resolve(0),
+          canViewEntries() ? entryService().countAll() : Promise.resolve(0),
+          canViewEntries() ? entryService().context() : Promise.resolve([])
         ]);
-        setCompetitions(competitionRows);
+        entryContext = contextRows;
+        const limitedCompetitions = competitionRows.length ? competitionRows : entryCompetitions().map(row => ({
+          id:Number(row.id), competition_name:row.competition_name,
+          competition_date:row.competition_date, status:'Draft'
+        }));
+        setCompetitions(limitedCompetitions);
         classTotal = totalClasses;
+        entryTotal = totalEntries;
         loaded = true;
         return competitions;
       } catch (error) {
@@ -455,11 +628,68 @@
     return classesPromise;
   }
 
+  async function loadEntriesForClass(id, options = {}) {
+    if (!canViewEntries()) return [];
+    const contextRow = entryContextClass(id);
+    if (!contextRow) {
+      entryLoadRequest += 1;
+      setEntries([]);
+      selectedEntryClassId = '';
+      entriesLoaded = false;
+      render();
+      return [];
+    }
+    const nextId = String(contextRow.class_id);
+    if (entriesPromise && selectedEntryClassId === nextId && !options.force) return entriesPromise;
+    if (selectedEntryClassId !== nextId) {
+      setEntries([]);
+      entriesLoaded = false;
+      entryPage = 0;
+    }
+    selectedEntryCompetitionId = String(contextRow.competition_id);
+    selectedEntryClassId = nextId;
+    const request = ++entryLoadRequest;
+    entriesLoading = true;
+    entriesError = '';
+    render();
+    entriesPromise = (async () => {
+      try {
+        const result = await entryService().page(nextId, {
+          search: formValue('showOfficeEntrySearch'), limit: ENTRY_PAGE_SIZE,
+          offset: entryPage * ENTRY_PAGE_SIZE
+        });
+        if (request !== entryLoadRequest) return [];
+        setEntries(result.rows);
+        entryPageTotal = result.total;
+        entriesLoaded = true;
+        return entryRows;
+      } catch (error) {
+        if (request !== entryLoadRequest) return [];
+        entriesError = friendlyError(error);
+        if (options.throwOnError) throw error;
+        return [];
+      } finally {
+        if (request === entryLoadRequest) {
+          entriesLoading = false;
+          entriesPromise = null;
+          render();
+        }
+      }
+    })();
+    return entriesPromise;
+  }
+
   function clear() {
     competitions = [];
     classRows = [];
     classTotal = 0;
+    entryRows = [];
+    entryContext = [];
+    entryTotal = 0;
+    entryPageTotal = 0;
     selectedCompetitionId = '';
+    selectedEntryCompetitionId = '';
+    selectedEntryClassId = '';
     loading = false;
     loaded = false;
     loadPromise = null;
@@ -469,9 +699,17 @@
     classesPromise = null;
     classesError = '';
     classLoadRequest += 1;
+    entriesLoading = false;
+    entriesLoaded = false;
+    entriesPromise = null;
+    entriesError = '';
+    entryLoadRequest += 1;
+    entryPage = 0;
+    entryDirectory = {riders:[], horses:[], stables:[], core_horses:[]};
     if (window.CCE.store) {
       window.CCE.store.set('showOfficeCompetitions', []);
       window.CCE.store.set('showOfficeClasses', []);
+      window.CCE.store.set('showOfficeEntries', []);
     }
     render();
   }
@@ -643,13 +881,187 @@
     }
   };
 
+  function entryDirectoryLabel(type, row) {
+    if (type === 'rider') return `${row.rider_name} · R-${row.id}`;
+    if (type === 'stable') return `${row.stable_name} · S-${row.id}`;
+    if (row.coreOnly) return `${row.horse_name}${row.stable_no ? ` · Stable #${row.stable_no}` : ''} · CORE-${row.id}`;
+    return `${row.horse_name} · H-${row.id}`;
+  }
+
+  function registerEntryDirectory(value, current = null) {
+    entryDirectory = value || {riders:[], horses:[], stables:[], core_horses:[]};
+    entryDirectoryLabels.rider = new Map();
+    entryDirectoryLabels.horse = new Map();
+    entryDirectoryLabels.stable = new Map();
+    entryDirectory.riders.forEach(row => entryDirectoryLabels.rider.set(entryDirectoryLabel('rider', row), {rider_id:row.id}));
+    entryDirectory.horses.forEach(row => entryDirectoryLabels.horse.set(entryDirectoryLabel('horse', row), {horse_id:row.id}));
+    entryDirectory.core_horses.forEach(row => {
+      const item = {...row, coreOnly:true};
+      entryDirectoryLabels.horse.set(entryDirectoryLabel('horse', item), {core_horse_id:row.id});
+    });
+    entryDirectory.stables.forEach(row => entryDirectoryLabels.stable.set(entryDirectoryLabel('stable', row), {stable_id:row.id}));
+    if (current) {
+      entryDirectoryLabels.rider.set(`${current.rider_name} · R-${current.rider_id}`, {rider_id:current.rider_id});
+      entryDirectoryLabels.horse.set(`${current.horse_name} · H-${current.horse_id}`, {horse_id:current.horse_id});
+      if (current.stable_id) entryDirectoryLabels.stable.set(`${current.stable_name} · S-${current.stable_id}`, {stable_id:current.stable_id});
+    }
+  }
+
+  function renderEntryDatalists() {
+    const riderList = document.getElementById('so-entry-rider-list');
+    const horseList = document.getElementById('so-entry-horse-list');
+    const stableList = document.getElementById('so-entry-stable-list');
+    if (riderList) riderList.innerHTML = [...entryDirectoryLabels.rider.keys()].map(label => `<option value="${attr(label)}"></option>`).join('');
+    if (horseList) horseList.innerHTML = [...entryDirectoryLabels.horse.keys()].map(label => `<option value="${attr(label)}"></option>`).join('');
+    if (stableList) stableList.innerHTML = [...entryDirectoryLabels.stable.keys()].map(label => `<option value="${attr(label)}"></option>`).join('');
+  }
+
+  window.queueEntryDirectorySearch = function queueEntryDirectorySearch(value) {
+    const query = clean(value).replace(/\s·\s(?:R|H|S|CORE)-.*$/, '');
+    window.clearTimeout(entryDirectoryTimer);
+    entryDirectoryTimer = window.setTimeout(async () => {
+      try {
+        const current = window._soEntryEditor || null;
+        registerEntryDirectory(await entryService().directory(query), current);
+        renderEntryDatalists();
+      } catch (error) {
+        const target = document.getElementById('so-entry-directory-note');
+        if (target) target.textContent = friendlyError(error);
+      }
+    }, 220);
+  };
+
+  function entryDirectoryChoice(type, value) {
+    const raw = clean(value);
+    const selected = entryDirectoryLabels[type].get(raw);
+    if (selected) return selected;
+    if (type === 'stable') return raw ? {stable_name:raw} : {stable_id:null, stable_name:null};
+    return type === 'rider' ? {rider_name:raw} : {horse_name:raw};
+  }
+
+  window.openEntryEditor = async function openEntryEditor(id = '') {
+    const row = id ? entryById(id) : null;
+    const permission = row ? 'show_office.entries.update' : 'show_office.entries.create';
+    if (!can(permission)) return reportError('Show Office', new Error('Permission denied'));
+    const contextRow = entryContextClass(row?.class_id || selectedEntryClassId);
+    if (!contextRow) return reportError('Show Office', new Error('Select a competition class before adding entries.'));
+    try {
+      registerEntryDirectory(await entryService().directory(''), row);
+    } catch (error) {
+      return reportError('Load entry directory', error);
+    }
+    window._soEntryEditor = row;
+    const riderValue = row ? `${row.rider_name} · R-${row.rider_id}` : '';
+    const horseValue = row ? `${row.horse_name} · H-${row.horse_id}` : '';
+    const stableValue = row?.stable_id ? `${row.stable_name} · S-${row.stable_id}` : '';
+    window.openModal(row ? 'Edit Entry' : 'New Entry', `
+      <div class="so-modal-intro"><span>👥</span><div><strong>${row ? 'Update competition entry' : 'Register rider and horse'}</strong><small>${html(contextRow.competition_name)} · Class ${html(contextRow.class_number)}</small></div></div>
+      <form id="showOfficeEntryForm" onsubmit="event.preventDefault();saveShowOfficeEntry('${attr(row?.id || '')}')">
+        <div class="form-grid">
+          <div class="form-group"><label for="so-entry-start">Start Number *</label><input id="so-entry-start" min="1" max="2147483647" step="1" type="number" required value="${attr(row?.start_number || '')}" placeholder="Example: 12"></div>
+          <div class="form-group"><label>Competition Class</label><input disabled value="${attr(`${contextRow.class_number} · ${contextRow.class_name}`)}"></div>
+          <div class="form-group" style="grid-column:1/-1"><label for="so-entry-rider">Rider *</label><input autocomplete="off" id="so-entry-rider" list="so-entry-rider-list" maxlength="220" oninput="queueEntryDirectorySearch(this.value)" required value="${attr(riderValue)}" placeholder="Search or type a new permanent rider"><datalist id="so-entry-rider-list"></datalist></div>
+          <div class="form-group" style="grid-column:1/-1"><label for="so-entry-horse">Horse *</label><input autocomplete="off" id="so-entry-horse" list="so-entry-horse-list" maxlength="240" oninput="queueEntryDirectorySearch(this.value)" required value="${attr(horseValue)}" placeholder="Search stable horses or type a new competition horse"><datalist id="so-entry-horse-list"></datalist></div>
+          <div class="form-group" style="grid-column:1/-1"><label for="so-entry-stable">Stable / Club</label><input autocomplete="off" id="so-entry-stable" list="so-entry-stable-list" maxlength="220" oninput="queueEntryDirectorySearch(this.value)" value="${attr(stableValue)}" placeholder="Optional — search or create"><datalist id="so-entry-stable-list"></datalist></div>
+        </div>
+        <div class="so-entry-help" id="so-entry-directory-note">Selecting a suggestion reuses the existing record. Plain text creates a permanent Show Office record; no Guest Rider is created.</div>
+        <div id="so-entry-form-error" class="so-form-error" role="alert"></div>
+        <div class="btn-row"><button class="btn btn-amber" id="so-entry-save" type="submit">${row ? 'Save Changes' : 'Create Entry'}</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()" type="button">Cancel</button></div>
+      </form>`);
+    renderEntryDatalists();
+    window.setTimeout(() => document.getElementById('so-entry-start')?.focus(), 0);
+  };
+
+  window.saveShowOfficeEntry = async function saveShowOfficeEntry(id = '') {
+    const existing = id ? entryById(id) : null;
+    const permission = existing ? 'show_office.entries.update' : 'show_office.entries.create';
+    if (!can(permission)) return reportError('Show Office', new Error('Permission denied'));
+    const button = document.getElementById('so-entry-save');
+    const error = document.getElementById('so-entry-form-error');
+    const payload = {
+      class_id: selectedEntryClassId,
+      start_number: formValue('so-entry-start'),
+      ...entryDirectoryChoice('rider', formValue('so-entry-rider')),
+      ...entryDirectoryChoice('horse', formValue('so-entry-horse')),
+      ...entryDirectoryChoice('stable', formValue('so-entry-stable'))
+    };
+    try {
+      if (error) error.style.display = 'none';
+      if (button) { button.disabled = true; button.textContent = 'Saving…'; }
+      await entryService().save(existing?.id || '', payload);
+      if (!existing) entryTotal += 1;
+      window._soEntryEditor = null;
+      window.closeModal();
+      await loadEntriesForClass(selectedEntryClassId, {force:true});
+    } catch (saveError) {
+      if (error) { error.textContent = friendlyError(saveError); error.style.display = 'block'; }
+      if (button) { button.disabled = false; button.textContent = existing ? 'Save Changes' : 'Create Entry'; }
+    }
+  };
+
+  window.deleteShowOfficeEntry = async function deleteShowOfficeEntry(id) {
+    const row = entryById(id);
+    if (!row || !can('show_office.entries.delete')) return reportError('Show Office', new Error('Permission denied'));
+    if (!window.confirm(`Delete start number ${row.start_number}: ${row.rider_name} / ${row.horse_name}?\n\nThis action cannot be undone.`)) return;
+    try {
+      await entryService().remove(row.id, row);
+      entryTotal = Math.max(0, entryTotal - 1);
+      if (entryRows.length === 1 && entryPage > 0) entryPage -= 1;
+      await loadEntriesForClass(selectedEntryClassId, {force:true});
+    } catch (error) {
+      reportError('Delete entry', error);
+    }
+  };
+
+  window.openClassEntries = async function openClassEntries(id) {
+    if (!canViewEntries()) return reportError('Show Office', new Error('Permission denied'));
+    const row = entryContextClass(id);
+    if (!row) return reportError('Show Office', new Error('Entry context is not available. Refresh Show Office and try again.'));
+    selectedEntryCompetitionId = String(row.competition_id);
+    selectedEntryClassId = String(row.class_id);
+    entryPage = 0;
+    window.showDashPage('show-office-entries', document.getElementById('nav-show-office-entries'));
+    await loadEntriesForClass(selectedEntryClassId, {force:true});
+  };
+
+  window.selectShowOfficeEntryCompetition = function selectShowOfficeEntryCompetition(id) {
+    selectedEntryCompetitionId = String(id || '');
+    selectedEntryClassId = '';
+    entryPage = 0;
+    entriesLoaded = false;
+    render();
+    return selectedEntryClassId ? loadEntriesForClass(selectedEntryClassId) : Promise.resolve([]);
+  };
+
+  window.selectShowOfficeEntryClass = function selectShowOfficeEntryClass(id) {
+    entryPage = 0;
+    return loadEntriesForClass(id, {force:true});
+  };
+
+  window.searchShowOfficeEntries = function searchShowOfficeEntries() {
+    window.clearTimeout(entrySearchTimer);
+    entrySearchTimer = window.setTimeout(() => {
+      entryPage = 0;
+      if (selectedEntryClassId) loadEntriesForClass(selectedEntryClassId, {force:true});
+    }, 250);
+  };
+
+  window.changeShowOfficeEntryPage = function changeShowOfficeEntryPage(direction) {
+    const pages = Math.max(1, Math.ceil(entryPageTotal / ENTRY_PAGE_SIZE));
+    entryPage = Math.max(0, Math.min(entryPage + Number(direction || 0), pages - 1));
+    return loadEntriesForClass(selectedEntryClassId, {force:true});
+  };
+
   window.renderShowOfficeDashboard = renderShowOfficeDashboard;
   window.renderCompetitions = renderCompetitions;
   window.renderShowOfficeClasses = renderShowOfficeClasses;
+  window.renderShowOfficeEntries = renderShowOfficeEntries;
   window.refreshShowOffice = () => load({force: true});
   window.refreshShowOfficeClasses = () => selectedCompetitionId
     ? loadClassesForCompetition(selectedCompetitionId, {force: true})
     : Promise.resolve([]);
+  window.refreshShowOfficeEntries = () => selectedEntryClassId
+    ? loadEntriesForClass(selectedEntryClassId, {force:true}) : Promise.resolve([]);
   showOffice.load = load;
   showOffice.open = async page => {
     render();
@@ -658,12 +1070,20 @@
       const competition = ensureSelectedCompetition();
       if (competition && (!classesLoaded || classesError)) await loadClassesForCompetition(competition.id);
     }
+    if (page === 'show-office-entries' && canViewEntries()) {
+      renderEntrySelectors();
+      if (selectedEntryClassId && (!entriesLoaded || entriesError)) {
+        await loadEntriesForClass(selectedEntryClassId);
+      }
+    }
   };
   showOffice.clear = clear;
   showOffice.render = render;
   showOffice.getCompetitions = () => competitions.slice();
   showOffice.getClasses = () => classRows.slice();
   showOffice.getClassTotal = () => classTotal;
+  showOffice.getEntries = () => entryRows.slice();
+  showOffice.getEntryTotal = () => entryTotal;
   // Keep remote-main localStorage data untouched for compatibility/recovery; it is no longer an active data source.
   showOffice.legacyStorageKey = LEGACY_STORAGE_KEY;
 
