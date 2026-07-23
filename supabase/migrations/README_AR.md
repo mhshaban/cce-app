@@ -29,3 +29,10 @@
 5. اتبع `../../docs/DEPLOYMENT_V480.md` لاختبارات القبول والرجوع التوافقي.
 
 إذا كان v4.8.0 قد طُبق بالفعل، لا تُسند كل سجلات Lesson القديمة. شغّل `../verification/preflight_v481.sql` ثم `20260719_training_split_cutover_v481.sql` و`../verification/verify_v481.sql`. اتبع `../../docs/DEPLOYMENT_V481.md`؛ التصحيح يحفظ المبالغ التاريخية كما كانت ويطبّق 50/50 على السجلات الجديدة فقط.
+
+للانتقال من Show Office v4.10.0 إلى v4.11.0:
+
+1. خذ نسخة احتياطية ثم شغّل `../verification/preflight_v4110.sql`؛ يجب أن تكون متطلبات v4.10.0 جاهزة وألا توجد بيانات Sprint 3 غير صالحة أو أسماء دليل مكررة.
+2. شغّل `20260723_show_office_sprint3_entries_v4110.sql` ثم `../verification/verify_v4110.sql`.
+3. انشر واجهة v4.11.0 بمفتاح الأصول `20260723-4110` واختبر Matrix الصلاحيات والنسخ والاستعادة.
+4. اتبع `../../docs/DEPLOYMENT_V4110.md`. ملف `../rollback/rollback_v4110_compatibility.sql` يحفظ كل سجلات Sprint 3 لكنه يعطل وصول المتصفح ويعيد RPC الاستعادة إلى عقد v4.10.0.

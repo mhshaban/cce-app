@@ -270,7 +270,7 @@ const DASH_GROUPS={
   finance:['income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
   horses:['horses','health','breeding'],
-  showoffice:['show-office','competitions','show-office-classes'],
+  showoffice:['show-office','competitions','show-office-classes','show-office-entries'],
   management:['users','notifications','audit','tools']
 };
 function dashGroupForPage(id){
@@ -304,6 +304,7 @@ function showDashPage(id, btn) {
   if(id==='show-office'&&typeof renderShowOfficeDashboard==='function') renderShowOfficeDashboard();
   if(id==='competitions'&&typeof renderCompetitions==='function') renderCompetitions();
   if(id==='show-office-classes'&&typeof renderShowOfficeClasses==='function') renderShowOfficeClasses();
+  if(id==='show-office-entries'&&typeof renderShowOfficeEntries==='function') renderShowOfficeEntries();
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',()=>updateDashGroupedNav('dashboard'));
@@ -4148,7 +4149,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.10.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.11.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4241,7 +4242,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260722-4100', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260723-4110', {scope:'./'})
       .then(reg => {
 
         reg.update();
