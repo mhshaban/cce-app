@@ -2,7 +2,7 @@
 
 Enterprise Stable Management Platform for Country Club Equestrian.
 
-الإصدار الحالي: **4.11.0**
+الإصدار الحالي: **4.12.0**
 
 ## وثائق المشروع
 
@@ -19,6 +19,7 @@ Enterprise Stable Management Platform for Country Club Equestrian.
 - [دليل نشر Show Office Sprint 1.1 v4.9.1](docs/DEPLOYMENT_V491.md)
 - [دليل نشر Show Office Sprint 2 v4.10.0](docs/DEPLOYMENT_V4100.md)
 - [دليل نشر Show Office Sprint 3 v4.11.0](docs/DEPLOYMENT_V4110.md)
+- [دليل نشر Show Office Sprint 4 v4.12.0](docs/DEPLOYMENT_V4120.md)
 - [سجل التغييرات](docs/CHANGELOG.md)
 
 ## الفحص المحلي

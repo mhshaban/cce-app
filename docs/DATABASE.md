@@ -25,6 +25,9 @@ Supabase PostgreSQL هو مصدر البيانات. مخطط الجداول ال
 | `show_office_horses` | سجل خيل المشاركات | مرجع UUID محمول وربط اختياري بـ`horses` عبر `core_horse_id` |
 | `show_office_stables` | سجل الإسطبلات والأندية | مرجع UUID محمول واسم موحّد فريد |
 | `show_office_entries` | مشاركات الفئة | فئة وفارس وخيل وإسطبل اختياري مع منع تكرار رقم البداية أو زوج الفارس/الخيل داخل الفئة |
+| `show_office_class_judging` | دورة حياة تحكيم الفئة | سجل واحد لكل فئة بدأ تحكيمها |
+| `show_office_entry_rounds` | النتيجة الرسمية لكل مرحلة | نتيجة واحدة لكل مشاركة و`first_round / jump_off` |
+| `show_office_score_revisions` | سجل تصحيحات النتائج | سجل Append-only يحتفظ بما قبل وبعد كل تغيير |
 
 ## Show Office Sprint 1
 
@@ -42,7 +45,7 @@ Supabase PostgreSQL هو مصدر البيانات. مخطط الجداول ال
 
 ### استعادة نسخ Show Office
 
-يستخدم v4.11.0 الدالة `cce_restore_show_office_module(jsonb)` لاستقبال كائن يحتوي `competitions / classes / riders / horses / stables / entries`. النسخ القديمة التي لا تحمل أحد كيانات Sprint 2 أو Sprint 3 تعامله كمصفوفة فارغة. تتحقق الواجهة وقاعدة البيانات من كامل الدفعة ومن جميع المراجع قبل الإكمال. أي صف غير صالح يلغي دفعة Show Office كاملة؛ استعادة الوحدة ذرية. الاستعادة العامة للجداول القديمة المتعددة تبقى Best-effort وقد تكتمل جزئيًا.
+يستخدم v4.12.0 الدالة `cce_restore_show_office_module(jsonb)` لاستقبال كائن يحتوي `competitions / classes / riders / horses / stables / entries / judging / scores`. النسخ القديمة التي لا تحمل كيانات Sprint 2 أو 3 أو 4 تعامل الحقول المفقودة كمصفوفات فارغة. تتحقق الواجهة وقاعدة البيانات من كامل الدفعة ومن جميع المراجع قبل الإكمال. أي صف غير صالح يلغي دفعة Show Office كاملة؛ استعادة الوحدة ذرية. الاستعادة العامة للجداول القديمة المتعددة تبقى Best-effort وقد تكتمل جزئيًا.
 
 تفرض PostgreSQL الحدود نفسها التي تفرضها الواجهة: 180 حرفًا لكل من الاسم والمكان والمنظم والحكم الرئيسي ومصمم المسار، و4,000 حرف للملاحظات. لذلك لا يمكن لطلب مصادق مباشر تجاوز تحقق التطبيق.
 
@@ -55,6 +58,25 @@ Supabase PostgreSQL هو مصدر البيانات. مخطط الجداول ال
 `show_office_entries` يرتبط بـ`show_office_classes` و`show_office_riders` و`show_office_horses` و`show_office_stables` باستخدام `ON DELETE RESTRICT`. الحذف فعلي وليس Soft Delete؛ لا يمكن حذف فئة أو سجل مرجعي قبل حذف المشاركات التابعة. يحفظ `start_number` عددًا صحيحًا موجبًا، ويمنع فهرسان فريدان تكرار رقم البداية أو زوج الفارس/الخيل داخل الفئة.
 
 واجهة Entries لا تكتب سجلات الدليل مباشرة. تستدعي `cce_save_show_office_entry` التي تتحقق من صلاحية العملية، تعيد استخدام الدليل أو تنشئه، ثم تحفظ المشاركة ذريًا. القراءة الكبيرة تستخدم `cce_show_office_entries_page` مع بحث وPaging خادمي. النسخة الاحتياطية تقرأ جميع الجداول بتصفح Keyset وتزيل IDs المحلية؛ عند الاستعادة تستخدم UUIDs المحمولة، وتستطيع مطابقة سجل موجود بالاسم الموحّد إذا اختلف UUID بين البيئتين.
+
+## Show Office Sprint 4
+
+يحفظ `show_office_entry_rounds` الوقت بوحدة millisecond في `time_ms`، والأخطاء الرسمية في `faults numeric(8,2)`، والرفض في `refusals`. الحالات `eliminated / retired / did_not_start` متنافية؛ DNS لا يحمل وقتًا أو أخطاء أو رفضًا. النتيجة المكتملة العادية تتطلب وقتًا وأخطاء. يمنع الفهرس الفريد أكثر من نتيجة للمشاركة والمرحلة.
+
+الترتيب المؤقت يضع النتائج الصالحة حسب الأخطاء الرسمية المدخلة ثم الوقت، ويستخدم نتيجة Jump-Off عند وجودها في فئة تسمح بها. لا يحسب Sprint 4 عقوبات من Refusals أو Allowed Time، ولا يدعم Table C أو Optimum Time أو Two Phase. هذه قواعد مستقبلية ولا يجوز استنتاجها ضمنيًا.
+
+`show_office_class_judging.status` هو `Not Started / Running / Finalized`. لا تقبل RPC الحفظ إلا عندما تكون البطولة `Running`. Finalize يتطلب نتيجة First Round لكل مشاركة ويقفل كل تغيير، وReopen يعيد الفئة إلى Running. `row_version` يزداد عند كل تصحيح ويجعل الحفظ أو المسح القديم يفشل بدل الكتابة فوق تحديث جهاز آخر.
+
+لا تمنح الجداول الثلاثة أي كتابة مباشرة للمتصفح. القراءة محمية بـRLS، والكتابة تمر عبر RPCs ذات `search_path` ثابت وتحقق صلاحيات:
+
+- `show_office.judging.view`: قراءة اللوحة والترتيب.
+- `show_office.judging.score`: إنشاء وتصحيح ومسح النتائج.
+- `show_office.judging.finalize`: اعتماد وقفل الفئة.
+- `show_office.judging.reopen`: إعادة فتح فئة معتمدة.
+
+يحصل Manager وSuper Admin على الأربع افتراضيًا. دور Judge يحصل على العرض والتسجيل فقط. يسجل Trigger كل Create/Update/Reset في `show_office_score_revisions`؛ حذف النتيجة لا يحذف تاريخها. علاقات `RESTRICT` تمنع حذف مشاركة لها نتيجة أو فئة لها سجل تحكيم قبل معالجة البيانات التابعة صراحةً.
+
+نسخة Sprint 4 تصدر `judging / scores` من Supabase مباشرة بتصفح Keyset. لا تصدر سجل المراجعات بوصفه سجلًا أمنيًا محليًا للبيئة؛ إنشاء النتيجة المستعادة يولد Revision جديدًا باسم منفذ الاستعادة. تمنع الاستعادة مكررات UUID ومكررات Entry/Phase، وتتحقق من First Round قبل Jump-Off ومن اكتمال الفئة المعتمدة.
 
 ## قاعدة الحالة
 
@@ -127,7 +149,7 @@ Supabase PostgreSQL هو مصدر البيانات. مخطط الجداول ال
 5. تطبيق الترحيل على الإنتاج في نافذة صيانة قصيرة، ثم نشر الواجهة المتوافقة مباشرة.
 6. تسجيل النتيجة الفعلية في CHANGELOG.
 
-تعليمات v4.7.0 موجودة في `docs/DEPLOYMENT_V470.md`، وتعليمات تقسيم التدريب في `docs/DEPLOYMENT_V480.md`، وتصحيح القطع التاريخي الإلزامي في `docs/DEPLOYMENT_V481.md`، وتعليمات إنشاء حصص الباقة في `docs/DEPLOYMENT_V482.md`، وتعليمات Show Office في `docs/DEPLOYMENT_V490.md` و`docs/DEPLOYMENT_V491.md` و`docs/DEPLOYMENT_V4100.md` و`docs/DEPLOYMENT_V4110.md`. ملفات Rollback التوافقية لا تحذف بيانات وتستخدم للطوارئ فقط.
+تعليمات v4.7.0 موجودة في `docs/DEPLOYMENT_V470.md`، وتعليمات تقسيم التدريب في `docs/DEPLOYMENT_V480.md`، وتصحيح القطع التاريخي الإلزامي في `docs/DEPLOYMENT_V481.md`، وتعليمات إنشاء حصص الباقة في `docs/DEPLOYMENT_V482.md`، وتعليمات Show Office في `docs/DEPLOYMENT_V490.md` و`docs/DEPLOYMENT_V491.md` و`docs/DEPLOYMENT_V4100.md` و`docs/DEPLOYMENT_V4110.md` و`docs/DEPLOYMENT_V4120.md`. ملفات Rollback التوافقية لا تحذف بيانات وتستخدم للطوارئ فقط.
 
 ## ضوابط الأمان
 
