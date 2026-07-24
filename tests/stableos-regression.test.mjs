@@ -244,6 +244,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260722_show_office_sprint2_classes_v4100.sql',
     'supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql',
     'supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql',
+    'supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -262,6 +263,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4110.sql',
     'supabase/verification/preflight_v4120.sql',
     'supabase/verification/verify_v4120.sql',
+    'supabase/verification/preflight_v4130.sql',
+    'supabase/verification/verify_v4130.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -276,7 +279,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v491_compatibility.sql',
     'supabase/rollback/rollback_v4100_compatibility.sql',
     'supabase/rollback/rollback_v4110_compatibility.sql',
-    'supabase/rollback/rollback_v4120_compatibility.sql'
+    'supabase/rollback/rollback_v4120_compatibility.sql',
+    'supabase/rollback/rollback_v4130_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -290,18 +294,33 @@ test('Show Office preserves the current main UI while using one permission-aware
   const sprintTwo=read('supabase/migrations/20260722_show_office_sprint2_classes_v4100.sql');
   const sprintThree=read('supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql');
   const sprintFour=read('supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql');
+  const sprintFive=read('supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql');
+  const liveResults=read('live-results.js');
   for(const marker of [
-    'dash-group-showoffice','nav-show-office','nav-competitions','nav-show-office-classes','nav-show-office-entries','nav-show-office-judge',
-    'page-show-office','page-competitions','page-show-office-classes','page-show-office-entries','page-show-office-judge','showOfficeStats',
+    'dash-group-showoffice','nav-show-office','nav-competitions','nav-show-office-classes','nav-show-office-entries','nav-show-office-judge','nav-show-office-results',
+    'page-show-office','page-competitions','page-show-office-classes','page-show-office-entries','page-show-office-judge','page-show-office-results','showOfficeStats',
     'competitionSearch','competitionStatusFilter','competitionTable','showOfficeClassCompetition',
     'showOfficeClassSearch','showOfficeClassTypeFilter','showOfficeClassJumpOffFilter','showOfficeClassTable',
     'showOfficeEntryCompetition','showOfficeEntryClass','showOfficeEntrySearch','showOfficeEntryTable',
-    'showOfficeJudgeCompetition','showOfficeJudgeClass','showOfficeJudgePanel'
+    'showOfficeJudgeCompetition','showOfficeJudgeClass','showOfficeJudgePanel',
+    'showOfficeResultsCompetition','showOfficeResultsClass','showOfficeResultsBoard','showOfficeResultsTvToggle'
   ]) assert.ok(html.includes(marker),`missing Show Office UI marker ${marker}`);
-  assert.match(core,/showoffice:\['show-office','competitions','show-office-classes','show-office-entries','show-office-judge'\]/);
+  assert.match(core,/showoffice:\['show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results'\]/);
   assert.match(portal,/'show-office': \[[\s\S]*?'show_office\.judging\.view'/);
+  assert.match(portal,/'show-office': \[[\s\S]*?'show_office\.results\.view'/);
   assert.match(portal,/'show-office-classes': \['show_office\.view', 'show_office\.classes\.view'\]/);
   assert.match(portal,/'show-office-entries': \['show_office\.view', 'show_office\.entries\.view'\]/);
+  assert.match(portal,/'show-office-results': \[[\s\S]*?'show_office\.results\.view'/);
+  assert.match(html,/live-results\.js/);
+  assert.match(module,/canViewResults\s*=\s*\(\)\s*=>\s*can\('show_office\.view'\)\s*\|\|\s*can\('show_office\.results\.view'\)/);
+  assert.match(module,/showOffice\.liveResults\?\.open\?\.\(\)/);
+  assert.match(liveResults,/showOffice\.judgingService/);
+  assert.match(liveResults,/window\.setInterval\(poll, ?REFRESH_MS\)/);
+  assert.match(liveResults,/classList\.contains\('active'\)/);
+  assert.match(sprintFive,/show_office\.results\.view/);
+  assert.match(sprintFive,/where r\.code in \('super_admin','manager','judge','reception','staff'\)/);
+  assert.match(sprintFive,/cce_show_office_judging_context/);
+  assert.match(sprintFive,/cce_show_office_judge_panel/);
   assert.match(module,/show_office\.competitions\.create/);
   assert.match(module,/show_office\.competitions\.update/);
   assert.match(module,/show_office\.competitions\.delete/);
@@ -1009,12 +1028,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.12.0 cache key',()=>{
+test('all app assets use the v4.13.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260722-4100'));
-  assert.ok((html.match(/20260724-4120/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260724-4120/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260724-4120/);
-  assert.equal(read('VERSION.txt').trim(),'4.12.0');
+  assert.ok(!html.includes('20260724-4120'));
+  assert.ok((html.match(/20260725-4130/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260725-4130/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260725-4130/);
+  assert.equal(read('VERSION.txt').trim(),'4.13.0');
 });

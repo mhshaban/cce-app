@@ -11,7 +11,7 @@
     'show-office': [
       'show_office.view', 'show_office.competitions.view', 'show_office.classes.view',
       'show_office.entries.view', 'show_office.judging.view', 'show_office.judging.score',
-      'show_office.judging.finalize', 'show_office.judging.reopen'
+      'show_office.judging.finalize', 'show_office.judging.reopen', 'show_office.results.view'
     ],
     competitions: ['show_office.view', 'show_office.competitions.view'],
     'show-office-classes': ['show_office.view', 'show_office.classes.view'],
@@ -19,6 +19,10 @@
     'show-office-judge': [
       'show_office.view', 'show_office.judging.view', 'show_office.judging.score',
       'show_office.judging.finalize', 'show_office.judging.reopen'
+    ],
+    'show-office-results': [
+      'show_office.view', 'show_office.results.view', 'show_office.judging.view',
+      'show_office.judging.score', 'show_office.judging.finalize', 'show_office.judging.reopen'
     ],
     income: ['income.view'],
     expenses: ['expenses.view'],
@@ -322,8 +326,8 @@
     const role = String(memberAccess?.role?.code || '').toLowerCase();
     if (role === 'judge' && canOpenDashPage('show-office-judge')) return 'show-office-judge';
     const order = prefersSchedule()
-      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
-      : ['dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
+      : ['dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
@@ -336,7 +340,7 @@
     legacyShowDashPage(id, btn);
     if (id === 'users') loadAccessAdmin();
     if (id === 'show-office' || id === 'competitions' || id === 'show-office-classes'
-        || id === 'show-office-entries' || id === 'show-office-judge') {
+        || id === 'show-office-entries' || id === 'show-office-judge' || id === 'show-office-results') {
       window.CCE?.showOffice?.open?.(id);
     }
     window.setTimeout(stripDisallowedActions, 0);
