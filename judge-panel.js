@@ -90,6 +90,39 @@
     return 'is-scored';
   }
 
+  function isFenceClass(competitionClass) {
+    return Number(competitionClass?.fence_count) > 0;
+  }
+
+  function fencesFor(row, scorePhase = selectedPhase) {
+    const fences = scorePhase === 'jump_off' ? row?.jump_off_fences : row?.first_round_fences;
+    return Array.isArray(fences) ? fences : [];
+  }
+
+  function fenceTotals(fences, competitionClass) {
+    return fences.reduce((totals, fence) => {
+      if (fence.incident === 'knockdown') totals.faults += Number(competitionClass.knockdown_fault_value || 0);
+      if (fence.incident === 'refusal') {
+        totals.faults += Number(competitionClass.refusal_fault_value || 0);
+        totals.refusals += 1;
+      }
+      return totals;
+    }, {faults: 0, refusals: 0});
+  }
+
+  function fenceIcon(incidentValue) {
+    if (incidentValue === 'knockdown') return '✕';
+    if (incidentValue === 'refusal') return '⟲';
+    return '✓';
+  }
+
+  function fenceGridHtml(fences, disabled) {
+    return `<div class="so-judge-fence-grid">${fences.map(fence => `
+      <button type="button" class="so-judge-fence ${fence.incident !== 'clear' ? `is-${fence.incident}` : ''}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number})" title="Fence ${fence.fence_number}: ${fence.incident}">
+        <span>${fenceIcon(fence.incident)}</span><small>#${fence.fence_number}</small>
+      </button>`).join('')}</div>`;
+  }
+
   function ensureSelection() {
     if (!contextRows.length) {
       selectedCompetitionId = '';
@@ -177,19 +210,31 @@
       : !competitionRunning
         ? 'Competition must be Running before scores can be changed.'
         : !canScore() ? 'View-only access.' : '';
+    const fenceMode = isFenceClass(competitionClass);
+    const fences = fenceMode ? fencesFor(row) : [];
+    const totals = fenceMode ? fenceTotals(fences, competitionClass) : null;
+    const autoEliminate = fenceMode && !special && totals.refusals >= Number(competitionClass.refusals_before_elimination || 3);
+    const eliminatedChecked = eliminated || (fenceMode && !score && autoEliminate);
     return `<form class="so-judge-score-card" id="showOfficeJudgeScoreForm" onsubmit="event.preventDefault();saveShowOfficeJudgeScore()">
       <div class="so-judge-score-head">
         <div><span>START ${html(row.start_number)}</span><h3>${html(row.rider_name)}</h3><p>${html(row.horse_name)}${row.stable_name ? ` · ${html(row.stable_name)}` : ''}</p></div>
         <span class="so-judge-score-state ${entryStatusClass(score)}">${html(scoreLabel(score))}</span>
       </div>
       ${reason ? `<div class="so-judge-notice">${html(reason)}</div>` : ''}
+      ${fenceMode ? `
+      <div class="so-judge-fence-summary"><span>Fences: ${fences.length}</span><span>Faults: <b>${totals.faults.toFixed(2).replace(/\.00$/, '')}</b></span><span>Refusals: <b>${totals.refusals}</b>${autoEliminate ? ' — auto-eliminated' : ''}</span></div>
+      ${fenceGridHtml(fences, disabled || special ? 'disabled' : '')}
+      <p class="so-judge-fence-note">Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.</p>
+      <div class="so-judge-score-fields" style="grid-template-columns:1fr">
+        <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450"></label>
+      </div>` : `
       <div class="so-judge-score-fields">
         <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450"></label>
         <label><span>Faults</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeFaults" inputmode="decimal" min="0" max="999999.99" step="0.01" type="number" value="${attr(score?.faults ?? '')}" placeholder="0"></label>
         <label><span>Refusals</span><input ${disabled} ${dns ? 'disabled' : ''} id="showOfficeJudgeRefusals" inputmode="numeric" min="0" max="9" step="1" type="number" value="${attr(score?.refusals ?? 0)}"></label>
-      </div>
+      </div>`}
       <fieldset class="so-judge-dispositions" ${disabled}><legend>Result status</legend>
-        <label><input type="checkbox" id="showOfficeJudgeEliminated" ${eliminated ? 'checked' : ''} onchange="setShowOfficeJudgeDisposition(this)"> Eliminated</label>
+        <label><input type="checkbox" id="showOfficeJudgeEliminated" ${eliminatedChecked ? 'checked' : ''} onchange="setShowOfficeJudgeDisposition(this)"> Eliminated</label>
         <label><input type="checkbox" id="showOfficeJudgeRetired" ${retired ? 'checked' : ''} onchange="setShowOfficeJudgeDisposition(this)"> Retired</label>
         <label><input type="checkbox" id="showOfficeJudgeDns" ${dns ? 'checked' : ''} onchange="setShowOfficeJudgeDisposition(this)"> DNS</label>
       </fieldset>
@@ -409,6 +454,29 @@
       refusal.disabled = Boolean(dns);
       if (dns) refusal.value = '0';
     }
+    document.querySelectorAll('.so-judge-fence').forEach(button => { button.disabled = special; });
+  };
+
+  window.toggleShowOfficeJudgeFence = async function toggleShowOfficeJudgeFence(fenceNumberValue) {
+    const row = selectedEntry();
+    if (!row || !canScore()) return;
+    const fences = fencesFor(row);
+    const current = fences.find(fence => fence.fence_number === fenceNumberValue);
+    if (!current) return;
+    const next = current.incident === 'clear' ? 'knockdown' : current.incident === 'knockdown' ? 'refusal' : 'clear';
+    try {
+      const result = await service().toggleFence(row.entry_id, selectedPhase, fenceNumberValue, next, current.row_version);
+      const key = selectedPhase === 'jump_off' ? 'jump_off_fences' : 'first_round_fences';
+      const updatedFences = fences.map(fence => fence.fence_number === fenceNumberValue
+        ? {fence_number: result.fence_number, incident: result.incident, row_version: result.row_version}
+        : fence);
+      const rowIndex = panelData.rows.findIndex(item => String(item.entry_id) === String(row.entry_id));
+      if (rowIndex !== -1) panelData.rows[rowIndex] = {...panelData.rows[rowIndex], [key]: updatedFences};
+      renderPanel();
+    } catch (error) {
+      if (/changed on another device/i.test(String(error?.message || error))) await loadPanel(selectedClassId);
+      reportError('Fence not updated', error);
+    }
   };
 
   window.saveShowOfficeJudgeScore = async function saveShowOfficeJudgeScore() {
@@ -417,17 +485,30 @@
     const formError = document.getElementById('showOfficeJudgeFormError');
     try {
       const score = scoreFor(row);
-      await service().saveScore({
-        entry_id: row.entry_id,
-        phase: selectedPhase,
-        time_seconds: document.getElementById('showOfficeJudgeTime')?.value,
-        faults: document.getElementById('showOfficeJudgeFaults')?.value,
-        refusals: document.getElementById('showOfficeJudgeRefusals')?.value,
-        eliminated: document.getElementById('showOfficeJudgeEliminated')?.checked === true,
-        retired: document.getElementById('showOfficeJudgeRetired')?.checked === true,
-        did_not_start: document.getElementById('showOfficeJudgeDns')?.checked === true,
-        expected_version: score?.row_version || 0
-      });
+      const fenceMode = isFenceClass(panelData.class);
+      if (fenceMode) {
+        await service().saveFenceScore({
+          entry_id: row.entry_id,
+          phase: selectedPhase,
+          time_seconds: document.getElementById('showOfficeJudgeTime')?.value,
+          eliminated: document.getElementById('showOfficeJudgeEliminated')?.checked === true,
+          retired: document.getElementById('showOfficeJudgeRetired')?.checked === true,
+          did_not_start: document.getElementById('showOfficeJudgeDns')?.checked === true,
+          expected_version: score?.row_version || 0
+        });
+      } else {
+        await service().saveScore({
+          entry_id: row.entry_id,
+          phase: selectedPhase,
+          time_seconds: document.getElementById('showOfficeJudgeTime')?.value,
+          faults: document.getElementById('showOfficeJudgeFaults')?.value,
+          refusals: document.getElementById('showOfficeJudgeRefusals')?.value,
+          eliminated: document.getElementById('showOfficeJudgeEliminated')?.checked === true,
+          retired: document.getElementById('showOfficeJudgeRetired')?.checked === true,
+          did_not_start: document.getElementById('showOfficeJudgeDns')?.checked === true,
+          expected_version: score?.row_version || 0
+        });
+      }
       const rows = panelData.rows;
       const currentIndex = rows.findIndex(item => String(item.entry_id) === selectedEntryId);
       const next = rows.slice(currentIndex + 1).find(item => !scoreFor(item))

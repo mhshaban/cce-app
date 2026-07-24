@@ -245,6 +245,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql',
     'supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql',
     'supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql',
+    'supabase/migrations/20260726_show_office_fence_scoring_v4140.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -265,6 +266,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4120.sql',
     'supabase/verification/preflight_v4130.sql',
     'supabase/verification/verify_v4130.sql',
+    'supabase/verification/preflight_v4140.sql',
+    'supabase/verification/verify_v4140.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -280,7 +283,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4100_compatibility.sql',
     'supabase/rollback/rollback_v4110_compatibility.sql',
     'supabase/rollback/rollback_v4120_compatibility.sql',
-    'supabase/rollback/rollback_v4130_compatibility.sql'
+    'supabase/rollback/rollback_v4130_compatibility.sql',
+    'supabase/rollback/rollback_v4140_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -417,7 +421,8 @@ test('Show Office class service validates operational fields and portable parent
   assert.deepEqual(JSON.parse(JSON.stringify(valid)),{
     competition_id:8,class_number:'1A',sort_order:2,class_name:'Open 100 cm',height_cm:100,
     competition_type:'Table A',allowed_time_seconds:72,time_limit_seconds:144,jump_off:true,
-    entry_fee_bd:12.5,notes:'First class'
+    entry_fee_bd:12.5,notes:'First class',
+    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3
   });
   assert.throws(()=>service.validate({...valid,class_number:''}),/class number is required/i);
   assert.throws(()=>service.validate({...valid,sort_order:0}),/class order must be a positive/i);
@@ -431,6 +436,29 @@ test('Show Office class service validates operational fields and portable parent
   assert.equal(portable[0].competition_date,'2026-10-02');
   assert.ok(!Object.hasOwn(portable[0],'competition_id'));
   assert.ok(!Object.hasOwn(portable[0],'created_by'));
+});
+
+test('Show Office class service validates optional fence-by-fence scoring rules',()=>{
+  const service=showOfficeClassService();
+  const base={
+    competition_id:8,class_number:'1A',sort_order:1,class_name:'Fence Class',
+    competition_type:'Table A'
+  };
+  const withoutFences=service.validate(base);
+  assert.equal(withoutFences.fence_count,null);
+  assert.equal(withoutFences.knockdown_fault_value,4);
+  assert.equal(withoutFences.refusal_fault_value,4);
+  assert.equal(withoutFences.refusals_before_elimination,3);
+  const withFences=service.validate({
+    ...base,fence_count:'12',knockdown_fault_value:'4.00',refusal_fault_value:'6.5',refusals_before_elimination:'2'
+  });
+  assert.equal(withFences.fence_count,12);
+  assert.equal(withFences.refusal_fault_value,6.5);
+  assert.equal(withFences.refusals_before_elimination,2);
+  assert.throws(()=>service.validate({...base,fence_count:0}),/positive whole number/i);
+  assert.throws(()=>service.validate({...base,fence_count:51}),/no greater than 50/i);
+  assert.throws(()=>service.validate({...base,knockdown_fault_value:'1000'}),/between 0 and 999\.99/i);
+  assert.throws(()=>service.validate({...base,refusals_before_elimination:10}),/no greater than 9/i);
 });
 
 test('Show Office entry service validates permanent registries and writes through one atomic RPC',async()=>{
@@ -595,6 +623,51 @@ test('Show Office Sprint 4 judging service validates scores and paginates every 
   assert.equal(payload.judging[0].competition_name,'Judging Cup');
 });
 
+test('Fence-by-fence scoring toggles one fence and confirms a round from computed totals',async()=>{
+  let rpcCall=null;
+  const service=showOfficeJudgingService({
+    sbRpc:async(fn,payload)=>{
+      rpcCall={fn,payload};
+      if(fn==='cce_show_office_toggle_fence'){
+        return {fence_number:2,incident:'knockdown',row_version:1,totals:{faults:4,refusals:0}};
+      }
+      return {
+        id:5,result_ref:'00000000-0000-4000-8002-000000000005',entry_id:1,phase:'first_round',
+        time_ms:70000,faults:8,refusals:1,eliminated:false,retired:false,did_not_start:false,row_version:1
+      };
+    }
+  });
+  const toggled=await service.toggleFence(1,'first_round',2,'knockdown',0);
+  assert.equal(rpcCall.fn,'cce_show_office_toggle_fence');
+  assert.equal(rpcCall.payload.p_fence_number,2);
+  assert.equal(rpcCall.payload.p_incident,'knockdown');
+  assert.equal(toggled.incident,'knockdown');
+  assert.equal(toggled.totals.faults,4);
+  await assert.rejects(service.toggleFence(1,'first_round',0,'knockdown',0),/positive whole number/i);
+  await assert.rejects(service.toggleFence(1,'first_round',2,'bogus',0),/clear, knockdown or refusal/i);
+
+  const confirmed=await service.saveFenceScore({
+    entry_id:1,phase:'first_round',time_seconds:'70.000',expected_version:0
+  });
+  assert.equal(rpcCall.fn,'cce_save_show_office_fence_score');
+  assert.equal(rpcCall.payload.p_time_ms,70000);
+  assert.ok(!Object.hasOwn(rpcCall.payload,'p_faults'));
+  assert.equal(confirmed.faults,8);
+  assert.throws(
+    ()=>service.validateFenceScore({entry_id:1,phase:'first_round',eliminated:true,retired:true}),
+    /mutually exclusive/i
+  );
+  const special=await service.saveFenceScore({entry_id:1,phase:'first_round',did_not_start:true,expected_version:1});
+  assert.equal(rpcCall.payload.p_time_ms,null);
+  assert.equal(rpcCall.payload.p_did_not_start,true);
+
+  const fences=service.normalizeFences([{fence_number:'1',incident:'refusal',row_version:'2'},{fence_number:2}]);
+  assert.deepEqual(JSON.parse(JSON.stringify(fences)),[
+    {fence_number:1,incident:'refusal',row_version:2},
+    {fence_number:2,incident:'clear',row_version:0}
+  ]);
+});
+
 test('a failed JSON module provider aborts backup creation and prevents download',async()=>{
   const CCE=backupRuntimeContext({jsonProviders:{
     showOffice:async()=>{throw new Error('Supabase unavailable');}
@@ -667,7 +740,8 @@ test('Show Office aggregate provider exports all Sprint 4 entities as one portab
   assert.deepEqual(JSON.parse(JSON.stringify(payload.classes)),[{
     competition_name:'Aggregate Cup',competition_date:'2026-12-20',class_number:'1A',sort_order:1,
     class_name:'Aggregate Class',height_cm:110,competition_type:'Table A',allowed_time_seconds:70,
-    time_limit_seconds:140,jump_off:true,entry_fee_bd:15,notes:'Portable'
+    time_limit_seconds:140,jump_off:true,entry_fee_bd:15,notes:'Portable',
+    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3
   }]);
   assert.equal(payload.riders[0].rider_ref,riders[0].rider_ref);
   assert.equal(payload.horses[0].horse_ref,horses[0].horse_ref);
@@ -1028,12 +1102,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.13.0 cache key',()=>{
+test('all app assets use the v4.14.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260724-4120'));
-  assert.ok((html.match(/20260725-4130/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260725-4130/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260725-4130/);
-  assert.equal(read('VERSION.txt').trim(),'4.13.0');
+  assert.ok(!html.includes('20260725-4130'));
+  assert.ok((html.match(/20260726-4140/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260726-4140/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260726-4140/);
+  assert.equal(read('VERSION.txt').trim(),'4.14.0');
 });

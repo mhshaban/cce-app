@@ -13,9 +13,12 @@
   const RESET_RPC = 'cce_reset_show_office_score';
   const FINALIZE_RPC = 'cce_finalize_show_office_class';
   const REOPEN_RPC = 'cce_reopen_show_office_class';
+  const TOGGLE_FENCE_RPC = 'cce_show_office_toggle_fence';
+  const FENCE_SAVE_RPC = 'cce_save_show_office_fence_score';
   const BACKUP_PAGE_SIZE = 1000;
   const PHASES = Object.freeze(['first_round', 'jump_off']);
   const STATUSES = Object.freeze(['Not Started', 'Running', 'Finalized']);
+  const INCIDENTS = Object.freeze(['clear', 'knockdown', 'refusal']);
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   const text = value => String(value == null ? '' : value).trim();
@@ -113,12 +116,39 @@
       allowed_time_seconds: source.allowed_time_seconds == null ? null : Number(source.allowed_time_seconds),
       time_limit_seconds: source.time_limit_seconds == null ? null : Number(source.time_limit_seconds),
       jump_off: source.jump_off === true,
+      fence_count: source.fence_count == null ? null : Number(source.fence_count),
+      knockdown_fault_value: source.knockdown_fault_value == null ? 4 : Number(source.knockdown_fault_value),
+      refusal_fault_value: source.refusal_fault_value == null ? 4 : Number(source.refusal_fault_value),
+      refusals_before_elimination: source.refusals_before_elimination == null ? 3 : Number(source.refusals_before_elimination),
       judging_status: text(source.judging_status) || 'Not Started',
       scoring_profile: text(source.scoring_profile) || 'faults_then_time',
       ruleset_version: text(source.ruleset_version) || 'CCE 2026',
       entry_count: Number(source.entry_count || 0),
       scored_count: Number(source.scored_count || 0)
     });
+  }
+
+  function normalizeFences(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(row => Object.freeze({
+      fence_number: Number(row?.fence_number),
+      incident: INCIDENTS.includes(text(row?.incident)) ? text(row?.incident) : 'clear',
+      row_version: Number(row?.row_version || 0)
+    }));
+  }
+
+  function incident(value) {
+    const result = text(value).toLowerCase();
+    if (!INCIDENTS.includes(result)) throw new Error('Fence incident must be clear, knockdown or refusal.');
+    return result;
+  }
+
+  function fenceNumber(value) {
+    const number = Number(text(value));
+    if (!Number.isInteger(number) || number <= 0 || number > 50) {
+      throw new Error('Fence number must be a positive whole number no greater than 50.');
+    }
+    return number;
   }
 
   function validateScore(input) {
@@ -171,9 +201,71 @@
         stable_name: text(row.stable_name),
         placing: row.placing == null ? null : Number(row.placing),
         first_round: normalizeRound(row.first_round),
-        jump_off: normalizeRound(row.jump_off)
+        jump_off: normalizeRound(row.jump_off),
+        first_round_fences: normalizeFences(row.first_round_fences),
+        jump_off_fences: normalizeFences(row.jump_off_fences)
       }))
     });
+  }
+
+  async function toggleFence(entryId, scorePhase, fenceValue, incidentValue, expectedVersion) {
+    const value = await sbRpc(TOGGLE_FENCE_RPC, {
+      p_entry_id: positiveInteger(entryId, 'Entry'),
+      p_phase: phase(scorePhase),
+      p_fence_number: fenceNumber(fenceValue),
+      p_incident: incident(incidentValue),
+      p_expected_version: expectedVersion == null ? 0 : Number(expectedVersion)
+    });
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Supabase returned an invalid fence result.');
+    }
+    return Object.freeze({
+      fence_number: Number(value.fence_number),
+      incident: INCIDENTS.includes(text(value.incident)) ? text(value.incident) : 'clear',
+      row_version: Number(value.row_version || 0),
+      totals: Object.freeze({
+        faults: Number(value.totals?.faults || 0),
+        refusals: Number(value.totals?.refusals || 0)
+      })
+    });
+  }
+
+  function validateFenceScore(input) {
+    const source = input && typeof input === 'object' ? input : {};
+    const flags = {
+      eliminated: source.eliminated === true,
+      retired: source.retired === true,
+      did_not_start: source.did_not_start === true
+    };
+    if (Object.values(flags).filter(Boolean).length > 1) {
+      throw new Error('Eliminated, Retired and DNS are mutually exclusive.');
+    }
+    const special = flags.eliminated || flags.retired || flags.did_not_start;
+    const expectedVersion = source.expected_version == null ? 0 : Number(source.expected_version);
+    if (!Number.isInteger(expectedVersion) || expectedVersion < 0) {
+      throw new Error('Score version must be a non-negative whole number.');
+    }
+    return Object.freeze({
+      entry_id: positiveInteger(source.entry_id, 'Entry'),
+      phase: phase(source.phase),
+      time_ms: special ? null : timeToMilliseconds(source.time_seconds),
+      ...flags,
+      expected_version: expectedVersion
+    });
+  }
+
+  async function saveFenceScore(input) {
+    const row = validateFenceScore(input);
+    const value = await sbRpc(FENCE_SAVE_RPC, {
+      p_entry_id: row.entry_id,
+      p_phase: row.phase,
+      p_time_ms: row.time_ms,
+      p_eliminated: row.eliminated,
+      p_retired: row.retired,
+      p_did_not_start: row.did_not_start,
+      p_expected_version: row.expected_version
+    });
+    return normalizeRound(value);
   }
 
   async function saveScore(input) {
@@ -367,9 +459,11 @@
 
   showOffice.judgingService = Object.freeze({
     JUDGING_TABLE,SCORE_TABLE,CONTEXT_RPC,PANEL_RPC,SAVE_RPC,RESET_RPC,
-    FINALIZE_RPC,REOPEN_RPC,BACKUP_PAGE_SIZE,PHASES,STATUSES,
-    normalizeRound,normalizeContext,validateScore,timeToMilliseconds,millisecondsToTime,
-    context,panel,saveScore,resetScore,finalize,reopen,listAll,
+    FINALIZE_RPC,REOPEN_RPC,TOGGLE_FENCE_RPC,FENCE_SAVE_RPC,
+    BACKUP_PAGE_SIZE,PHASES,STATUSES,INCIDENTS,
+    normalizeRound,normalizeContext,normalizeFences,validateScore,validateFenceScore,
+    timeToMilliseconds,millisecondsToTime,
+    context,panel,saveScore,resetScore,finalize,reopen,toggleFence,saveFenceScore,listAll,
     backupPayload,validateBackupPayload,workbookSheets
   });
 })();
