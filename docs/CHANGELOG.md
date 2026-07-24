@@ -2,6 +2,21 @@
 
 يتبع السجل ترتيبًا تنازليًا. تُكتب التغييرات المؤثرة في المستخدم أو قاعدة البيانات، ولا تُسجل التعديلات الشكلية الداخلية غير المهمة.
 
+## 4.12.0 — Show Office Sprint 4
+
+### Judge Panel
+
+- إضافة Judge Panel أصلية ومتجاوبة لتسجيل First Round وJump-Off بوقت حتى 3 منازل وأخطاء حتى منزلتين وRefusals وحالات Eliminated وRetired وDNS المتنافية.
+- إضافة حفظ ثم انتقال للمشارك التالي، عرض View-only، ترتيب مؤقت بالأخطاء الرسمية ثم الوقت، وقفل النتائج عند Finalize مع Reopen إداري.
+- إضافة حماية من الكتابة المتزامنة بواسطة `row_version` وتحديث اللوحة عند اكتشاف نتيجة أحدث على جهاز آخر.
+
+### Database, Security and Backup
+
+- إضافة `show_office_class_judging` و`show_office_entry_rounds` وسجل `show_office_score_revisions` غير القابل للتعديل، مع علاقات `RESTRICT` وقيود وفهارس وRLS ومنع الكتابة المباشرة.
+- إضافة دور Judge وصلاحيات `show_office.judging.view/score/finalize/reopen`؛ يحصل Judge على العرض والتسجيل فقط، ويحصل Manager وSuper Admin على الأربع.
+- توسيع النسخ بتصفح Keyset لكل النتائج وإضافة `judging / scores` وورقتي Excel، وتوسيع الاستعادة الذرية مع قبول النسخ الأقدم ومنع المكررات.
+- إضافة Preflight وVerification وRollback يحفظ النتائج وسجل المراجعات، واختبارات للترتيب والتزامن والقفل والصلاحيات والنسخ والاستعادة والرجوع.
+
 ## 4.11.0 — Show Office Sprint 3
 
 ### Entries

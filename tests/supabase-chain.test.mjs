@@ -620,6 +620,7 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     await db.exec(read('supabase/verification/verify_v491.sql'));
     await db.exec(read('supabase/verification/verify_v4100.sql'));
     await db.exec(read('supabase/verification/verify_v4110.sql'));
+    await db.exec(read('supabase/verification/verify_v4120.sql'));
   }finally{
     await db.close();
   }
@@ -778,7 +779,9 @@ test('Show Office Sprint 2 restore keeps competitions and classes atomic and por
         riders:{total:0,imported:0,duplicates:0,invalid:0},
         horses:{total:0,imported:0,duplicates:0,invalid:0},
         stables:{total:0,imported:0,duplicates:0,invalid:0},
-        entries:{total:0,imported:0,duplicates:0,invalid:0}
+        entries:{total:0,imported:0,duplicates:0,invalid:0},
+        judging:{total:0,imported:0,duplicates:0,invalid:0},
+        scores:{total:0,imported:0,duplicates:0,invalid:0}
       }
     });
     const imported=await db.query(`
@@ -807,7 +810,9 @@ test('Show Office Sprint 2 restore keeps competitions and classes atomic and por
         riders:{total:0,imported:0,duplicates:0,invalid:0},
         horses:{total:0,imported:0,duplicates:0,invalid:0},
         stables:{total:0,imported:0,duplicates:0,invalid:0},
-        entries:{total:0,imported:0,duplicates:0,invalid:0}
+        entries:{total:0,imported:0,duplicates:0,invalid:0},
+        judging:{total:0,imported:0,duplicates:0,invalid:0},
+        scores:{total:0,imported:0,duplicates:0,invalid:0}
       }
     });
 
@@ -880,7 +885,9 @@ test('Show Office Sprint 3 restore is atomic, portable, duplicate-safe and backw
         riders:{total:1,imported:1,duplicates:0,invalid:0},
         horses:{total:1,imported:1,duplicates:0,invalid:0},
         stables:{total:1,imported:1,duplicates:0,invalid:0},
-        entries:{total:1,imported:1,duplicates:0,invalid:0}
+        entries:{total:1,imported:1,duplicates:0,invalid:0},
+        judging:{total:0,imported:0,duplicates:0,invalid:0},
+        scores:{total:0,imported:0,duplicates:0,invalid:0}
       }
     });
     const imported=await db.query(`
@@ -951,6 +958,392 @@ test('Show Office Sprint 3 restore is atomic, portable, duplicate-safe and backw
       /Permission denied/
     );
     await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('Show Office Sprint 4 Judge Panel enforces scoring, ranking, locking and permissions',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000050';
+  const judge='00000000-0000-4000-8000-000000000051';
+  const unauthorized='00000000-0000-4000-8000-000000000052';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','judge-manager@example.com'),
+        ('${judge}','judge@example.com'),
+        ('${unauthorized}','judge-reception@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager')
+         or (p.id='${judge}' and r.code='judge')
+         or (p.id='${unauthorized}' and r.code='reception');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+    `);
+    const competition=await db.query(`
+      insert into public.show_office_competitions(
+        competition_name,competition_date,status
+      ) values('Sprint 4 Judge Cup','2027-04-01','Running') returning id
+    `);
+    const competitionId=competition.rows[0].id;
+    const competitionClass=await db.query(`
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type,
+        allowed_time_seconds,time_limit_seconds,jump_off
+      ) values($1,'GP',1,'Grand Prix','Table A',75,150,true) returning id
+    `,[competitionId]);
+    const classId=competitionClass.rows[0].id;
+    const first=await db.query(`
+      select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>1,p_rider_name=>'Rider One',
+        p_horse_name=>'Horse One',p_stable_name=>'CCE'
+      ) as result
+    `,[classId]);
+    const second=await db.query(`
+      select public.cce_save_show_office_entry(
+        p_class_id=>$1,p_start_number=>2,p_rider_name=>'Rider Two',
+        p_horse_name=>'Horse Two',p_stable_name=>'Bahrain Team'
+      ) as result
+    `,[classId]);
+    const firstEntry=first.rows[0].result;
+    const secondEntry=second.rows[0].result;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const context=await db.query(`select * from public.cce_show_office_judging_context() where class_id=$1`,[classId]);
+    assert.equal(context.rows.length,1);
+    assert.equal(Number(context.rows[0].entry_count),2);
+    assert.equal(context.rows[0].judging_status,'Not Started');
+    const firstScore=await db.query(`
+      select public.cce_save_show_office_score(
+        $1::bigint,'first_round',70000,4::numeric,1::smallint,false,false,false,0
+      ) as result
+    `,[firstEntry.id]);
+    assert.equal(firstScore.rows[0].result.row_version,1);
+    const secondScore=await db.query(`
+      select public.cce_save_show_office_score(
+        $1::bigint,'first_round',75000,0::numeric,0::smallint,false,false,false,0
+      ) as result
+    `,[secondEntry.id]);
+    assert.equal(secondScore.rows[0].result.row_version,1);
+    let panel=await db.query(`select public.cce_show_office_judge_panel($1) as result`,[classId]);
+    assert.equal(panel.rows[0].result.rows.find(row=>row.entry_id===secondEntry.id).placing,1);
+    assert.equal(panel.rows[0].result.class.judging_status,'Running');
+
+    await assert.rejects(
+      db.query(`
+        select public.cce_save_show_office_score(
+          $1::bigint,'first_round',69000,0::numeric,0::smallint,false,false,false,0
+        )
+      `,[firstEntry.id]),
+      /changed on another device/
+    );
+    const corrected=await db.query(`
+      select public.cce_save_show_office_score(
+        $1::bigint,'first_round',69000,0::numeric,0::smallint,false,false,false,1
+      ) as result
+    `,[firstEntry.id]);
+    assert.equal(corrected.rows[0].result.row_version,2);
+    await db.query(`
+      select public.cce_save_show_office_score(
+        $1::bigint,'jump_off',40000,0::numeric,0::smallint,false,false,false,0
+      )
+    `,[firstEntry.id]);
+    panel=await db.query(`select public.cce_show_office_judge_panel($1) as result`,[classId]);
+    assert.equal(panel.rows[0].result.rows.find(row=>row.entry_id===firstEntry.id).placing,1);
+    assert.equal(panel.rows[0].result.rows.find(row=>row.entry_id===firstEntry.id).jump_off.time_ms,40000);
+
+    await assert.rejects(
+      db.exec(`
+        insert into public.show_office_entry_rounds(
+          entry_id,phase,time_ms,faults
+        ) values(${secondEntry.id},'jump_off',42000,0)
+      `),
+      /permission denied/
+    );
+    await assert.rejects(
+      db.query(`select public.cce_finalize_show_office_class($1)`,[classId]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const finalized=await db.query(`select public.cce_finalize_show_office_class($1) as result`,[classId]);
+    assert.equal(finalized.rows[0].result.status,'Finalized');
+    await assert.rejects(
+      db.query(`
+        select public.cce_save_show_office_score(
+          $1::bigint,'first_round',68000,0::numeric,0::smallint,false,false,false,2
+        )
+      `,[firstEntry.id]),
+      /finalized and locked/
+    );
+    const reopened=await db.query(`select public.cce_reopen_show_office_class($1) as result`,[classId]);
+    assert.equal(reopened.rows[0].result.status,'Running');
+    await db.query(`update public.show_office_competitions set status='Finished' where id=$1`,[competitionId]);
+    await assert.rejects(
+      db.query(`
+        select public.cce_reset_show_office_score($1,'jump_off',1)
+      `,[firstEntry.id]),
+      /Competition must be Running/
+    );
+    await db.query(`update public.show_office_competitions set status='Running' where id=$1`,[competitionId]);
+    const reset=await db.query(`
+      select public.cce_reset_show_office_score($1,'jump_off',1) as result
+    `,[firstEntry.id]);
+    assert.equal(reset.rows[0].result,true);
+    await db.exec('reset role');
+
+    const revisions=await db.query(`
+      select action,count(*)::int as rows
+      from public.show_office_score_revisions
+      group by action order by action
+    `);
+    assert.deepEqual(revisions.rows.map(row=>({...row})),[
+      {action:'create',rows:3},{action:'reset',rows:1},{action:'update',rows:1}
+    ]);
+
+    await db.exec(`set "request.jwt.claim.sub"='${unauthorized}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_show_office_judge_panel($1)`,[classId]),
+      /Permission denied/
+    );
+    const hidden=await db.query(`select id from public.show_office_entry_rounds`);
+    assert.equal(hidden.rows.length,0);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('Show Office Sprint 4 restore is atomic, duplicate-safe and accepts older backups',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000055';
+  const riderRef='00000000-0000-4000-8000-000000000551';
+  const horseRef='00000000-0000-4000-8000-000000000552';
+  const entryRef='00000000-0000-4000-8000-000000000553';
+  const resultRef='00000000-0000-4000-8000-000000000554';
+  const asJson=value=>JSON.parse(JSON.stringify(value));
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','judging-restore@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+    `);
+    const payload={
+      competitions:[{competition_name:'Portable Judge Cup',competition_date:'2027-05-01',status:'Running'}],
+      classes:[{
+        competition_name:'Portable Judge Cup',competition_date:'2027-05-01',
+        class_number:'1',sort_order:1,class_name:'Portable Judge Class',
+        competition_type:'Table A',jump_off:false
+      }],
+      riders:[{rider_ref:riderRef,rider_name:'Portable Judge Rider'}],
+      horses:[{horse_ref:horseRef,horse_name:'Portable Judge Horse'}],
+      stables:[],
+      entries:[{
+        entry_ref:entryRef,competition_name:'Portable Judge Cup',
+        competition_date:'2027-05-01',class_number:'1',start_number:11,
+        rider_ref:riderRef,horse_ref:horseRef,stable_ref:null
+      }],
+      judging:[{
+        competition_name:'Portable Judge Cup',competition_date:'2027-05-01',
+        class_number:'1',status:'Running',scoring_profile:'faults_then_time',
+        ruleset_version:'CCE 2026'
+      }],
+      scores:[{
+        result_ref:resultRef,entry_ref:entryRef,phase:'first_round',
+        time_ms:71500,faults:0,refusals:0,
+        eliminated:false,retired:false,did_not_start:false
+      }]
+    };
+    const restored=await db.query(
+      `select public.cce_restore_show_office_module($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.deepEqual(asJson(restored.rows[0].result),{
+      module:'showOffice',total:7,imported:7,duplicates:0,invalid:0,
+      entities:{
+        competitions:{total:1,imported:1,duplicates:0,invalid:0},
+        classes:{total:1,imported:1,duplicates:0,invalid:0},
+        riders:{total:1,imported:1,duplicates:0,invalid:0},
+        horses:{total:1,imported:1,duplicates:0,invalid:0},
+        stables:{total:0,imported:0,duplicates:0,invalid:0},
+        entries:{total:1,imported:1,duplicates:0,invalid:0},
+        judging:{total:1,imported:1,duplicates:0,invalid:0},
+        scores:{total:1,imported:1,duplicates:0,invalid:0}
+      }
+    });
+    const repeated=await db.query(
+      `select public.cce_restore_show_office_module($1::jsonb) as result`,
+      [JSON.stringify(payload)]
+    );
+    assert.equal(repeated.rows[0].result.imported,0);
+    assert.equal(repeated.rows[0].result.duplicates,7);
+
+    const legacy=await db.query(`
+      select public.cce_restore_show_office_module(
+        '{"competitions":[{"competition_name":"Legacy Compatible Cup","competition_date":"2027-05-02","status":"Draft"}]}'::jsonb
+      ) as result
+    `);
+    assert.equal(legacy.rows[0].result.imported,1);
+    assert.equal(legacy.rows[0].result.entities.judging.total,0);
+    assert.equal(legacy.rows[0].result.entities.scores.total,0);
+
+    const invalid={
+      competitions:[{competition_name:'Atomic Judge Cup',competition_date:'2027-05-03',status:'Draft'}],
+      classes:[],riders:[],horses:[],stables:[],entries:[],judging:[],
+      scores:[{
+        result_ref:'00000000-0000-4000-8000-000000000555',
+        entry_ref:'00000000-0000-4000-8000-000000000599',
+        phase:'first_round',time_ms:70000,faults:0,refusals:0
+      }]
+    };
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(invalid)]),
+      /references an unavailable entry/
+    );
+    const atomic=await db.query(`
+      select count(*)::int as rows
+      from public.show_office_competitions
+      where competition_name='Atomic Judge Cup'
+    `);
+    assert.equal(atomic.rows[0].rows,0);
+
+    const missingJudging={
+      competitions:[{competition_name:'Missing Judging Cup',competition_date:'2027-05-05',status:'Running'}],
+      classes:[{
+        competition_name:'Missing Judging Cup',competition_date:'2027-05-05',
+        class_number:'1',sort_order:1,class_name:'Missing Judging Class',
+        competition_type:'Table A'
+      }],
+      riders:[{
+        rider_ref:'00000000-0000-4000-8000-000000000561',
+        rider_name:'Missing Judging Rider'
+      }],
+      horses:[{
+        horse_ref:'00000000-0000-4000-8000-000000000562',
+        horse_name:'Missing Judging Horse'
+      }],
+      stables:[],
+      entries:[{
+        entry_ref:'00000000-0000-4000-8000-000000000563',
+        competition_name:'Missing Judging Cup',competition_date:'2027-05-05',
+        class_number:'1',start_number:1,
+        rider_ref:'00000000-0000-4000-8000-000000000561',
+        horse_ref:'00000000-0000-4000-8000-000000000562',stable_ref:null
+      }],
+      judging:[],
+      scores:[{
+        result_ref:'00000000-0000-4000-8000-000000000564',
+        entry_ref:'00000000-0000-4000-8000-000000000563',
+        phase:'first_round',time_ms:70000,faults:0,refusals:0
+      }]
+    };
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(missingJudging)]),
+      /requires a judging record/
+    );
+    const missingJudgingAtomic=await db.query(`
+      select count(*)::int as rows
+      from public.show_office_competitions
+      where competition_name='Missing Judging Cup'
+    `);
+    assert.equal(missingJudgingAtomic.rows[0].rows,0);
+
+    const emptyFinalized={
+      competitions:[{competition_name:'Empty Finalized Cup',competition_date:'2027-05-04',status:'Running'}],
+      classes:[{
+        competition_name:'Empty Finalized Cup',competition_date:'2027-05-04',
+        class_number:'1',sort_order:1,class_name:'Empty Finalized Class',
+        competition_type:'Table A'
+      }],
+      riders:[],horses:[],stables:[],entries:[],
+      judging:[{
+        competition_name:'Empty Finalized Cup',competition_date:'2027-05-04',
+        class_number:'1',status:'Finalized',scoring_profile:'faults_then_time',
+        ruleset_version:'CCE 2026'
+      }],
+      scores:[]
+    };
+    await assert.rejects(
+      db.query(`select public.cce_restore_show_office_module($1::jsonb)`,[JSON.stringify(emptyFinalized)]),
+      /finalized class has unscored entries/
+    );
+    const emptyAtomic=await db.query(`
+      select count(*)::int as rows
+      from public.show_office_competitions
+      where competition_name='Empty Finalized Cup'
+    `);
+    assert.equal(emptyAtomic.rows[0].rows,0);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.12 compatibility rollback preserves scores and Sprint 4 can be re-applied',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000056';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','judging-rollback@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Judge Rollback Cup','2027-06-01','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type
+      ) select id,'1',1,'Judge Rollback Class','Table A'
+        from public.show_office_competitions where competition_name='Judge Rollback Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Judge Rollback Class'),
+        p_start_number=>1,p_rider_name=>'Rollback Rider',p_horse_name=>'Rollback Horse'
+      );
+      select public.cce_save_show_office_score(
+        (select id from public.show_office_entries where start_number=1),
+        'first_round',70000,0::numeric,0::smallint,false,false,false,0
+      );
+      reset role;
+    `);
+    await db.exec(read('supabase/rollback/rollback_v4120_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        (select count(*)::int from public.show_office_entry_rounds) as score_rows,
+        to_regprocedure('public.cce_save_show_office_score(bigint,text,integer,numeric,smallint,boolean,boolean,boolean,integer)') is null as save_removed,
+        to_regprocedure('public.cce_restore_show_office_module(jsonb)') is not null as core_restore_ready,
+        (select count(*)::int from pg_policies where schemaname='public'
+          and tablename in ('show_office_class_judging','show_office_entry_rounds','show_office_score_revisions')) as policies,
+        (select bool_and(allowed is false) from public.role_permissions
+          where permission_code like 'show_office.judging.%') as defaults_disabled
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{
+      score_rows:1,save_removed:true,core_restore_ready:true,policies:0,defaults_disabled:true
+    });
+    await db.exec(read('supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql'));
+    const reapplied=await db.query(`
+      select
+        (select count(*)::int from public.show_office_entry_rounds) as score_rows,
+        to_regprocedure('public.cce_save_show_office_score(bigint,text,integer,numeric,smallint,boolean,boolean,boolean,integer)') is not null as save_ready,
+        (select count(*)::int from pg_policies where schemaname='public'
+          and tablename in ('show_office_class_judging','show_office_entry_rounds','show_office_score_revisions')) as policies,
+        (select count(*)::int from public.role_permissions rp
+          join public.app_roles r on r.id=rp.role_id
+          where r.code in ('manager','super_admin') and rp.permission_code like 'show_office.judging.%'
+            and rp.allowed) as manager_defaults,
+        (select count(*)::int from public.role_permissions rp
+          join public.app_roles r on r.id=rp.role_id
+          where r.code='judge' and rp.permission_code like 'show_office.judging.%'
+            and rp.allowed) as judge_defaults
+    `);
+    assert.deepEqual({...reapplied.rows[0]},{
+      score_rows:1,save_ready:true,policies:3,manager_defaults:8,judge_defaults:2
+    });
   }finally{
     await db.close();
   }

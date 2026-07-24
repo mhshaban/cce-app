@@ -36,3 +36,10 @@
 2. شغّل `20260723_show_office_sprint3_entries_v4110.sql` ثم `../verification/verify_v4110.sql`.
 3. انشر واجهة v4.11.0 بمفتاح الأصول `20260723-4110` واختبر Matrix الصلاحيات والنسخ والاستعادة.
 4. اتبع `../../docs/DEPLOYMENT_V4110.md`. ملف `../rollback/rollback_v4110_compatibility.sql` يحفظ كل سجلات Sprint 3 لكنه يعطل وصول المتصفح ويعيد RPC الاستعادة إلى عقد v4.10.0.
+
+للانتقال من Show Office v4.11.0 إلى v4.12.0:
+
+1. خذ نسخة احتياطية ثم شغّل `../verification/preflight_v4120.sql`.
+2. شغّل `20260724_show_office_sprint4_judging_v4120.sql` ثم `../verification/verify_v4120.sql`.
+3. انشر واجهة v4.12.0 بمفتاح الأصول `20260724-4120` واختبر Judge وManager وView-only على iPad والجوال.
+4. اتبع `../../docs/DEPLOYMENT_V4120.md`. ملف `../rollback/rollback_v4120_compatibility.sql` يحفظ النتائج وسجل المراجعات لكنه يعطل وصول Sprint 4 ويعيد RPC الاستعادة إلى عقد v4.11.0.

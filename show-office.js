@@ -49,7 +49,11 @@
   const canViewCompetitions = () => can('show_office.view') || can('show_office.competitions.view');
   const canViewClasses = () => can('show_office.view') || can('show_office.classes.view');
   const canViewEntries = () => can('show_office.view') || can('show_office.entries.view');
-  const canView = () => canViewCompetitions() || canViewClasses() || canViewEntries();
+  const canViewJudging = () => can('show_office.view') || can('show_office.judging.view')
+    || can('show_office.judging.score') || can('show_office.judging.finalize')
+    || can('show_office.judging.reopen');
+  const canView = () => canViewCompetitions() || canViewClasses() || canViewEntries()
+    || canViewJudging();
 
   function competitionById(id) {
     return competitions.find(row => String(row.id) === String(id)) || null;
@@ -537,6 +541,7 @@
     renderCompetitions();
     renderShowOfficeClasses();
     renderShowOfficeEntries();
+    showOffice.judgePanel?.render?.();
     document.querySelectorAll('[data-show-office-permission]').forEach(node => {
       node.style.display = can(node.dataset.showOfficePermission) ? '' : 'none';
     });
@@ -711,6 +716,7 @@
       window.CCE.store.set('showOfficeClasses', []);
       window.CCE.store.set('showOfficeEntries', []);
     }
+    showOffice.judgePanel?.clear?.();
     render();
   }
 
@@ -1075,6 +1081,9 @@
       if (selectedEntryClassId && (!entriesLoaded || entriesError)) {
         await loadEntriesForClass(selectedEntryClassId);
       }
+    }
+    if (page === 'show-office-judge' && canViewJudging()) {
+      await showOffice.judgePanel?.open?.();
     }
   };
   showOffice.clear = clear;

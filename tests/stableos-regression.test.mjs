@@ -43,6 +43,13 @@ function showOfficeEntryService(overrides={}){
   return context.window.CCE.showOffice.entryService;
 }
 
+function showOfficeJudgingService(overrides={}){
+  const context={Intl,Date,Object,Array,String,Number,Error,Map,Set,...overrides};
+  context.window=context;
+  vm.runInNewContext(read('src/modules/show-office/judging-service.js'),context,{filename:'judging-service.js'});
+  return context.window.CCE.showOffice.judgingService;
+}
+
 function backupRuntimeContext({providers={},jsonProviders={},post=async()=>[]}={}){
   const context={Object,Array,String,Error,console:{warn(){}},sbPost:post,CCE:{restoreProviders:providers,jsonBackupProviders:jsonProviders}};
   context.window=context;
@@ -236,6 +243,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260721_show_office_sprint1_v491_backup_restore.sql',
     'supabase/migrations/20260722_show_office_sprint2_classes_v4100.sql',
     'supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql',
+    'supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -252,6 +260,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4100.sql',
     'supabase/verification/preflight_v4110.sql',
     'supabase/verification/verify_v4110.sql',
+    'supabase/verification/preflight_v4120.sql',
+    'supabase/verification/verify_v4120.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -265,7 +275,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v490_compatibility.sql',
     'supabase/rollback/rollback_v491_compatibility.sql',
     'supabase/rollback/rollback_v4100_compatibility.sql',
-    'supabase/rollback/rollback_v4110_compatibility.sql'
+    'supabase/rollback/rollback_v4110_compatibility.sql',
+    'supabase/rollback/rollback_v4120_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -278,15 +289,17 @@ test('Show Office preserves the current main UI while using one permission-aware
   const sprintOne=read('supabase/migrations/20260721_show_office_sprint1_v490.sql');
   const sprintTwo=read('supabase/migrations/20260722_show_office_sprint2_classes_v4100.sql');
   const sprintThree=read('supabase/migrations/20260723_show_office_sprint3_entries_v4110.sql');
+  const sprintFour=read('supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql');
   for(const marker of [
-    'dash-group-showoffice','nav-show-office','nav-competitions','nav-show-office-classes','nav-show-office-entries',
-    'page-show-office','page-competitions','page-show-office-classes','page-show-office-entries','showOfficeStats',
+    'dash-group-showoffice','nav-show-office','nav-competitions','nav-show-office-classes','nav-show-office-entries','nav-show-office-judge',
+    'page-show-office','page-competitions','page-show-office-classes','page-show-office-entries','page-show-office-judge','showOfficeStats',
     'competitionSearch','competitionStatusFilter','competitionTable','showOfficeClassCompetition',
     'showOfficeClassSearch','showOfficeClassTypeFilter','showOfficeClassJumpOffFilter','showOfficeClassTable',
-    'showOfficeEntryCompetition','showOfficeEntryClass','showOfficeEntrySearch','showOfficeEntryTable'
+    'showOfficeEntryCompetition','showOfficeEntryClass','showOfficeEntrySearch','showOfficeEntryTable',
+    'showOfficeJudgeCompetition','showOfficeJudgeClass','showOfficeJudgePanel'
   ]) assert.ok(html.includes(marker),`missing Show Office UI marker ${marker}`);
-  assert.match(core,/showoffice:\['show-office','competitions','show-office-classes','show-office-entries'\]/);
-  assert.match(portal,/'show-office': \['show_office\.view', 'show_office\.competitions\.view'\]/);
+  assert.match(core,/showoffice:\['show-office','competitions','show-office-classes','show-office-entries','show-office-judge'\]/);
+  assert.match(portal,/'show-office': \[[\s\S]*?'show_office\.judging\.view'/);
   assert.match(portal,/'show-office-classes': \['show_office\.view', 'show_office\.classes\.view'\]/);
   assert.match(portal,/'show-office-entries': \['show_office\.view', 'show_office\.entries\.view'\]/);
   assert.match(module,/show_office\.competitions\.create/);
@@ -303,7 +316,9 @@ test('Show Office preserves the current main UI while using one permission-aware
   assert.match(html,/src\/modules\/show-office\/competition-service\.js/);
   assert.match(html,/src\/modules\/show-office\/class-service\.js/);
   assert.match(html,/src\/modules\/show-office\/entry-service\.js/);
+  assert.match(html,/src\/modules\/show-office\/judging-service\.js/);
   assert.match(html,/src\/modules\/show-office\/show-office-module-service\.js/);
+  assert.match(html,/judge-panel\.js/);
   assert.match(sprintOne,/create table if not exists public\.show_office_competitions/i);
   assert.match(sprintOne,/status in \('Draft','Open','Running','Finished'\)/);
   assert.match(sprintTwo,/create table if not exists public\.show_office_classes/i);
@@ -320,6 +335,11 @@ test('Show Office preserves the current main UI while using one permission-aware
   assert.match(sprintThree,/create table if not exists public\.show_office_stables/i);
   assert.match(sprintThree,/cce_save_show_office_entry/);
   assert.match(sprintThree,/cce_show_office_entries_(select|insert|update|delete)/);
+  assert.match(sprintFour,/create table if not exists public\.show_office_entry_rounds/i);
+  assert.match(sprintFour,/create table if not exists public\.show_office_score_revisions/i);
+  assert.match(sprintFour,/cce_save_show_office_score/);
+  assert.match(sprintFour,/cce_finalize_show_office_class/);
+  assert.match(sprintFour,/row_version/);
   assert.match(css,/body\.member-authenticated \.so-actions \.action-btn\{min-width:44px;min-height:44px\}/);
   assert.match(css,/\.show-office-page-head>\.btn\{width:auto;flex:0 0 auto\}/);
   assert.match(css,/\.show-office-filters select\{width:auto;flex:0 1 220px\}/);
@@ -498,6 +518,64 @@ test('Show Office Sprint 3 backup paginates every registry and exports portable 
   assert.ok(queries.every(call=>call.query.includes('order=id.asc')));
 });
 
+test('Show Office Sprint 4 judging service validates scores and paginates every result',async()=>{
+  const scoreRef=index=>`00000000-0000-4000-8001-${String(index).padStart(12,'0')}`;
+  const scores=Array.from({length:1005},(_,index)=>({
+    id:index+1,result_ref:scoreRef(index+1),entry_id:index+1,phase:'first_round',
+    time_ms:70000+index,faults:index%5,refusals:0,
+    eliminated:false,retired:false,did_not_start:false,row_version:1
+  }));
+  const queries=[];
+  let rpcCall=null;
+  const service=showOfficeJudgingService({
+    sbGet:async(table,query)=>{
+      queries.push({table,query});
+      if(table==='show_office_class_judging'){
+        const cursor=Number(query.match(/class_id=gt\.([^&]+)/)?.[1]||0);
+        return cursor ? [] : [{class_id:20,status:'Running',scoring_profile:'faults_then_time',ruleset_version:'CCE 2026'}];
+      }
+      const cursor=Number(query.match(/(?:^|&)id=gt\.([^&]+)/)?.[1]||0);
+      return scores.filter(row=>row.id>cursor).slice(0,400);
+    },
+    sbRpc:async(fn,payload)=>{
+      rpcCall={fn,payload};
+      return {
+        id:1,result_ref:scoreRef(1),entry_id:1,phase:'first_round',
+        time_ms:72450,faults:4,refusals:1,eliminated:false,retired:false,
+        did_not_start:false,row_version:1
+      };
+    }
+  });
+  const scoreInput={
+    entry_id:1,phase:'first_round',time_seconds:'72.450',faults:'4.00',
+    refusals:'1',expected_version:0
+  };
+  const valid=service.validateScore(scoreInput);
+  assert.equal(valid.time_ms,72450);
+  assert.equal(valid.faults,4);
+  await service.saveScore(scoreInput);
+  assert.equal(rpcCall.fn,'cce_save_show_office_score');
+  assert.equal(rpcCall.payload.p_time_ms,72450);
+  assert.throws(()=>service.validateScore({...valid,time_seconds:'72.4501'}),/3 decimal/i);
+  assert.throws(()=>service.validateScore({...valid,eliminated:true,retired:true}),/mutually exclusive/i);
+
+  const data=await service.listAll();
+  assert.equal(data.judging.length,1);
+  assert.equal(data.scores.length,1005);
+  assert.ok(queries.filter(call=>call.table==='show_office_entry_rounds').length>=4);
+  const payload=service.backupPayload(
+    data,
+    new Map([['10',{id:10,competition_name:'Judging Cup',competition_date:'2027-03-01'}]]),
+    new Map([['20',{id:20,competition_id:10,class_number:'1'}]]),
+    new Map(scores.map(row=>[String(row.entry_id),{
+      id:row.entry_id,entry_ref:scoreRef(row.entry_id)
+    }]))
+  );
+  assert.equal(payload.scores.length,1005);
+  assert.equal(payload.scores.at(-1).result_ref,scoreRef(1005));
+  assert.equal(payload.judging[0].competition_name,'Judging Cup');
+});
+
 test('a failed JSON module provider aborts backup creation and prevents download',async()=>{
   const CCE=backupRuntimeContext({jsonProviders:{
     showOffice:async()=>{throw new Error('Supabase unavailable');}
@@ -527,7 +605,7 @@ test('a failed JSON module provider aborts backup creation and prevents download
   assert.match(core,/Backup failed for module “\$\{name\}”/);
 });
 
-test('Show Office aggregate provider exports all Sprint 3 entities as one portable snapshot',async()=>{
+test('Show Office aggregate provider exports all Sprint 4 entities as one portable snapshot',async()=>{
   const competitions=[{id:10,competition_name:'Aggregate Cup',competition_date:'2026-12-20',status:'Open'}];
   const classes=[{
     id:20,competition_id:10,class_number:'1A',sort_order:1,class_name:'Aggregate Class',
@@ -538,10 +616,17 @@ test('Show Office aggregate provider exports all Sprint 3 entities as one portab
   const horses=[{id:40,horse_ref:'00000000-0000-4000-8000-000000000140',horse_name:'Nabd'}];
   const stables=[{id:50,stable_ref:'00000000-0000-4000-8000-000000000150',stable_name:'CCE'}];
   const entries=[{id:60,entry_ref:'00000000-0000-4000-8000-000000000160',class_id:20,start_number:9,rider_id:30,horse_id:40,stable_id:50}];
+  const judging=[{class_id:20,status:'Running',scoring_profile:'faults_then_time',ruleset_version:'CCE 2026'}];
+  const scores=[{
+    id:70,result_ref:'00000000-0000-4000-8000-000000000170',entry_id:60,
+    phase:'first_round',time_ms:72450,faults:4,refusals:0,
+    eliminated:false,retired:false,did_not_start:false
+  }];
   const tables={
     show_office_competitions:competitions,show_office_classes:classes,
     show_office_riders:riders,show_office_horses:horses,
-    show_office_stables:stables,show_office_entries:entries
+    show_office_stables:stables,show_office_entries:entries,
+    show_office_class_judging:judging,show_office_entry_rounds:scores
   };
   const context={
     Intl,Date,Object,Array,String,Number,Error,
@@ -556,6 +641,7 @@ test('Show Office aggregate provider exports all Sprint 3 entities as one portab
   vm.runInNewContext(read('src/modules/show-office/competition-service.js'),context,{filename:'competition-service.js'});
   vm.runInNewContext(read('src/modules/show-office/class-service.js'),context,{filename:'class-service.js'});
   vm.runInNewContext(read('src/modules/show-office/entry-service.js'),context,{filename:'entry-service.js'});
+  vm.runInNewContext(read('src/modules/show-office/judging-service.js'),context,{filename:'judging-service.js'});
   vm.runInNewContext(read('src/modules/show-office/show-office-module-service.js'),context,{filename:'show-office-module-service.js'});
   const payload=await context.CCE.jsonBackupProviders.showOffice();
   assert.equal(payload.competitions.length,1);
@@ -572,10 +658,18 @@ test('Show Office aggregate provider exports all Sprint 3 entities as one portab
     class_number:'1A',start_number:9,rider_ref:riders[0].rider_ref,
     horse_ref:horses[0].horse_ref,stable_ref:stables[0].stable_ref
   }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.judging)),[{
+    competition_name:'Aggregate Cup',competition_date:'2026-12-20',class_number:'1A',
+    status:'Running',scoring_profile:'faults_then_time',ruleset_version:'CCE 2026'
+  }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.scores)),[{
+    result_ref:scores[0].result_ref,entry_ref:entries[0].entry_ref,phase:'first_round',
+    time_ms:72450,faults:4,refusals:0,eliminated:false,retired:false,did_not_start:false
+  }]);
   const sheets=await context.CCE.backupProviders.showOffice();
   assert.deepEqual([...sheets.map(sheet=>sheet.sheet)],[
     'Competitions','Competition Classes','Competition Riders','Competition Horses',
-    'Stables and Clubs','Competition Entries'
+    'Stables and Clubs','Competition Entries','Class Judging','Judge Scores'
   ]);
 });
 
@@ -591,7 +685,9 @@ test('Show Office aggregate restore validates all entity summaries and strips im
         riders:{total:0,imported:0,duplicates:0,invalid:0},
         horses:{total:0,imported:0,duplicates:0,invalid:0},
         stables:{total:0,imported:0,duplicates:0,invalid:0},
-        entries:{total:0,imported:0,duplicates:0,invalid:0}
+        entries:{total:0,imported:0,duplicates:0,invalid:0},
+        judging:{total:0,imported:0,duplicates:0,invalid:0},
+        scores:{total:0,imported:0,duplicates:0,invalid:0}
       }};
     }
   };
@@ -600,6 +696,7 @@ test('Show Office aggregate restore validates all entity summaries and strips im
   vm.runInNewContext(read('src/modules/show-office/competition-service.js'),context,{filename:'competition-service.js'});
   vm.runInNewContext(read('src/modules/show-office/class-service.js'),context,{filename:'class-service.js'});
   vm.runInNewContext(read('src/modules/show-office/entry-service.js'),context,{filename:'entry-service.js'});
+  vm.runInNewContext(read('src/modules/show-office/judging-service.js'),context,{filename:'judging-service.js'});
   vm.runInNewContext(read('src/modules/show-office/show-office-module-service.js'),context,{filename:'show-office-module-service.js'});
   const prepared=context.CCE.showOffice.moduleService.validateBackupPayload({
     competitions:[{competition_name:'Restore Aggregate Cup',competition_date:'2026-12-21',status:'Draft',created_by:'ignored'}],
@@ -621,7 +718,8 @@ test('Show Office aggregate restore validates all entity summaries and strips im
     entities:{
       competitions:{total:1,imported:1,duplicates:0,invalid:0},classes:{total:1,imported:0,duplicates:0,invalid:0},
       riders:{total:0,imported:0,duplicates:0,invalid:0},horses:{total:0,imported:0,duplicates:0,invalid:0},
-      stables:{total:0,imported:0,duplicates:0,invalid:0},entries:{total:0,imported:0,duplicates:0,invalid:0}
+      stables:{total:0,imported:0,duplicates:0,invalid:0},entries:{total:0,imported:0,duplicates:0,invalid:0},
+      judging:{total:0,imported:0,duplicates:0,invalid:0},scores:{total:0,imported:0,duplicates:0,invalid:0}
     }
   },prepared),/inconsistent/i);
 });
@@ -715,7 +813,9 @@ test('the current JSON backup format restores Show Office through the registered
         riders:{total:0,imported:0,duplicates:0,invalid:0},
         horses:{total:0,imported:0,duplicates:0,invalid:0},
         stables:{total:0,imported:0,duplicates:0,invalid:0},
-        entries:{total:0,imported:0,duplicates:0,invalid:0}
+        entries:{total:0,imported:0,duplicates:0,invalid:0},
+        judging:{total:0,imported:0,duplicates:0,invalid:0},
+        scores:{total:0,imported:0,duplicates:0,invalid:0}
       }};
     }
   };
@@ -725,6 +825,7 @@ test('the current JSON backup format restores Show Office through the registered
   vm.runInNewContext(read('src/modules/show-office/competition-service.js'),context,{filename:'competition-service.js'});
   vm.runInNewContext(read('src/modules/show-office/class-service.js'),context,{filename:'class-service.js'});
   vm.runInNewContext(read('src/modules/show-office/entry-service.js'),context,{filename:'entry-service.js'});
+  vm.runInNewContext(read('src/modules/show-office/judging-service.js'),context,{filename:'judging-service.js'});
   vm.runInNewContext(read('src/modules/show-office/show-office-module-service.js'),context,{filename:'show-office-module-service.js'});
   const restorePlan=context.CCE.backupRestore.plan({
     app:'Country Club Equestrian',version:'4.9.1',income:[],
@@ -743,7 +844,7 @@ test('the current JSON backup format restores Show Office through the registered
         competition_name:'Backup Format Cup',competition_date:'2026-11-01',venue:null,organizer:null,
         chief_judge:null,course_designer:null,status:'Draft',notes:null
       }],
-      classes:[],riders:[],horses:[],stables:[],entries:[]
+      classes:[],riders:[],horses:[],stables:[],entries:[],judging:[],scores:[]
     }
   });
 });
@@ -908,12 +1009,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.11.0 cache key',()=>{
+test('all app assets use the v4.12.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20260722-4100'));
-  assert.ok((html.match(/20260723-4110/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260723-4110/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260723-4110/);
-  assert.equal(read('VERSION.txt').trim(),'4.11.0');
+  assert.ok((html.match(/20260724-4120/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260724-4120/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260724-4120/);
+  assert.equal(read('VERSION.txt').trim(),'4.12.0');
 });
