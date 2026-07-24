@@ -41,6 +41,7 @@
 - [x] Sprint 3: Entries وربط Rider/Horse/Stable بسجلات دائمة مع CRUD وصلاحيات ونسخ/استعادة ذرية.
 - [x] Sprint 4: Judge Panel وحساب الترتيب والقفل وسجل التصحيحات والنسخ/الاستعادة الذرية.
 - [x] Sprint 5: لوحة Live Results أصلية بترتيب مباشر تلقائي، تحديث دوري أثناء التحكيم، وعرض مناسب للشاشات الكبيرة والجوال عبر وضع Big Screen.
+- [x] تسجيل تحكيم بالحواجز (Fence-by-Fence) لفئات Table A/Jump-Off: عدد حواجز وقيم أخطاء وعتبة استبعاد قابلة للتعديل لكل فئة، ولوحة حكم تلقائية الحساب.
 - [ ] Sprint 6: Start Lists وResults وPDF.
 - [ ] Sprint 7: Archive.
 - [ ] الإحصاءات الموسمية وHall of Fame.

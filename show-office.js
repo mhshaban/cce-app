@@ -330,6 +330,7 @@
         <div><dt>Allowed Time</dt><dd>${row.allowed_time_seconds ? `${html(row.allowed_time_seconds)} sec` : '—'}</dd></div>
         <div><dt>Time Limit</dt><dd>${row.time_limit_seconds ? `${html(row.time_limit_seconds)} sec` : '—'}</dd></div>
         <div><dt>Entry Fee</dt><dd>${feeLabel(row.entry_fee_bd)}</dd></div>
+        <div><dt>Fences</dt><dd>${row.fence_count ? `${html(row.fence_count)} (K:${html(row.knockdown_fault_value)} R:${html(row.refusal_fault_value)}, elim @${html(row.refusals_before_elimination)})` : 'Manual entry'}</dd></div>
       </dl>
       ${row.notes ? `<p class="so-competition-notes">${html(row.notes)}</p>` : ''}
       <div class="so-actions">${classActions(row)}</div>
@@ -406,7 +407,7 @@
       target.innerHTML = warning + '<div class="so-empty"><span>🏇</span><strong>No matching classes</strong><p>Create a class or change the filters.</p></div>';
       return;
     }
-    target.innerHTML = `${warning}<div class="so-class-cards">${rows.map(classCard).join('')}</div><div class="so-class-table-wrap"><table class="so-table so-class-table"><thead><tr><th>Order</th><th>Class</th><th>Height</th><th>Type</th><th>Timing</th><th>Jump-Off</th><th>Fee</th><th>Actions</th></tr></thead><tbody>${rows.map(row => `
+    target.innerHTML = `${warning}<div class="so-class-cards">${rows.map(classCard).join('')}</div><div class="so-class-table-wrap"><table class="so-table so-class-table"><thead><tr><th>Order</th><th>Class</th><th>Height</th><th>Type</th><th>Timing</th><th>Jump-Off</th><th>Fences</th><th>Fee</th><th>Actions</th></tr></thead><tbody>${rows.map(row => `
       <tr>
         <td>${html(row.sort_order)}</td>
         <td><strong>${html(row.class_number)} · ${html(row.class_name)}</strong>${row.notes ? `<small>${html(row.notes)}</small>` : ''}</td>
@@ -414,6 +415,7 @@
         <td>${html(row.competition_type)}</td>
         <td><small>Allowed: ${row.allowed_time_seconds ? `${html(row.allowed_time_seconds)} sec` : '—'}</small><small>Limit: ${row.time_limit_seconds ? `${html(row.time_limit_seconds)} sec` : '—'}</small></td>
         <td><span class="so-jump-badge ${row.jump_off ? 'is-active' : ''}">${row.jump_off ? 'Yes' : 'No'}</span></td>
+        <td>${row.fence_count ? html(row.fence_count) : '—'}</td>
         <td>${feeLabel(row.entry_fee_bd)}</td>
         <td><div class="so-actions">${classActions(row)}</div></td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -831,6 +833,16 @@
           <div class="form-group"><label for="so-class-fee">Entry Fee (BD)</label><input id="so-class-fee" min="0" max="9999999.999" step="0.001" type="number" value="${attr(row?.entry_fee_bd ?? 0)}"></div>
           <div class="form-group so-checkbox-group"><label for="so-class-jump"><input id="so-class-jump" type="checkbox" ${row?.jump_off ? 'checked' : ''}> Jump-Off</label></div>
           <div class="form-group" style="grid-column:1/-1"><label for="so-class-notes">Notes</label><textarea id="so-class-notes" rows="4" maxlength="4000">${html(row?.notes || '')}</textarea></div>
+          <fieldset class="so-fence-fieldset" style="grid-column:1/-1">
+            <legend>⚑ Fence-by-Fence Scoring (optional — Table A / Jump-Off only)</legend>
+            <div class="form-grid">
+              <div class="form-group"><label for="so-class-fence-count">Number of Fences</label><input id="so-class-fence-count" min="1" max="50" step="1" type="number" value="${attr(row?.fence_count ?? '')}" placeholder="Leave empty for manual entry"></div>
+              <div class="form-group"><label for="so-class-fence-knockdown">Knockdown Fault Value</label><input id="so-class-fence-knockdown" min="0" max="999.99" step="0.01" type="number" value="${attr(row?.knockdown_fault_value ?? 4)}"></div>
+              <div class="form-group"><label for="so-class-fence-refusal">Refusal Fault Value</label><input id="so-class-fence-refusal" min="0" max="999.99" step="0.01" type="number" value="${attr(row?.refusal_fault_value ?? 4)}"></div>
+              <div class="form-group"><label for="so-class-fence-threshold">Refusals Before Elimination</label><input id="so-class-fence-threshold" min="1" max="9" step="1" type="number" value="${attr(row?.refusals_before_elimination ?? 3)}"></div>
+            </div>
+            <p class="so-fence-hint">Set the number of fences to switch Judge Panel to a tap-to-score fence grid for this class. Leave it empty to keep the manual Faults/Time form.</p>
+          </fieldset>
         </div>
         <div id="so-class-form-error" class="so-form-error" role="alert"></div>
         <div class="btn-row"><button class="btn btn-amber" id="so-class-save" type="submit">${row ? 'Save Changes' : 'Create Class'}</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()" type="button">Cancel</button></div>
@@ -850,7 +862,11 @@
       height_cm: formValue('so-class-height'), competition_type: formValue('so-class-type'),
       allowed_time_seconds: formValue('so-class-allowed'), time_limit_seconds: formValue('so-class-limit'),
       jump_off: Boolean(document.getElementById('so-class-jump')?.checked),
-      entry_fee_bd: formValue('so-class-fee'), notes: formValue('so-class-notes')
+      entry_fee_bd: formValue('so-class-fee'), notes: formValue('so-class-notes'),
+      fence_count: formValue('so-class-fence-count'),
+      knockdown_fault_value: formValue('so-class-fence-knockdown'),
+      refusal_fault_value: formValue('so-class-fence-refusal'),
+      refusals_before_elimination: formValue('so-class-fence-threshold')
     };
     try {
       if (error) error.style.display = 'none';

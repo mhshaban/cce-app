@@ -41,6 +41,17 @@
     return number;
   }
 
+  function faultValue(value, label, fallback) {
+    const raw = text(value);
+    if (!raw) return fallback;
+    if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) throw new Error(`${label} must be a non-negative amount with up to 2 decimal places.`);
+    const number = Number(raw);
+    if (!Number.isFinite(number) || number < 0 || number > 999.99) {
+      throw new Error(`${label} must be between 0 and 999.99.`);
+    }
+    return number;
+  }
+
   function normalize(row) {
     const source = row && typeof row === 'object' ? row : {};
     return {
@@ -55,7 +66,11 @@
       time_limit_seconds: source.time_limit_seconds == null ? null : Number(source.time_limit_seconds),
       jump_off: source.jump_off === true || source.jump_off === 'true',
       entry_fee_bd: source.entry_fee_bd == null ? 0 : Number(source.entry_fee_bd),
-      notes: text(source.notes)
+      notes: text(source.notes),
+      fence_count: source.fence_count == null || source.fence_count === '' ? null : Number(source.fence_count),
+      knockdown_fault_value: source.knockdown_fault_value == null ? 4 : Number(source.knockdown_fault_value),
+      refusal_fault_value: source.refusal_fault_value == null ? 4 : Number(source.refusal_fault_value),
+      refusals_before_elimination: source.refusals_before_elimination == null ? 3 : Number(source.refusals_before_elimination)
     };
   }
 
@@ -78,6 +93,12 @@
       throw new Error('Time limit cannot be less than allowed time.');
     }
     if (row.notes.length > NOTES_MAX) throw new Error(`Notes must be ${NOTES_MAX.toLocaleString()} characters or fewer.`);
+    const fenceCount = positiveInteger(row.fence_count, 'Fence count', {optionalValue: true, maximum: 50});
+    const knockdownFaultValue = faultValue(row.knockdown_fault_value, 'Knockdown fault value', 4);
+    const refusalFaultValue = faultValue(row.refusal_fault_value, 'Refusal fault value', 4);
+    const refusalsBeforeElimination = positiveInteger(
+      row.refusals_before_elimination, 'Refusals before elimination', {optionalValue: true, maximum: 9}
+    ) || 3;
     return {
       competition_id: competitionId,
       class_number: row.class_number,
@@ -89,7 +110,11 @@
       time_limit_seconds: timeLimit,
       jump_off: Boolean(row.jump_off),
       entry_fee_bd: entryFee(row.entry_fee_bd),
-      notes: optional(row.notes)
+      notes: optional(row.notes),
+      fence_count: fenceCount,
+      knockdown_fault_value: knockdownFaultValue,
+      refusal_fault_value: refusalFaultValue,
+      refusals_before_elimination: refusalsBeforeElimination
     };
   }
 
@@ -204,6 +229,10 @@
       'Time Limit Seconds': row.time_limit_seconds,
       'Jump-Off': row.jump_off ? 'Yes' : 'No',
       'Entry Fee BD': row.entry_fee_bd,
+      'Fence Count': row.fence_count,
+      'Knockdown Fault Value': row.knockdown_fault_value,
+      'Refusal Fault Value': row.refusal_fault_value,
+      'Refusals Before Elimination': row.refusals_before_elimination,
       Notes: row.notes
     }));
   }

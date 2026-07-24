@@ -1431,6 +1431,132 @@ test('v4.13 results.view widens the judging read RPCs and rollback restores v4.1
   }
 });
 
+test('v4.14 fence scoring computes totals, auto-eliminates and rollback restores v4.13 scope',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000060';
+  const judge='00000000-0000-4000-8000-000000000061';
+  const trainer='00000000-0000-4000-8000-000000000062';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','fence-manager@example.com'),
+        ('${judge}','fence-judge@example.com'),
+        ('${trainer}','fence-trainer@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager')
+         or (p.id='${judge}' and r.code='judge')
+         or (p.id='${trainer}' and r.code='trainer');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Fence Cup','2027-08-01','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type,
+        fence_count,knockdown_fault_value,refusal_fault_value,refusals_before_elimination
+      ) select id,'1',1,'Fence Class','Table A',3,4,4,2
+        from public.show_office_competitions where competition_name='Fence Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Fence Class'),
+        p_start_number=>1,p_rider_name=>'Fence Rider',p_horse_name=>'Fence Horse'
+      );
+    `);
+    const entryRow=await db.query(`select id from public.show_office_entries where start_number=1`);
+    const entryId=entryRow.rows[0].id;
+    const classRow=await db.query(`select id from public.show_office_classes where class_name='Fence Class'`);
+    const classId=classRow.rows[0].id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${trainer}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0)`,[entryId]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const knockdown=await db.query(
+      `select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0) as result`,[entryId]
+    );
+    assert.equal(knockdown.rows[0].result.incident,'knockdown');
+    assert.equal(knockdown.rows[0].result.totals.faults,4);
+    const refusal=await db.query(
+      `select public.cce_show_office_toggle_fence($1,'first_round',2::smallint,'refusal',0) as result`,[entryId]
+    );
+    assert.equal(refusal.rows[0].result.totals.faults,8);
+    assert.equal(refusal.rows[0].result.totals.refusals,1);
+
+    const confirmed=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',65000,false,false,false,0) as result`,
+      [entryId]
+    );
+    assert.equal(confirmed.rows[0].result.faults,8);
+    assert.equal(confirmed.rows[0].result.refusals,1);
+    assert.equal(confirmed.rows[0].result.eliminated,false);
+    assert.equal(confirmed.rows[0].result.time_ms,65000);
+    const roundVersion=confirmed.rows[0].result.row_version;
+
+    const secondRefusal=await db.query(
+      `select public.cce_show_office_toggle_fence($1,'first_round',3::smallint,'refusal',0) as result`,[entryId]
+    );
+    assert.equal(secondRefusal.rows[0].result.totals.refusals,2);
+
+    const eliminated=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',70000,false,false,false,$2) as result`,
+      [entryId,roundVersion]
+    );
+    assert.equal(eliminated.rows[0].result.eliminated,true);
+    assert.equal(eliminated.rows[0].result.time_ms,null);
+    assert.equal(eliminated.rows[0].result.faults,null);
+    const finalVersion=eliminated.rows[0].result.row_version;
+
+    const panel=await db.query(
+      `select public.cce_show_office_judge_panel($1) as result`,[classId]
+    );
+    const panelClass=panel.rows[0].result.class;
+    assert.equal(panelClass.fence_count,3);
+    assert.equal(panelClass.refusals_before_elimination,2);
+    const panelRow=panel.rows[0].result.rows[0];
+    assert.equal(panelRow.first_round_fences.length,3);
+    assert.deepEqual(
+      panelRow.first_round_fences.map(fence=>fence.incident),
+      ['knockdown','refusal','refusal']
+    );
+
+    await db.query(`select public.cce_reset_show_office_score($1,'first_round',$2)`,[entryId,finalVersion]);
+    const fencesAfterReset=await db.query(
+      `select count(*)::int as rows from public.show_office_entry_fences where entry_id=$1`,[entryId]
+    );
+    assert.equal(fencesAfterReset.rows[0].rows,0);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4140_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        to_regprocedure('public.cce_show_office_toggle_fence(bigint,text,smallint,text,integer)') is null
+          as toggle_removed,
+        to_regprocedure('public.cce_save_show_office_fence_score(bigint,text,integer,boolean,boolean,boolean,integer)') is null
+          as confirm_removed,
+        to_regclass('public.show_office_entry_fences') is not null as fences_table_kept,
+        (select count(*)::int from information_schema.columns
+          where table_schema='public' and table_name='show_office_classes' and column_name='fence_count') as fence_column_kept
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{
+      toggle_removed:true,confirm_removed:true,fences_table_kept:true,fence_column_kept:1
+    });
+
+    await db.exec(read('supabase/migrations/20260726_show_office_fence_scoring_v4140.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const reapplied=await db.query(
+      `select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0) as result`,[entryId]
+    );
+    assert.equal(reapplied.rows[0].result.incident,'knockdown');
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
