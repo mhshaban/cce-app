@@ -621,6 +621,8 @@ test('the full Supabase chain builds and enforces the current contracts',async()
     await db.exec(read('supabase/verification/verify_v4100.sql'));
     await db.exec(read('supabase/verification/verify_v4110.sql'));
     await db.exec(read('supabase/verification/verify_v4120.sql'));
+    await db.exec(read('supabase/verification/preflight_v4130.sql'));
+    await db.exec(read('supabase/verification/verify_v4130.sql'));
   }finally{
     await db.close();
   }
@@ -973,12 +975,12 @@ test('Show Office Sprint 4 Judge Panel enforces scoring, ranking, locking and pe
       insert into auth.users(id,email) values
         ('${manager}','judge-manager@example.com'),
         ('${judge}','judge@example.com'),
-        ('${unauthorized}','judge-reception@example.com');
+        ('${unauthorized}','judge-trainer@example.com');
       update public.profiles p set is_active=true,role_id=r.id
       from public.app_roles r
       where (p.id='${manager}' and r.code='manager')
          or (p.id='${judge}' and r.code='judge')
-         or (p.id='${unauthorized}' and r.code='reception');
+         or (p.id='${unauthorized}' and r.code='trainer');
       set "request.jwt.claim.sub"='${manager}';
       set role authenticated;
     `);
@@ -1344,6 +1346,86 @@ test('v4.12 compatibility rollback preserves scores and Sprint 4 can be re-appli
     assert.deepEqual({...reapplied.rows[0]},{
       score_rows:1,save_ready:true,policies:3,manager_defaults:8,judge_defaults:2
     });
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.13 results.view widens the judging read RPCs and rollback restores v4.12 scope',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000058';
+  const receptionist='00000000-0000-4000-8000-000000000059';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','live-results-manager@example.com'),
+        ('${receptionist}','live-results-reception@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager')
+         or (p.id='${receptionist}' and r.code='reception');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Live Results Cup','2027-07-01','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type
+      ) select id,'1',1,'Live Results Class','Table A'
+        from public.show_office_competitions where competition_name='Live Results Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Live Results Class'),
+        p_start_number=>1,p_rider_name=>'Live Rider',p_horse_name=>'Live Horse'
+      );
+      select public.cce_save_show_office_score(
+        (select id from public.show_office_entries where start_number=1),
+        'first_round',70000,0::numeric,0::smallint,false,false,false,0
+      );
+    `);
+    const classRow=await db.query(`select id from public.show_office_classes where class_name='Live Results Class'`);
+    const classId=classRow.rows[0].id;
+    const entryRow=await db.query(`select id from public.show_office_entries where start_number=1`);
+    const entryId=entryRow.rows[0].id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${receptionist}'; set role authenticated`);
+    const beforeRollback=await db.query(`
+      select
+        (select count(*) from public.cce_show_office_judging_context())::int as context_rows,
+        jsonb_array_length((public.cce_show_office_judge_panel($1))->'rows') as panel_rows
+    `,[classId]);
+    assert.deepEqual({...beforeRollback.rows[0]},{context_rows:1,panel_rows:1});
+    await assert.rejects(
+      db.query(`select public.cce_save_show_office_score(
+        $1::bigint,'first_round',71000,1::numeric,0::smallint,false,false,false,1
+      )`,[entryId]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4130_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        (select count(*)::int from public.app_permissions where code='show_office.results.view') as permission_kept,
+        (select bool_and(allowed is false) from public.role_permissions
+          where permission_code='show_office.results.view') as grants_withdrawn,
+        (select count(*)::int from public.show_office_entry_rounds) as score_rows
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{permission_kept:1,grants_withdrawn:true,score_rows:1});
+
+    await db.exec(`set "request.jwt.claim.sub"='${receptionist}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_show_office_judging_context()`),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${receptionist}'; set role authenticated`);
+    const reapplied=await db.query(`
+      select (select count(*) from public.cce_show_office_judging_context())::int as context_rows
+    `);
+    assert.equal(reapplied.rows[0].context_rows,1);
+    await db.exec('reset role');
   }finally{
     await db.close();
   }
