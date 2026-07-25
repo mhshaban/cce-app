@@ -318,6 +318,14 @@
     return `${Number(value || 0).toFixed(3)} BD`;
   }
 
+  function fenceScoringLabel(row) {
+    if (!row.fence_count) return 'Manual entry';
+    if (row.scoring_format === 'accumulator_joker') {
+      return `Accumulator · ${html(row.fence_count)} fences · Joker #${html(row.joker_fence_number || row.fence_count)}`;
+    }
+    return `${html(row.fence_count)} (K:${html(row.knockdown_fault_value)} R:${html(row.refusal_fault_value)}, elim @${html(row.refusals_before_elimination)})`;
+  }
+
   function classCard(row) {
     return `<article class="so-class-card">
       <div class="so-class-card-head">
@@ -330,7 +338,7 @@
         <div><dt>Allowed Time</dt><dd>${row.allowed_time_seconds ? `${html(row.allowed_time_seconds)} sec` : '—'}</dd></div>
         <div><dt>Time Limit</dt><dd>${row.time_limit_seconds ? `${html(row.time_limit_seconds)} sec` : '—'}</dd></div>
         <div><dt>Entry Fee</dt><dd>${feeLabel(row.entry_fee_bd)}</dd></div>
-        <div><dt>Fences</dt><dd>${row.fence_count ? `${html(row.fence_count)} (K:${html(row.knockdown_fault_value)} R:${html(row.refusal_fault_value)}, elim @${html(row.refusals_before_elimination)})` : 'Manual entry'}</dd></div>
+        <div><dt>Fences</dt><dd>${fenceScoringLabel(row)}</dd></div>
       </dl>
       ${row.notes ? `<p class="so-competition-notes">${html(row.notes)}</p>` : ''}
       <div class="so-actions">${classActions(row)}</div>
@@ -415,7 +423,7 @@
         <td>${html(row.competition_type)}</td>
         <td><small>Allowed: ${row.allowed_time_seconds ? `${html(row.allowed_time_seconds)} sec` : '—'}</small><small>Limit: ${row.time_limit_seconds ? `${html(row.time_limit_seconds)} sec` : '—'}</small></td>
         <td><span class="so-jump-badge ${row.jump_off ? 'is-active' : ''}">${row.jump_off ? 'Yes' : 'No'}</span></td>
-        <td>${row.fence_count ? html(row.fence_count) : '—'}</td>
+        <td>${row.fence_count ? (row.scoring_format === 'accumulator_joker' ? `${html(row.fence_count)} · Accumulator` : html(row.fence_count)) : '—'}</td>
         <td>${feeLabel(row.entry_fee_bd)}</td>
         <td><div class="so-actions">${classActions(row)}</div></td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -834,14 +842,19 @@
           <div class="form-group so-checkbox-group"><label for="so-class-jump"><input id="so-class-jump" type="checkbox" ${row?.jump_off ? 'checked' : ''}> Jump-Off</label></div>
           <div class="form-group" style="grid-column:1/-1"><label for="so-class-notes">Notes</label><textarea id="so-class-notes" rows="4" maxlength="4000">${html(row?.notes || '')}</textarea></div>
           <fieldset class="so-fence-fieldset" style="grid-column:1/-1">
-            <legend>⚑ Fence-by-Fence Scoring (optional — Table A / Jump-Off only)</legend>
+            <legend>⚑ Fence-by-Fence Scoring (optional)</legend>
             <div class="form-grid">
+              <div class="form-group"><label for="so-class-scoring-format">Scoring Format</label><select id="so-class-scoring-format">
+                <option value="table_a" ${(row?.scoring_format || 'table_a') === 'table_a' ? 'selected' : ''}>Table A (faults then time)</option>
+                <option value="accumulator_joker" ${row?.scoring_format === 'accumulator_joker' ? 'selected' : ''}>Accumulator with Joker (points then time)</option>
+              </select></div>
               <div class="form-group"><label for="so-class-fence-count">Number of Fences</label><input id="so-class-fence-count" min="1" max="50" step="1" type="number" value="${attr(row?.fence_count ?? '')}" placeholder="Leave empty for manual entry"></div>
               <div class="form-group"><label for="so-class-fence-knockdown">Knockdown Fault Value</label><input id="so-class-fence-knockdown" min="0" max="999.99" step="0.01" type="number" value="${attr(row?.knockdown_fault_value ?? 4)}"></div>
               <div class="form-group"><label for="so-class-fence-refusal">Refusal Fault Value</label><input id="so-class-fence-refusal" min="0" max="999.99" step="0.01" type="number" value="${attr(row?.refusal_fault_value ?? 4)}"></div>
               <div class="form-group"><label for="so-class-fence-threshold">Refusals Before Elimination</label><input id="so-class-fence-threshold" min="1" max="9" step="1" type="number" value="${attr(row?.refusals_before_elimination ?? 3)}"></div>
+              <div class="form-group"><label for="so-class-joker-fence">Joker Fence Number (Accumulator only)</label><input id="so-class-joker-fence" min="1" max="50" step="1" type="number" value="${attr(row?.joker_fence_number ?? '')}" placeholder="Defaults to the last fence"></div>
             </div>
-            <p class="so-fence-hint">Set the number of fences to switch Judge Panel to a tap-to-score fence grid for this class. Leave it empty to keep the manual Faults/Time form.</p>
+            <p class="so-fence-hint">Set the number of fences to switch Judge Panel to a tap-to-score fence grid. Table A charges Knockdown/Refusal fault values; Accumulator with Joker awards each clear fence points equal to its number and doubles the total when the Joker fence is cleared. Leave the fence count empty to keep the manual Faults/Time form.</p>
           </fieldset>
         </div>
         <div id="so-class-form-error" class="so-form-error" role="alert"></div>
@@ -866,7 +879,9 @@
       fence_count: formValue('so-class-fence-count'),
       knockdown_fault_value: formValue('so-class-fence-knockdown'),
       refusal_fault_value: formValue('so-class-fence-refusal'),
-      refusals_before_elimination: formValue('so-class-fence-threshold')
+      refusals_before_elimination: formValue('so-class-fence-threshold'),
+      scoring_format: formValue('so-class-scoring-format'),
+      joker_fence_number: formValue('so-class-joker-fence')
     };
     try {
       if (error) error.style.display = 'none';

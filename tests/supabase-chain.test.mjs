@@ -1557,6 +1557,131 @@ test('v4.14 fence scoring computes totals, auto-eliminates and rollback restores
   }
 });
 
+test('v4.15 Accumulator with Joker computes points, doubles the total, ranks descending and rollback restores v4.14 scope',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000063';
+  const judge='00000000-0000-4000-8000-000000000064';
+  const trainer='00000000-0000-4000-8000-000000000065';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','accumulator-manager@example.com'),
+        ('${judge}','accumulator-judge@example.com'),
+        ('${trainer}','accumulator-trainer@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager')
+         or (p.id='${judge}' and r.code='judge')
+         or (p.id='${trainer}' and r.code='trainer');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Accumulator Cup','2027-08-02','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type,
+        fence_count,scoring_format,joker_fence_number,refusals_before_elimination
+      ) select id,'1',1,'Accumulator Class','Accumulator with Joker',5,'accumulator_joker',5,2
+        from public.show_office_competitions where competition_name='Accumulator Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Accumulator Class'),
+        p_start_number=>1,p_rider_name=>'Leader Rider',p_horse_name=>'Leader Horse'
+      );
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Accumulator Class'),
+        p_start_number=>2,p_rider_name=>'Trailer Rider',p_horse_name=>'Trailer Horse'
+      );
+    `);
+    const classRow=await db.query(`select id from public.show_office_classes where class_name='Accumulator Class'`);
+    const classId=classRow.rows[0].id;
+    const leaderRow=await db.query(`select id from public.show_office_entries where start_number=1`);
+    const leaderId=leaderRow.rows[0].id;
+    const trailerRow=await db.query(`select id from public.show_office_entries where start_number=2`);
+    const trailerId=trailerRow.rows[0].id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${trainer}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0)`,[leaderId]),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    // Leader: fence 1 knockdown, fence 3 refusal, fences 2/4/5 left clear untouched.
+    // Base points = 0 + 2 + 0 + 4 + 5(Joker, clear) = 11, doubled to 22 because the Joker is clear.
+    await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0)`,[leaderId]);
+    await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',3::smallint,'refusal',0)`,[leaderId]);
+    const leaderConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,0) as result`,
+      [leaderId]
+    );
+    assert.equal(leaderConfirm.rows[0].result.points,22);
+    assert.equal(leaderConfirm.rows[0].result.faults,null);
+    assert.equal(leaderConfirm.rows[0].result.refusals,1);
+    assert.equal(leaderConfirm.rows[0].result.eliminated,false);
+    const leaderVersion=leaderConfirm.rows[0].result.row_version;
+
+    // Trailer: every fence knocked down, including the Joker -> 0 points, no doubling.
+    for(const fenceNumber of [1,2,3,4,5]){
+      await db.query(
+        `select public.cce_show_office_toggle_fence($1,'first_round',$2::smallint,'knockdown',0)`,
+        [trailerId,fenceNumber]
+      );
+    }
+    const trailerConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',55000,false,false,false,0) as result`,
+      [trailerId]
+    );
+    assert.equal(trailerConfirm.rows[0].result.points,0);
+
+    const panel=await db.query(`select public.cce_show_office_judge_panel($1) as result`,[classId]);
+    const panelClass=panel.rows[0].result.class;
+    assert.equal(panelClass.scoring_format,'accumulator_joker');
+    assert.equal(panelClass.joker_fence_number,5);
+    const rows=panel.rows[0].result.rows;
+    const leaderRowResult=rows.find(row=>row.start_number===1);
+    const trailerRowResult=rows.find(row=>row.start_number===2);
+    assert.equal(leaderRowResult.first_round.points,22);
+    assert.equal(leaderRowResult.placing,1);
+    assert.equal(trailerRowResult.first_round.points,0);
+    assert.equal(trailerRowResult.placing,2);
+
+    // A second refusal on the leader reaches the class's threshold of 2 and auto-eliminates,
+    // exactly like Table A, even though this class ranks by points.
+    await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',2::smallint,'refusal',0)`,[leaderId]);
+    const leaderEliminated=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [leaderId,leaderVersion]
+    );
+    assert.equal(leaderEliminated.rows[0].result.eliminated,true);
+    assert.equal(leaderEliminated.rows[0].result.points,null);
+    assert.equal(leaderEliminated.rows[0].result.time_ms,null);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4150_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        (select count(*)::int from information_schema.columns
+          where table_schema='public' and table_name='show_office_classes'
+            and column_name in ('scoring_format','joker_fence_number')) as class_columns_kept,
+        (select count(*)::int from information_schema.columns
+          where table_schema='public' and table_name='show_office_entry_rounds' and column_name='points') as points_column_kept,
+        (select scoring_format from public.show_office_classes where id=$1) as scoring_format_kept
+    `,[classId]);
+    assert.deepEqual({...rolledBack.rows[0]},{
+      class_columns_kept:2,points_column_kept:1,scoring_format_kept:'accumulator_joker'
+    });
+
+    await db.exec(read('supabase/migrations/20260728_show_office_accumulator_joker_v4150.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const reapplied=await db.query(`select public.cce_show_office_judge_panel($1) as result`,[classId]);
+    assert.equal(reapplied.rows[0].result.class.scoring_format,'accumulator_joker');
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
