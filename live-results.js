@@ -1,12 +1,12 @@
 // Show Office Sprint 5 Live Results Board controller.
-// Read-only, auto-refreshing view of the same provisional ranking Judge Panel computes server-side.
+// Read-only view of the same provisional ranking Judge Panel computes server-side.
+// Data refreshes when the page is opened and on manual Refresh only — no background polling.
 (function () {
   'use strict';
 
   window.CCE = window.CCE || {};
   const showOffice = window.CCE.showOffice = window.CCE.showOffice || {};
   const PAGE_ID = 'page-show-office-results';
-  const REFRESH_MS = 8000;
   let contextRows = [];
   let boardData = null;
   let selectedCompetitionId = '';
@@ -14,11 +14,9 @@
   let loading = false;
   let loaded = false;
   let loadError = '';
-  let pollWarning = '';
   let lastUpdatedAt = null;
   let tvMode = false;
   let requestId = 0;
-  let pollTimer = null;
 
   const service = () => showOffice.judgingService;
   const clean = value => String(value == null ? '' : value).trim();
@@ -130,7 +128,7 @@
       </div>
       <div class="so-live-head-meta">
         <span class="so-status ${statusClass}">${html(competitionClass.judging_status)}</span>
-        <span class="so-live-updated"><i class="so-live-dot ${pollTimer ? 'is-live' : ''}"></i>${lastUpdatedAt ? `Updated ${html(updatedAgoLabel())}` : ''}</span>
+        ${lastUpdatedAt ? `<span class="so-live-updated">Updated ${html(updatedAgoLabel())} · press Refresh for the latest</span>` : ''}
       </div>
     </div>`;
   }
@@ -182,10 +180,7 @@
     }
     const competitionClass = boardData.class;
     const rows = boardData.rows || [];
-    const warning = pollWarning
-      ? `<div class="so-load-warning" role="alert"><div><strong>Live update failed</strong><span>${html(pollWarning)}</span></div><button class="btn btn-amber" onclick="refreshShowOfficeResults()">Try again</button></div>`
-      : '';
-    target.innerHTML = `${warning}<div class="card so-live-board">
+    target.innerHTML = `<div class="card so-live-board">
       ${boardHeader(competitionClass)}
       ${rows.length ? `<div class="so-live-rows">${standingsRows(rows, competitionClass)}</div>`
         : stateHtml('This class has no entries yet.', '👥')}
@@ -231,7 +226,7 @@
       return null;
     }
     const currentRequest = options.nested ? requestId : ++requestId;
-    if (!options.nested && !options.silent) {
+    if (!options.nested) {
       loading = true;
       loadError = '';
       renderBoard();
@@ -244,59 +239,22 @@
       boardData = value;
       loaded = true;
       lastUpdatedAt = new Date();
-      pollWarning = '';
       return value;
     } catch (error) {
       if (currentRequest !== requestId) return null;
-      if (options.silent) pollWarning = friendlyError(error);
-      else loadError = friendlyError(error);
+      loadError = friendlyError(error);
       if (options.throwOnError) throw error;
       return null;
     } finally {
-      if ((!options.nested && !options.silent) && currentRequest === requestId) {
+      if (!options.nested && currentRequest === requestId) {
         loading = false;
-        renderBoard();
-      } else if (options.silent) {
         renderBoard();
       }
     }
   }
 
-  function pageActive() {
-    return document.getElementById(PAGE_ID)?.classList.contains('active') === true;
-  }
-
-  async function poll() {
-    if (!pageActive()) {
-      stopPolling();
-      return;
-    }
-    if (document.hidden || !canView() || !selectedClassId) return;
-    try {
-      contextRows = await service().context();
-      ensureSelection();
-      if (selectedClassId) await loadBoard(selectedClassId, {silent: true});
-      else renderBoard();
-    } catch (error) {
-      pollWarning = friendlyError(error);
-      renderBoard();
-    }
-  }
-
-  function startPolling() {
-    if (pollTimer) return;
-    pollTimer = window.setInterval(poll, REFRESH_MS);
-  }
-
-  function stopPolling() {
-    if (!pollTimer) return;
-    window.clearInterval(pollTimer);
-    pollTimer = null;
-  }
-
   function clear() {
     requestId += 1;
-    stopPolling();
     contextRows = [];
     boardData = null;
     selectedCompetitionId = '';
@@ -304,7 +262,6 @@
     loading = false;
     loaded = false;
     loadError = '';
-    pollWarning = '';
     lastUpdatedAt = null;
     tvMode = false;
     renderBoard();
@@ -337,10 +294,10 @@
   };
 
   showOffice.liveResults = Object.freeze({
+    // Opening the page (or pressing Refresh) is the only way this board updates —
+    // there is no background polling, by design, to keep database load minimal.
     open: async () => {
-      if (!loaded || loadError) await loadContext();
-      else renderBoard();
-      if (canView()) startPolling();
+      await loadContext();
       return contextRows;
     },
     clear,
