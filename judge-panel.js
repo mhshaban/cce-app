@@ -81,6 +81,9 @@
     if (score.did_not_start) return 'DNS';
     if (score.eliminated) return 'Eliminated';
     if (score.retired) return 'Retired';
+    if (score.points != null) {
+      return `${Number(score.points).toFixed(2).replace(/\.00$/, '')} points · ${service().millisecondsToTime(score.time_ms)} s`;
+    }
     return `${Number(score.faults).toFixed(2).replace(/\.00$/, '')} faults · ${service().millisecondsToTime(score.time_ms)} s`;
   }
 
@@ -94,9 +97,17 @@
     return Number(competitionClass?.fence_count) > 0;
   }
 
+  function isAccumulator(competitionClass) {
+    return competitionClass?.scoring_format === 'accumulator_joker';
+  }
+
   function fencesFor(row, scorePhase = selectedPhase) {
     const fences = scorePhase === 'jump_off' ? row?.jump_off_fences : row?.first_round_fences;
     return Array.isArray(fences) ? fences : [];
+  }
+
+  function jokerFenceNumber(fences, competitionClass) {
+    return Number(competitionClass.joker_fence_number) || fences.length;
   }
 
   function fenceTotals(fences, competitionClass) {
@@ -110,16 +121,30 @@
     }, {faults: 0, refusals: 0});
   }
 
+  function pointsTotals(fences, competitionClass) {
+    const joker = jokerFenceNumber(fences, competitionClass);
+    let base = 0;
+    let jokerCleared = false;
+    let refusals = 0;
+    fences.forEach(fence => {
+      const clear = fence.incident === 'clear';
+      if (clear) base += Number(fence.fence_number);
+      if (fence.incident === 'refusal') refusals += 1;
+      if (clear && Number(fence.fence_number) === joker) jokerCleared = true;
+    });
+    return {points: jokerCleared ? base * 2 : base, refusals, jokerCleared};
+  }
+
   function fenceIcon(incidentValue) {
     if (incidentValue === 'knockdown') return '✕';
     if (incidentValue === 'refusal') return '⟲';
     return '✓';
   }
 
-  function fenceGridHtml(fences, disabled) {
+  function fenceGridHtml(fences, disabled, jokerFence) {
     return `<div class="so-judge-fence-grid">${fences.map(fence => `
-      <button type="button" class="so-judge-fence ${fence.incident !== 'clear' ? `is-${fence.incident}` : ''}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number})" title="Fence ${fence.fence_number}: ${fence.incident}">
-        <span>${fenceIcon(fence.incident)}</span><small>#${fence.fence_number}</small>
+      <button type="button" class="so-judge-fence ${fence.incident !== 'clear' ? `is-${fence.incident}` : ''} ${jokerFence && Number(fence.fence_number) === jokerFence ? 'is-joker' : ''}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number})" title="Fence ${fence.fence_number}: ${fence.incident}${jokerFence && Number(fence.fence_number) === jokerFence ? ' (Joker)' : ''}">
+        <span>${fenceIcon(fence.incident)}</span><small>#${fence.fence_number}${jokerFence && Number(fence.fence_number) === jokerFence ? ' J' : ''}</small>
       </button>`).join('')}</div>`;
   }
 
@@ -211,10 +236,12 @@
         ? 'Competition must be Running before scores can be changed.'
         : !canScore() ? 'View-only access.' : '';
     const fenceMode = isFenceClass(competitionClass);
+    const accumulator = fenceMode && isAccumulator(competitionClass);
     const fences = fenceMode ? fencesFor(row) : [];
-    const totals = fenceMode ? fenceTotals(fences, competitionClass) : null;
+    const totals = fenceMode ? (accumulator ? pointsTotals(fences, competitionClass) : fenceTotals(fences, competitionClass)) : null;
     const autoEliminate = fenceMode && !special && totals.refusals >= Number(competitionClass.refusals_before_elimination || 3);
     const eliminatedChecked = eliminated || (fenceMode && !score && autoEliminate);
+    const joker = accumulator ? jokerFenceNumber(fences, competitionClass) : null;
     return `<form class="so-judge-score-card" id="showOfficeJudgeScoreForm" onsubmit="event.preventDefault();saveShowOfficeJudgeScore()">
       <div class="so-judge-score-head">
         <div><span>START ${html(row.start_number)}</span><h3>${html(row.rider_name)}</h3><p>${html(row.horse_name)}${row.stable_name ? ` · ${html(row.stable_name)}` : ''}</p></div>
@@ -222,9 +249,15 @@
       </div>
       ${reason ? `<div class="so-judge-notice">${html(reason)}</div>` : ''}
       ${fenceMode ? `
-      <div class="so-judge-fence-summary"><span>Fences: ${fences.length}</span><span>Faults: <b>${totals.faults.toFixed(2).replace(/\.00$/, '')}</b></span><span>Refusals: <b>${totals.refusals}</b>${autoEliminate ? ' — auto-eliminated' : ''}</span></div>
-      ${fenceGridHtml(fences, disabled || special ? 'disabled' : '')}
-      <p class="so-judge-fence-note">Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.</p>
+      <div class="so-judge-fence-summary">${accumulator
+        ? `<span>Fences: ${fences.length}</span><span>Points: <b class="so-points-value">${totals.points.toFixed(2).replace(/\.00$/, '')}</b></span><span>Refusals: <b>${totals.refusals}</b>${autoEliminate ? ' — auto-eliminated' : ''}${totals.jokerCleared ? ' · Joker doubled' : ''}</span>`
+        : `<span>Fences: ${fences.length}</span><span>Faults: <b>${totals.faults.toFixed(2).replace(/\.00$/, '')}</b></span><span>Refusals: <b>${totals.refusals}</b>${autoEliminate ? ' — auto-eliminated' : ''}</span>`
+      }</div>
+      ${fenceGridHtml(fences, disabled || special ? 'disabled' : '', joker)}
+      <p class="so-judge-fence-note">${accumulator
+        ? `Tap a fence to cycle Clear → Knockdown → Refusal. Each clear fence scores its number in points; clearing Joker fence #${html(joker)} doubles the total. ${html(competitionClass.refusals_before_elimination || 3)} refusals eliminate the entry automatically; correct it below if needed.`
+        : `Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.`
+      }</p>
       <div class="so-judge-score-fields" style="grid-template-columns:1fr">
         <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450"></label>
       </div>` : `
@@ -265,7 +298,10 @@
           ${competitionClass.jump_off ? `<span><small>Jump-Off</small><b>${html(jump)}</b></span>` : ''}
         </div>`;
       }).join('')}</div>
-      <p class="so-judge-ranking-note">Provisional order uses the official faults entered by the judge, then time. Refusals and allowed time are displayed but do not automatically add penalties.</p>
+      <p class="so-judge-ranking-note">${isAccumulator(competitionClass)
+        ? 'Provisional order uses total points (highest first, Joker fence doubled when cleared), then time.'
+        : 'Provisional order uses the official faults entered by the judge, then time. Refusals and allowed time are displayed but do not automatically add penalties.'
+      }</p>
     </div>`;
   }
 

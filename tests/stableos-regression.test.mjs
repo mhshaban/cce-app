@@ -246,6 +246,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260724_show_office_sprint4_judging_v4120.sql',
     'supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql',
     'supabase/migrations/20260726_show_office_fence_scoring_v4140.sql',
+    'supabase/migrations/20260728_show_office_accumulator_joker_v4150.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -268,6 +269,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4130.sql',
     'supabase/verification/preflight_v4140.sql',
     'supabase/verification/verify_v4140.sql',
+    'supabase/verification/preflight_v4150.sql',
+    'supabase/verification/verify_v4150.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -284,7 +287,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4110_compatibility.sql',
     'supabase/rollback/rollback_v4120_compatibility.sql',
     'supabase/rollback/rollback_v4130_compatibility.sql',
-    'supabase/rollback/rollback_v4140_compatibility.sql'
+    'supabase/rollback/rollback_v4140_compatibility.sql',
+    'supabase/rollback/rollback_v4150_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -422,7 +426,8 @@ test('Show Office class service validates operational fields and portable parent
     competition_id:8,class_number:'1A',sort_order:2,class_name:'Open 100 cm',height_cm:100,
     competition_type:'Table A',allowed_time_seconds:72,time_limit_seconds:144,jump_off:true,
     entry_fee_bd:12.5,notes:'First class',
-    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3
+    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3,
+    scoring_format:'table_a',joker_fence_number:null
   });
   assert.throws(()=>service.validate({...valid,class_number:''}),/class number is required/i);
   assert.throws(()=>service.validate({...valid,sort_order:0}),/class order must be a positive/i);
@@ -459,6 +464,34 @@ test('Show Office class service validates optional fence-by-fence scoring rules'
   assert.throws(()=>service.validate({...base,fence_count:51}),/no greater than 50/i);
   assert.throws(()=>service.validate({...base,knockdown_fault_value:'1000'}),/between 0 and 999\.99/i);
   assert.throws(()=>service.validate({...base,refusals_before_elimination:10}),/no greater than 9/i);
+});
+
+test('Show Office class service validates Accumulator with Joker scoring format',()=>{
+  const service=showOfficeClassService();
+  const base={
+    competition_id:8,class_number:'1A',sort_order:1,class_name:'Accumulator Class',
+    competition_type:'Accumulator'
+  };
+  const defaultFormat=service.validate(base);
+  assert.equal(defaultFormat.scoring_format,'table_a');
+  assert.equal(defaultFormat.joker_fence_number,null);
+  const accumulator=service.validate({
+    ...base,fence_count:'8',scoring_format:'accumulator_joker',joker_fence_number:'8'
+  });
+  assert.equal(accumulator.scoring_format,'accumulator_joker');
+  assert.equal(accumulator.joker_fence_number,8);
+  assert.throws(
+    ()=>service.validate({...base,scoring_format:'accumulator_joker'}),
+    /requires a fence count/i
+  );
+  assert.throws(
+    ()=>service.validate({...base,fence_count:'5',scoring_format:'accumulator_joker',joker_fence_number:'6'}),
+    /cannot exceed the fence count/i
+  );
+  assert.throws(
+    ()=>service.validate({...base,scoring_format:'bogus'}),
+    /table_a or accumulator_joker/i
+  );
 });
 
 test('Show Office entry service validates permanent registries and writes through one atomic RPC',async()=>{
@@ -741,7 +774,8 @@ test('Show Office aggregate provider exports all Sprint 4 entities as one portab
     competition_name:'Aggregate Cup',competition_date:'2026-12-20',class_number:'1A',sort_order:1,
     class_name:'Aggregate Class',height_cm:110,competition_type:'Table A',allowed_time_seconds:70,
     time_limit_seconds:140,jump_off:true,entry_fee_bd:15,notes:'Portable',
-    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3
+    fence_count:null,knockdown_fault_value:4,refusal_fault_value:4,refusals_before_elimination:3,
+    scoring_format:'table_a',joker_fence_number:null
   }]);
   assert.equal(payload.riders[0].rider_ref,riders[0].rider_ref);
   assert.equal(payload.horses[0].horse_ref,horses[0].horse_ref);
@@ -1102,12 +1136,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.14.1 cache key',()=>{
+test('all app assets use the v4.15.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260726-4140'));
-  assert.ok((html.match(/20260727-4141/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260727-4141/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260727-4141/);
-  assert.equal(read('VERSION.txt').trim(),'4.14.1');
+  assert.ok(!html.includes('20260727-4141'));
+  assert.ok((html.match(/20260728-4150/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260728-4150/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260728-4150/);
+  assert.equal(read('VERSION.txt').trim(),'4.15.0');
 });

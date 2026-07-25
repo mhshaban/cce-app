@@ -97,6 +97,9 @@
     if (score.did_not_start) return 'DNS';
     if (score.eliminated) return 'Eliminated';
     if (score.retired) return 'Retired';
+    if (score.points != null) {
+      return `${Number(score.points).toFixed(2).replace(/\.00$/, '')} points · ${service().millisecondsToTime(score.time_ms)} s`;
+    }
     return `${Number(score.faults).toFixed(2).replace(/\.00$/, '')} faults · ${service().millisecondsToTime(score.time_ms)} s`;
   }
 

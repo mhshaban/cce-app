@@ -11,6 +11,7 @@
   const CLASS_NAME_MAX = 180;
   const COMPETITION_TYPE_MAX = 120;
   const NOTES_MAX = 4000;
+  const SCORING_FORMATS = Object.freeze(['table_a', 'accumulator_joker']);
 
   const text = value => String(value == null ? '' : value).trim();
   const optional = value => text(value) || null;
@@ -70,7 +71,9 @@
       fence_count: source.fence_count == null || source.fence_count === '' ? null : Number(source.fence_count),
       knockdown_fault_value: source.knockdown_fault_value == null ? 4 : Number(source.knockdown_fault_value),
       refusal_fault_value: source.refusal_fault_value == null ? 4 : Number(source.refusal_fault_value),
-      refusals_before_elimination: source.refusals_before_elimination == null ? 3 : Number(source.refusals_before_elimination)
+      refusals_before_elimination: source.refusals_before_elimination == null ? 3 : Number(source.refusals_before_elimination),
+      scoring_format: text(source.scoring_format) || 'table_a',
+      joker_fence_number: source.joker_fence_number == null || source.joker_fence_number === '' ? null : Number(source.joker_fence_number)
     };
   }
 
@@ -99,6 +102,15 @@
     const refusalsBeforeElimination = positiveInteger(
       row.refusals_before_elimination, 'Refusals before elimination', {optionalValue: true, maximum: 9}
     ) || 3;
+    const scoringFormat = row.scoring_format || 'table_a';
+    if (!SCORING_FORMATS.includes(scoringFormat)) throw new Error('Scoring format must be table_a or accumulator_joker.');
+    if (scoringFormat === 'accumulator_joker' && fenceCount == null) {
+      throw new Error('Accumulator with Joker requires a fence count.');
+    }
+    const jokerFenceNumber = positiveInteger(row.joker_fence_number, 'Joker fence number', {optionalValue: true, maximum: 50});
+    if (jokerFenceNumber != null && (fenceCount == null || jokerFenceNumber > fenceCount)) {
+      throw new Error('Joker fence number cannot exceed the fence count.');
+    }
     return {
       competition_id: competitionId,
       class_number: row.class_number,
@@ -114,7 +126,9 @@
       fence_count: fenceCount,
       knockdown_fault_value: knockdownFaultValue,
       refusal_fault_value: refusalFaultValue,
-      refusals_before_elimination: refusalsBeforeElimination
+      refusals_before_elimination: refusalsBeforeElimination,
+      scoring_format: scoringFormat,
+      joker_fence_number: jokerFenceNumber
     };
   }
 
@@ -233,6 +247,8 @@
       'Knockdown Fault Value': row.knockdown_fault_value,
       'Refusal Fault Value': row.refusal_fault_value,
       'Refusals Before Elimination': row.refusals_before_elimination,
+      'Scoring Format': row.scoring_format,
+      'Joker Fence Number': row.joker_fence_number,
       Notes: row.notes
     }));
   }
@@ -244,6 +260,7 @@
     CLASS_NAME_MAX,
     COMPETITION_TYPE_MAX,
     NOTES_MAX,
+    SCORING_FORMATS,
     normalize,
     validate,
     listForCompetition,
