@@ -1608,14 +1608,15 @@ test('v4.15 Accumulator with Joker computes points, doubles the total, ranks des
 
     await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
     // Leader: fence 1 knockdown, fence 3 refusal, fences 2/4/5 left clear untouched.
-    // Base points = 0 + 2 + 0 + 4 + 5(Joker, clear) = 11, doubled to 22 because the Joker is clear.
+    // Points = 0(knockdown) + 2 + 0(refusal) + 4 + Joker fence 5 doubled (5*2=10) = 16.
+    // Only the Joker fence's own points double, not the round total (v4.15.1 fix).
     await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0)`,[leaderId]);
     await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',3::smallint,'refusal',0)`,[leaderId]);
     const leaderConfirm=await db.query(
       `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,0) as result`,
       [leaderId]
     );
-    assert.equal(leaderConfirm.rows[0].result.points,22);
+    assert.equal(leaderConfirm.rows[0].result.points,16);
     assert.equal(leaderConfirm.rows[0].result.faults,null);
     assert.equal(leaderConfirm.rows[0].result.refusals,1);
     assert.equal(leaderConfirm.rows[0].result.eliminated,false);
@@ -1641,7 +1642,7 @@ test('v4.15 Accumulator with Joker computes points, doubles the total, ranks des
     const rows=panel.rows[0].result.rows;
     const leaderRowResult=rows.find(row=>row.start_number===1);
     const trailerRowResult=rows.find(row=>row.start_number===2);
-    assert.equal(leaderRowResult.first_round.points,22);
+    assert.equal(leaderRowResult.first_round.points,16);
     assert.equal(leaderRowResult.placing,1);
     assert.equal(trailerRowResult.first_round.points,0);
     assert.equal(trailerRowResult.placing,2);
@@ -1676,6 +1677,68 @@ test('v4.15 Accumulator with Joker computes points, doubles the total, ranks des
     await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
     const reapplied=await db.query(`select public.cce_show_office_judge_panel($1) as result`,[classId]);
     assert.equal(reapplied.rows[0].result.class.scoring_format,'accumulator_joker');
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.15.1 doubles only the Joker fence itself, not the round total, and rollback restores the old formula',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000066';
+  const judge='00000000-0000-4000-8000-000000000067';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','joker-fix-manager@example.com'),
+        ('${judge}','joker-fix-judge@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager') or (p.id='${judge}' and r.code='judge');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Joker Fix Cup','2027-08-03','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type,
+        fence_count,scoring_format,joker_fence_number,refusals_before_elimination
+      ) select id,'1',1,'Joker Fix Class','Accumulator with Joker',8,'accumulator_joker',8,9
+        from public.show_office_competitions where competition_name='Joker Fix Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Joker Fix Class'),
+        p_start_number=>1,p_rider_name=>'Clean Rider',p_horse_name=>'Clean Horse'
+      );
+    `);
+    const entryRow=await db.query(`select id from public.show_office_entries where start_number=1`);
+    const entryId=entryRow.rows[0].id;
+    await db.exec('reset role');
+
+    // All 8 fences clear (untouched), Joker on fence 8: 1+2+...+7 + (8*2) = 28+16 = 44.
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const confirmed=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',50000,false,false,false,0) as result`,
+      [entryId]
+    );
+    assert.equal(confirmed.rows[0].result.points,44);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4151_compatibility.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const buggy=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',50000,false,false,false,$2) as result`,
+      [entryId,confirmed.rows[0].result.row_version]
+    );
+    // The reverted v4.15.0 body doubles the whole total: (1+...+8)*2 = 72.
+    assert.equal(buggy.rows[0].result.points,72);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/migrations/20260729_show_office_accumulator_joker_fix_v4151.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const fixed=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',50000,false,false,false,$2) as result`,
+      [entryId,buggy.rows[0].result.row_version]
+    );
+    assert.equal(fixed.rows[0].result.points,44);
     await db.exec('reset role');
   }finally{
     await db.close();
