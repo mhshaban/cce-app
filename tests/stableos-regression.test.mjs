@@ -319,8 +319,8 @@ test('Show Office preserves the current main UI while using one permission-aware
   assert.match(module,/canViewResults\s*=\s*\(\)\s*=>\s*can\('show_office\.view'\)\s*\|\|\s*can\('show_office\.results\.view'\)/);
   assert.match(module,/showOffice\.liveResults\?\.open\?\.\(\)/);
   assert.match(liveResults,/showOffice\.judgingService/);
-  assert.match(liveResults,/window\.setInterval\(poll, ?REFRESH_MS\)/);
-  assert.match(liveResults,/classList\.contains\('active'\)/);
+  assert.doesNotMatch(liveResults,/setInterval/);
+  assert.match(liveResults,/no background polling/i);
   assert.match(sprintFive,/show_office\.results\.view/);
   assert.match(sprintFive,/where r\.code in \('super_admin','manager','judge','reception','staff'\)/);
   assert.match(sprintFive,/cce_show_office_judging_context/);
@@ -1102,12 +1102,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.14.0 cache key',()=>{
+test('all app assets use the v4.14.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260725-4130'));
-  assert.ok((html.match(/20260726-4140/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260726-4140/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260726-4140/);
-  assert.equal(read('VERSION.txt').trim(),'4.14.0');
+  assert.ok(!html.includes('20260726-4140'));
+  assert.ok((html.match(/20260727-4141/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260727-4141/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260727-4141/);
+  assert.equal(read('VERSION.txt').trim(),'4.14.1');
 });
