@@ -1607,11 +1607,14 @@ test('v4.15 Accumulator with Joker computes points, doubles the total, ranks des
     await db.exec('reset role');
 
     await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
-    // Leader: fence 1 knockdown, fence 3 refusal, fences 2/4/5 left clear untouched.
+    // Leader: fence 1 knockdown, fence 3 refusal, fence 2/4 left clear untouched,
+    // fence 5 (Joker) explicitly chosen and clear (v4.16.0: the Joker fence is an
+    // alternative the judge must select, not an automatic double on the plain fence).
     // Points = 0(knockdown) + 2 + 0(refusal) + 4 + Joker fence 5 doubled (5*2=10) = 16.
-    // Only the Joker fence's own points double, not the round total (v4.15.1 fix).
+    // Only the fence marked joker_chosen doubles, not the round total.
     await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',1::smallint,'knockdown',0)`,[leaderId]);
     await db.query(`select public.cce_show_office_toggle_fence($1,'first_round',3::smallint,'refusal',0)`,[leaderId]);
+    await db.query(`select public.cce_show_office_choose_joker_fence($1,'first_round',5::smallint,true,0)`,[leaderId]);
     const leaderConfirm=await db.query(
       `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,0) as result`,
       [leaderId]
@@ -1713,8 +1716,11 @@ test('v4.15.1 doubles only the Joker fence itself, not the round total, and roll
     const entryId=entryRow.rows[0].id;
     await db.exec('reset role');
 
-    // All 8 fences clear (untouched), Joker on fence 8: 1+2+...+7 + (8*2) = 28+16 = 44.
+    // Fences 1-7 clear (untouched), fence 8 (Joker) explicitly chosen and clear
+    // (v4.16.0: the Joker fence is a selected alternative, not automatic):
+    // 1+2+...+7 + (8*2) = 28+16 = 44.
     await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    await db.query(`select public.cce_show_office_choose_joker_fence($1,'first_round',8::smallint,true,0)`,[entryId]);
     const confirmed=await db.query(
       `select public.cce_save_show_office_fence_score($1,'first_round',50000,false,false,false,0) as result`,
       [entryId]
@@ -1739,6 +1745,133 @@ test('v4.15.1 doubles only the Joker fence itself, not the round total, and roll
       [entryId,buggy.rows[0].result.row_version]
     );
     assert.equal(fixed.rows[0].result.points,44);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.16.0 the Joker fence is a chosen alternative, rejects mismatched fences and rollback restores the old formula',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000068';
+  const judge='00000000-0000-4000-8000-000000000069';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','joker-alt-manager@example.com'),
+        ('${judge}','joker-alt-judge@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager') or (p.id='${judge}' and r.code='judge');
+      set "request.jwt.claim.sub"='${manager}';
+      set role authenticated;
+      insert into public.show_office_competitions(competition_name,competition_date,status)
+      values('Joker Alt Cup','2027-08-04','Running');
+      insert into public.show_office_classes(
+        competition_id,class_number,sort_order,class_name,competition_type,
+        fence_count,scoring_format,joker_fence_number,refusals_before_elimination
+      ) select id,'1',1,'Joker Alt Class','Accumulator with Joker',8,'accumulator_joker',8,9
+        from public.show_office_competitions where competition_name='Joker Alt Cup';
+      select public.cce_save_show_office_entry(
+        p_class_id=>(select id from public.show_office_classes where class_name='Joker Alt Class'),
+        p_start_number=>1,p_rider_name=>'Choice Rider',p_horse_name=>'Choice Horse'
+      );
+    `);
+    const entryRow=await db.query(`select id from public.show_office_entries where start_number=1`);
+    const entryId=entryRow.rows[0].id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+
+    // Fence 8 untouched defaults to the normal (non-Joker) alternative: 1+..+7+8=36.
+    const normalConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,0) as result`,
+      [entryId]
+    );
+    assert.equal(normalConfirm.rows[0].result.points,36);
+
+    // Choosing the Joker alternative is rejected on any fence other than the class's configured Joker fence.
+    await assert.rejects(
+      db.query(`select public.cce_show_office_choose_joker_fence($1,'first_round',3::smallint,true,0)`,[entryId]),
+      /Joker choice only applies/i
+    );
+
+    // Explicitly choosing the Joker alternative at fence 8 doubles that fence: 1+..+7+16=44.
+    const jokerChosen=await db.query(
+      `select public.cce_show_office_choose_joker_fence($1,'first_round',8::smallint,true,0) as result`,
+      [entryId]
+    );
+    assert.equal(jokerChosen.rows[0].result.joker_chosen,true);
+    assert.equal(jokerChosen.rows[0].result.incident,'clear');
+    const jokerConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [entryId,normalConfirm.rows[0].result.row_version]
+    );
+    assert.equal(jokerConfirm.rows[0].result.points,44);
+
+    // Cycling Knockdown/Refusal on the already-chosen Joker fence via the plain toggle RPC
+    // leaves joker_chosen untouched: knocking it down scores 0 for that fence only, 28 total.
+    const jokerKnockdown=await db.query(
+      `select public.cce_show_office_toggle_fence($1,'first_round',8::smallint,'knockdown',$2) as result`,
+      [entryId,jokerChosen.rows[0].result.row_version]
+    );
+    assert.equal(jokerKnockdown.rows[0].result.joker_chosen,true);
+    const jokerKnockdownConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [entryId,jokerConfirm.rows[0].result.row_version]
+    );
+    assert.equal(jokerKnockdownConfirm.rows[0].result.points,28);
+
+    // Switching back to the normal alternative resets that fence to clear: 36 again.
+    const normalAgain=await db.query(
+      `select public.cce_show_office_choose_joker_fence($1,'first_round',8::smallint,false,$2) as result`,
+      [entryId,jokerKnockdown.rows[0].result.row_version]
+    );
+    assert.equal(normalAgain.rows[0].result.joker_chosen,false);
+    assert.equal(normalAgain.rows[0].result.incident,'clear');
+    const normalAgainConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [entryId,jokerKnockdownConfirm.rows[0].result.row_version]
+    );
+    assert.equal(normalAgainConfirm.rows[0].result.points,36);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4160_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        to_regprocedure('public.cce_show_office_choose_joker_fence(bigint,text,smallint,boolean,integer)') is null
+          as choose_joker_fence_removed,
+        to_regprocedure('public.cce_show_office_toggle_fence(bigint,text,smallint,text,integer)') is not null
+          as toggle_fence_kept,
+        (select count(*)::int from information_schema.columns
+          where table_schema='public' and table_name='show_office_entry_fences' and column_name='joker_chosen') as joker_column_kept
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{
+      choose_joker_fence_removed:true,toggle_fence_kept:true,joker_column_kept:1
+    });
+    // The reverted formula doubles by fence position again, ignoring the stored joker_chosen
+    // flag entirely: fence 8 is clear (normal alternative) so 1+..+7+8*2=44 either way.
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const afterRollback=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [entryId,normalAgainConfirm.rows[0].result.row_version]
+    );
+    assert.equal(afterRollback.rows[0].result.points,44);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/migrations/20260730_show_office_joker_alternate_fence_v4160.sql'));
+    const reapplied=await db.query(`
+      select to_regprocedure('public.cce_show_office_choose_joker_fence(bigint,text,smallint,boolean,integer)') is not null
+        as choose_joker_fence_restored
+    `);
+    assert.equal(reapplied.rows[0].choose_joker_fence_restored,true);
+    // The fixed formula reads joker_chosen again: fence 8 is still the normal alternative, so 36.
+    await db.exec(`set "request.jwt.claim.sub"='${judge}'; set role authenticated`);
+    const finalConfirm=await db.query(
+      `select public.cce_save_show_office_fence_score($1,'first_round',60000,false,false,false,$2) as result`,
+      [entryId,afterRollback.rows[0].result.row_version]
+    );
+    assert.equal(finalConfirm.rows[0].result.points,36);
     await db.exec('reset role');
   }finally{
     await db.close();

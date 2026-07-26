@@ -14,6 +14,7 @@
   const FINALIZE_RPC = 'cce_finalize_show_office_class';
   const REOPEN_RPC = 'cce_reopen_show_office_class';
   const TOGGLE_FENCE_RPC = 'cce_show_office_toggle_fence';
+  const CHOOSE_JOKER_FENCE_RPC = 'cce_show_office_choose_joker_fence';
   const FENCE_SAVE_RPC = 'cce_save_show_office_fence_score';
   const BACKUP_PAGE_SIZE = 1000;
   const PHASES = Object.freeze(['first_round', 'jump_off']);
@@ -136,6 +137,7 @@
     return value.map(row => Object.freeze({
       fence_number: Number(row?.fence_number),
       incident: INCIDENTS.includes(text(row?.incident)) ? text(row?.incident) : 'clear',
+      joker_chosen: row?.joker_chosen === true,
       row_version: Number(row?.row_version || 0)
     }));
   }
@@ -225,6 +227,30 @@
     return Object.freeze({
       fence_number: Number(value.fence_number),
       incident: INCIDENTS.includes(text(value.incident)) ? text(value.incident) : 'clear',
+      joker_chosen: value.joker_chosen === true,
+      row_version: Number(value.row_version || 0),
+      totals: Object.freeze({
+        faults: Number(value.totals?.faults || 0),
+        refusals: Number(value.totals?.refusals || 0)
+      })
+    });
+  }
+
+  async function chooseJokerFence(entryId, scorePhase, fenceValue, jokerChosen, expectedVersion) {
+    const value = await sbRpc(CHOOSE_JOKER_FENCE_RPC, {
+      p_entry_id: positiveInteger(entryId, 'Entry'),
+      p_phase: phase(scorePhase),
+      p_fence_number: fenceNumber(fenceValue),
+      p_joker_chosen: jokerChosen === true,
+      p_expected_version: expectedVersion == null ? 0 : Number(expectedVersion)
+    });
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Supabase returned an invalid fence result.');
+    }
+    return Object.freeze({
+      fence_number: Number(value.fence_number),
+      incident: INCIDENTS.includes(text(value.incident)) ? text(value.incident) : 'clear',
+      joker_chosen: value.joker_chosen === true,
       row_version: Number(value.row_version || 0),
       totals: Object.freeze({
         faults: Number(value.totals?.faults || 0),
@@ -462,11 +488,11 @@
 
   showOffice.judgingService = Object.freeze({
     JUDGING_TABLE,SCORE_TABLE,CONTEXT_RPC,PANEL_RPC,SAVE_RPC,RESET_RPC,
-    FINALIZE_RPC,REOPEN_RPC,TOGGLE_FENCE_RPC,FENCE_SAVE_RPC,
+    FINALIZE_RPC,REOPEN_RPC,TOGGLE_FENCE_RPC,CHOOSE_JOKER_FENCE_RPC,FENCE_SAVE_RPC,
     BACKUP_PAGE_SIZE,PHASES,STATUSES,INCIDENTS,
     normalizeRound,normalizeContext,normalizeFences,validateScore,validateFenceScore,
     timeToMilliseconds,millisecondsToTime,
-    context,panel,saveScore,resetScore,finalize,reopen,toggleFence,saveFenceScore,listAll,
+    context,panel,saveScore,resetScore,finalize,reopen,toggleFence,chooseJokerFence,saveFenceScore,listAll,
     backupPayload,validateBackupPayload,workbookSheets
   });
 })();

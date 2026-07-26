@@ -248,6 +248,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260726_show_office_fence_scoring_v4140.sql',
     'supabase/migrations/20260728_show_office_accumulator_joker_v4150.sql',
     'supabase/migrations/20260729_show_office_accumulator_joker_fix_v4151.sql',
+    'supabase/migrations/20260730_show_office_joker_alternate_fence_v4160.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -274,6 +275,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4150.sql',
     'supabase/verification/preflight_v4151.sql',
     'supabase/verification/verify_v4151.sql',
+    'supabase/verification/preflight_v4160.sql',
+    'supabase/verification/verify_v4160.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -292,7 +295,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4130_compatibility.sql',
     'supabase/rollback/rollback_v4140_compatibility.sql',
     'supabase/rollback/rollback_v4150_compatibility.sql',
-    'supabase/rollback/rollback_v4151_compatibility.sql'
+    'supabase/rollback/rollback_v4151_compatibility.sql',
+    'supabase/rollback/rollback_v4160_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -666,7 +670,10 @@ test('Fence-by-fence scoring toggles one fence and confirms a round from compute
     sbRpc:async(fn,payload)=>{
       rpcCall={fn,payload};
       if(fn==='cce_show_office_toggle_fence'){
-        return {fence_number:2,incident:'knockdown',row_version:1,totals:{faults:4,refusals:0}};
+        return {fence_number:payload.p_fence_number,incident:payload.p_incident,joker_chosen:false,row_version:1,totals:{faults:4,refusals:0}};
+      }
+      if(fn==='cce_show_office_choose_joker_fence'){
+        return {fence_number:payload.p_fence_number,incident:'clear',joker_chosen:payload.p_joker_chosen,row_version:2,totals:{faults:0,refusals:0}};
       }
       return {
         id:5,result_ref:'00000000-0000-4000-8002-000000000005',entry_id:1,phase:'first_round',
@@ -678,10 +685,21 @@ test('Fence-by-fence scoring toggles one fence and confirms a round from compute
   assert.equal(rpcCall.fn,'cce_show_office_toggle_fence');
   assert.equal(rpcCall.payload.p_fence_number,2);
   assert.equal(rpcCall.payload.p_incident,'knockdown');
+  assert.ok(!Object.hasOwn(rpcCall.payload,'p_joker_chosen'));
   assert.equal(toggled.incident,'knockdown');
+  assert.equal(toggled.joker_chosen,false);
   assert.equal(toggled.totals.faults,4);
   await assert.rejects(service.toggleFence(1,'first_round',0,'knockdown',0),/positive whole number/i);
   await assert.rejects(service.toggleFence(1,'first_round',2,'bogus',0),/clear, knockdown or refusal/i);
+
+  const jokerChosen=await service.chooseJokerFence(1,'first_round',8,true,1);
+  assert.equal(rpcCall.fn,'cce_show_office_choose_joker_fence');
+  assert.equal(rpcCall.payload.p_fence_number,8);
+  assert.equal(rpcCall.payload.p_joker_chosen,true);
+  assert.equal(rpcCall.payload.p_expected_version,1);
+  assert.equal(jokerChosen.joker_chosen,true);
+  assert.equal(jokerChosen.incident,'clear');
+  await assert.rejects(service.chooseJokerFence(1,'first_round',0,true,0),/positive whole number/i);
 
   const confirmed=await service.saveFenceScore({
     entry_id:1,phase:'first_round',time_seconds:'70.000',expected_version:0
@@ -698,10 +716,10 @@ test('Fence-by-fence scoring toggles one fence and confirms a round from compute
   assert.equal(rpcCall.payload.p_time_ms,null);
   assert.equal(rpcCall.payload.p_did_not_start,true);
 
-  const fences=service.normalizeFences([{fence_number:'1',incident:'refusal',row_version:'2'},{fence_number:2}]);
+  const fences=service.normalizeFences([{fence_number:'1',incident:'refusal',row_version:'2',joker_chosen:true},{fence_number:2}]);
   assert.deepEqual(JSON.parse(JSON.stringify(fences)),[
-    {fence_number:1,incident:'refusal',row_version:2},
-    {fence_number:2,incident:'clear',row_version:0}
+    {fence_number:1,incident:'refusal',joker_chosen:true,row_version:2},
+    {fence_number:2,incident:'clear',joker_chosen:false,row_version:0}
   ]);
 });
 
@@ -1140,12 +1158,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.15.1 cache key',()=>{
+test('all app assets use the v4.16.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260728-4150'));
-  assert.ok((html.match(/20260729-4151/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260729-4151/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260729-4151/);
-  assert.equal(read('VERSION.txt').trim(),'4.15.1');
+  assert.ok(!html.includes('20260729-4151'));
+  assert.ok((html.match(/20260730-4160/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260730-4160/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260730-4160/);
+  assert.equal(read('VERSION.txt').trim(),'4.16.0');
 });
