@@ -121,17 +121,15 @@
     }, {faults: 0, refusals: 0});
   }
 
-  function pointsTotals(fences, competitionClass) {
-    const joker = jokerFenceNumber(fences, competitionClass);
+  function pointsTotals(fences) {
     let points = 0;
     let jokerCleared = false;
     let refusals = 0;
     fences.forEach(fence => {
       const clear = fence.incident === 'clear';
-      const isJoker = Number(fence.fence_number) === joker;
-      if (clear) points += isJoker ? Number(fence.fence_number) * 2 : Number(fence.fence_number);
+      if (clear) points += fence.joker_chosen ? Number(fence.fence_number) * 2 : Number(fence.fence_number);
       if (fence.incident === 'refusal') refusals += 1;
-      if (clear && isJoker) jokerCleared = true;
+      if (clear && fence.joker_chosen) jokerCleared = true;
     });
     return {points, refusals, jokerCleared};
   }
@@ -142,11 +140,26 @@
     return '✓';
   }
 
+  function jokerFenceButtons(fence, disabled) {
+    const jokerActive = fence.joker_chosen === true;
+    const normalActive = !jokerActive;
+    return `<div class="so-judge-fence-joker-pair">
+      <button type="button" class="so-judge-fence ${normalActive && fence.incident !== 'clear' ? `is-${fence.incident}` : ''} ${normalActive ? 'is-joker-active' : 'is-joker-inactive'}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number}, false)" title="Fence ${fence.fence_number} (Normal): ${normalActive ? fence.incident : 'not jumped'}">
+        <span>${normalActive ? fenceIcon(fence.incident) : '–'}</span><small>#${fence.fence_number}</small>
+      </button>
+      <button type="button" class="so-judge-fence is-joker ${jokerActive && fence.incident !== 'clear' ? `is-${fence.incident}` : ''} ${jokerActive ? 'is-joker-active' : 'is-joker-inactive'}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number}, true)" title="Fence ${fence.fence_number} Joker: ${jokerActive ? fence.incident : 'not jumped'}">
+        <span>${jokerActive ? fenceIcon(fence.incident) : '🃏'}</span><small>#${fence.fence_number} J</small>
+      </button>
+    </div>`;
+  }
+
   function fenceGridHtml(fences, disabled, jokerFence) {
-    return `<div class="so-judge-fence-grid">${fences.map(fence => `
-      <button type="button" class="so-judge-fence ${fence.incident !== 'clear' ? `is-${fence.incident}` : ''} ${jokerFence && Number(fence.fence_number) === jokerFence ? 'is-joker' : ''}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number})" title="Fence ${fence.fence_number}: ${fence.incident}${jokerFence && Number(fence.fence_number) === jokerFence ? ' (Joker)' : ''}">
-        <span>${fenceIcon(fence.incident)}</span><small>#${fence.fence_number}${jokerFence && Number(fence.fence_number) === jokerFence ? ' J' : ''}</small>
-      </button>`).join('')}</div>`;
+    return `<div class="so-judge-fence-grid">${fences.map(fence => {
+      if (jokerFence && Number(fence.fence_number) === jokerFence) return jokerFenceButtons(fence, disabled);
+      return `<button type="button" class="so-judge-fence ${fence.incident !== 'clear' ? `is-${fence.incident}` : ''}" ${disabled} onclick="toggleShowOfficeJudgeFence(${fence.fence_number})" title="Fence ${fence.fence_number}: ${fence.incident}">
+        <span>${fenceIcon(fence.incident)}</span><small>#${fence.fence_number}</small>
+      </button>`;
+    }).join('')}</div>`;
   }
 
   function ensureSelection() {
@@ -239,7 +252,7 @@
     const fenceMode = isFenceClass(competitionClass);
     const accumulator = fenceMode && isAccumulator(competitionClass);
     const fences = fenceMode ? fencesFor(row) : [];
-    const totals = fenceMode ? (accumulator ? pointsTotals(fences, competitionClass) : fenceTotals(fences, competitionClass)) : null;
+    const totals = fenceMode ? (accumulator ? pointsTotals(fences) : fenceTotals(fences, competitionClass)) : null;
     const autoEliminate = fenceMode && !special && totals.refusals >= Number(competitionClass.refusals_before_elimination || 3);
     const eliminatedChecked = eliminated || (fenceMode && !score && autoEliminate);
     const joker = accumulator ? jokerFenceNumber(fences, competitionClass) : null;
@@ -256,7 +269,7 @@
       }</div>
       ${fenceGridHtml(fences, disabled || special ? 'disabled' : '', joker)}
       <p class="so-judge-fence-note">${accumulator
-        ? `Tap a fence to cycle Clear → Knockdown → Refusal. Each clear fence scores its number in points; clearing Joker fence #${html(joker)} doubles that fence's own points only. ${html(competitionClass.refusals_before_elimination || 3)} refusals eliminate the entry automatically; correct it below if needed.`
+        ? `Tap a fence to cycle Clear → Knockdown → Refusal. Each clear fence scores its number in points. At fence #${html(joker)}, tap the normal tile (worth ${html(joker)}) or the Joker 🃏 tile (worth double) to match which one the horse actually jumped — only one applies per round. ${html(competitionClass.refusals_before_elimination || 3)} refusals eliminate the entry automatically; correct it below if needed.`
         : `Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.`
       }</p>
       <div class="so-judge-score-fields" style="grid-template-columns:1fr">
@@ -300,7 +313,7 @@
         </div>`;
       }).join('')}</div>
       <p class="so-judge-ranking-note">${isAccumulator(competitionClass)
-        ? 'Provisional order uses total points (highest first, Joker fence doubled when cleared), then time.'
+        ? 'Provisional order uses total points (highest first; the Joker fence doubles only when chosen and cleared), then time.'
         : 'Provisional order uses the official faults entered by the judge, then time. Refusals and allowed time are displayed but do not automatically add penalties.'
       }</p>
     </div>`;
@@ -494,18 +507,24 @@
     document.querySelectorAll('.so-judge-fence').forEach(button => { button.disabled = special; });
   };
 
-  window.toggleShowOfficeJudgeFence = async function toggleShowOfficeJudgeFence(fenceNumberValue) {
+  window.toggleShowOfficeJudgeFence = async function toggleShowOfficeJudgeFence(fenceNumberValue, jokerChosenTarget = false) {
     const row = selectedEntry();
     if (!row || !canScore()) return;
     const fences = fencesFor(row);
     const current = fences.find(fence => fence.fence_number === fenceNumberValue);
     if (!current) return;
-    const next = current.incident === 'clear' ? 'knockdown' : current.incident === 'knockdown' ? 'refusal' : 'clear';
+    const switchingAlternative = Boolean(current.joker_chosen) !== Boolean(jokerChosenTarget);
     try {
-      const result = await service().toggleFence(row.entry_id, selectedPhase, fenceNumberValue, next, current.row_version);
+      const result = switchingAlternative
+        ? await service().chooseJokerFence(row.entry_id, selectedPhase, fenceNumberValue, jokerChosenTarget, current.row_version)
+        : await service().toggleFence(
+            row.entry_id, selectedPhase, fenceNumberValue,
+            current.incident === 'clear' ? 'knockdown' : current.incident === 'knockdown' ? 'refusal' : 'clear',
+            current.row_version
+          );
       const key = selectedPhase === 'jump_off' ? 'jump_off_fences' : 'first_round_fences';
       const updatedFences = fences.map(fence => fence.fence_number === fenceNumberValue
-        ? {fence_number: result.fence_number, incident: result.incident, row_version: result.row_version}
+        ? {fence_number: result.fence_number, incident: result.incident, joker_chosen: result.joker_chosen, row_version: result.row_version}
         : fence);
       const rowIndex = panelData.rows.findIndex(item => String(item.entry_id) === String(row.entry_id));
       if (rowIndex !== -1) panelData.rows[rowIndex] = {...panelData.rows[rowIndex], [key]: updatedFences};

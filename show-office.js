@@ -854,7 +854,7 @@
               <div class="form-group"><label for="so-class-fence-threshold">Refusals Before Elimination</label><input id="so-class-fence-threshold" min="1" max="9" step="1" type="number" value="${attr(row?.refusals_before_elimination ?? 3)}"></div>
               <div class="form-group"><label for="so-class-joker-fence">Joker Fence Number (Accumulator only)</label><input id="so-class-joker-fence" min="1" max="50" step="1" type="number" value="${attr(row?.joker_fence_number ?? '')}" placeholder="Defaults to the last fence"></div>
             </div>
-            <p class="so-fence-hint">Set the number of fences to switch Judge Panel to a tap-to-score fence grid. Table A charges Knockdown/Refusal fault values; Accumulator with Joker awards each clear fence points equal to its number, and doubles only the Joker fence's own points when it is cleared. Leave the fence count empty to keep the manual Faults/Time form.</p>
+            <p class="so-fence-hint">Set the number of fences to switch Judge Panel to a tap-to-score fence grid. Table A charges Knockdown/Refusal fault values; Accumulator with Joker awards each clear fence points equal to its number. At the Joker Fence Number, the judge records which obstacle the rider actually jumped — the normal fence (worth its number) or the Joker alternative (worth double) — since only one of the two is jumped per round. Leave the fence count empty to keep the manual Faults/Time form.</p>
           </fieldset>
         </div>
         <div id="so-class-form-error" class="so-form-error" role="alert"></div>
