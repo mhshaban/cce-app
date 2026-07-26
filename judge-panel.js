@@ -123,16 +123,17 @@
 
   function pointsTotals(fences, competitionClass) {
     const joker = jokerFenceNumber(fences, competitionClass);
-    let base = 0;
+    let points = 0;
     let jokerCleared = false;
     let refusals = 0;
     fences.forEach(fence => {
       const clear = fence.incident === 'clear';
-      if (clear) base += Number(fence.fence_number);
+      const isJoker = Number(fence.fence_number) === joker;
+      if (clear) points += isJoker ? Number(fence.fence_number) * 2 : Number(fence.fence_number);
       if (fence.incident === 'refusal') refusals += 1;
-      if (clear && Number(fence.fence_number) === joker) jokerCleared = true;
+      if (clear && isJoker) jokerCleared = true;
     });
-    return {points: jokerCleared ? base * 2 : base, refusals, jokerCleared};
+    return {points, refusals, jokerCleared};
   }
 
   function fenceIcon(incidentValue) {
@@ -255,7 +256,7 @@
       }</div>
       ${fenceGridHtml(fences, disabled || special ? 'disabled' : '', joker)}
       <p class="so-judge-fence-note">${accumulator
-        ? `Tap a fence to cycle Clear → Knockdown → Refusal. Each clear fence scores its number in points; clearing Joker fence #${html(joker)} doubles the total. ${html(competitionClass.refusals_before_elimination || 3)} refusals eliminate the entry automatically; correct it below if needed.`
+        ? `Tap a fence to cycle Clear → Knockdown → Refusal. Each clear fence scores its number in points; clearing Joker fence #${html(joker)} doubles that fence's own points only. ${html(competitionClass.refusals_before_elimination || 3)} refusals eliminate the entry automatically; correct it below if needed.`
         : `Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.`
       }</p>
       <div class="so-judge-score-fields" style="grid-template-columns:1fr">

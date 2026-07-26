@@ -247,6 +247,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260725_show_office_sprint5_live_results_v4130.sql',
     'supabase/migrations/20260726_show_office_fence_scoring_v4140.sql',
     'supabase/migrations/20260728_show_office_accumulator_joker_v4150.sql',
+    'supabase/migrations/20260729_show_office_accumulator_joker_fix_v4151.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -271,6 +272,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4140.sql',
     'supabase/verification/preflight_v4150.sql',
     'supabase/verification/verify_v4150.sql',
+    'supabase/verification/preflight_v4151.sql',
+    'supabase/verification/verify_v4151.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -288,7 +291,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4120_compatibility.sql',
     'supabase/rollback/rollback_v4130_compatibility.sql',
     'supabase/rollback/rollback_v4140_compatibility.sql',
-    'supabase/rollback/rollback_v4150_compatibility.sql'
+    'supabase/rollback/rollback_v4150_compatibility.sql',
+    'supabase/rollback/rollback_v4151_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1136,12 +1140,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.15.0 cache key',()=>{
+test('all app assets use the v4.15.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260727-4141'));
-  assert.ok((html.match(/20260728-4150/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260728-4150/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260728-4150/);
-  assert.equal(read('VERSION.txt').trim(),'4.15.0');
+  assert.ok(!html.includes('20260728-4150'));
+  assert.ok((html.match(/20260729-4151/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260729-4151/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260729-4151/);
+  assert.equal(read('VERSION.txt').trim(),'4.15.1');
 });
