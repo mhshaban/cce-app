@@ -2022,7 +2022,7 @@ function renderBookings(){
       const canScheduleTraining=requestType==='training'&&request&&canUpdate&&
         window.canUser('schedule.create')&&!['Completed','Cancelled','Rejected'].includes(bookingStatus);
       const statusControl=canUpdate
-        ?'<select aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
+        ?'<select class="badge-select '+statusClass+'" aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
           bookingStatusOptions(bookingStatus).map(value=>'<option '+(value===bookingStatus?'selected':'')+'>'+value+'</option>').join('')+'</select>'
         :'<span class="badge '+statusClass+'">'+esc(bookingStatus)+'</span>';
       return '<tr>'+
@@ -4153,7 +4153,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.17.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.17.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4246,7 +4246,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260731-4170', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260731-4171', {scope:'./'})
       .then(reg => {
 
         reg.update();
