@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260730-4160"></script>
+<script src="app-bootstrap.js?v=20260731-4170"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260730-4160" rel="stylesheet"/>
-<link href="member-portal.css?v=20260730-4160" rel="stylesheet"/>
-<link href="show-office.css?v=20260730-4160" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260730-4160" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260730-4160" rel="stylesheet"/>
+<link href="app-core.css?v=20260731-4170" rel="stylesheet"/>
+<link href="member-portal.css?v=20260731-4170" rel="stylesheet"/>
+<link href="show-office.css?v=20260731-4170" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260731-4170" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260731-4170" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -364,12 +364,12 @@
 </span>
 </label>
 </div>
-<button class="btn" data-i18n="sendBooking" id="bookBtn" onclick="submitBooking()">🐴 Send Booking Request</button>
+<button class="btn" data-i18n="sendBooking" id="bookBtn" onclick="submitBooking()">💳 Send Request & Pay</button>
 </div>
 <div class="success-box" id="bookSuccess">
 <div class="success-icon">✅</div>
 <div class="success-title">تم إرسال طلب الحجز بنجاح!</div>
-<div class="success-text">يرجى تحويل مبلغ الحجز إلى الآيبان:<br/><strong class="iban">BH23BIBB00100002375646</strong><br/><br/>سيتم تأكيد الحجز بعد استلام إثبات الدفع.</div>
+<div class="success-text">يرجى تحويل مبلغ الحجز إلى الآيبان:<br/><strong class="iban">BH23BIBB00100002375646</strong><br/><br/>سيتم تأكيد الحجز بعد استلام إثبات الدفع.<br/><br/><strong style="color:var(--red)">⚠️ إذا لم يصلنا إثبات الدفع خلال 24 ساعة، سيُلغى الطلب تلقائيًا.</strong></div>
 <button class="whatsapp-btn secondary" onclick="openWhatsAppProof('booking')">📱 Send Payment Proof via WhatsApp</button>
 <button class="btn" onclick="resetBooking()" style="margin-top:16px">📋 حجز جديد</button>
 </div>
@@ -526,7 +526,7 @@
 </span>
 </label>
 </div>
-<button class="btn" data-i18n="sendTraining" id="trainBtn" onclick="submitTraining()">🎯 Send Registration Request</button>
+<button class="btn" data-i18n="sendTraining" id="trainBtn" onclick="submitTraining()">💳 Send Request & Pay</button>
 </div>
 <div class="success-box" id="trainSuccess">
 <div class="success-icon">✅</div>
@@ -722,7 +722,7 @@
 </span>
 </label>
 </div>
-<button class="btn" id="liveryBtn" onclick="submitLivery()">🏠 Send Livery Request</button>
+<button class="btn" data-i18n="sendLivery" id="liveryBtn" onclick="submitLivery()">💳 Send Request & Pay</button>
 </div>
 <div class="success-box" id="liverySuccess" style="display:none">
 <div class="success-icon">✅</div>
@@ -1267,32 +1267,32 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260730-4160"></script>
-<script src="src/core/config.js?v=20260730-4160"></script>
-<script src="src/core/store.js?v=20260730-4160"></script>
-<script src="src/services/supabase-runtime.js?v=20260730-4160"></script>
-<script src="src/services/backup-runtime.js?v=20260730-4160"></script>
-<script src="src/modules/show-office/competition-service.js?v=20260730-4160"></script>
-<script src="src/modules/show-office/class-service.js?v=20260730-4160"></script>
-<script src="src/modules/show-office/entry-service.js?v=20260730-4160"></script>
-<script src="src/modules/show-office/judging-service.js?v=20260730-4160"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20260730-4160"></script>
-<script src="src/modules/horses/horse-service.js?v=20260730-4160"></script>
-<script src="src/modules/health/health-service.js?v=20260730-4160"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260730-4160"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260730-4160"></script>
-<script src="app-core.js?v=20260730-4160"></script>
-<script src="app-branding.js?v=20260730-4160"></script>
-<script src="show-office.js?v=20260730-4160"></script>
-<script src="judge-panel.js?v=20260730-4160"></script>
-<script src="live-results.js?v=20260730-4160"></script>
-<script src="horse-health.js?v=20260730-4160"></script>
-<script src="member-portal.js?v=20260730-4160"></script>
-<script src="src/components/header/header-system.js?v=20260730-4160"></script>
+<script src="src/core/events.js?v=20260731-4170"></script>
+<script src="src/core/config.js?v=20260731-4170"></script>
+<script src="src/core/store.js?v=20260731-4170"></script>
+<script src="src/services/supabase-runtime.js?v=20260731-4170"></script>
+<script src="src/services/backup-runtime.js?v=20260731-4170"></script>
+<script src="src/modules/show-office/competition-service.js?v=20260731-4170"></script>
+<script src="src/modules/show-office/class-service.js?v=20260731-4170"></script>
+<script src="src/modules/show-office/entry-service.js?v=20260731-4170"></script>
+<script src="src/modules/show-office/judging-service.js?v=20260731-4170"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20260731-4170"></script>
+<script src="src/modules/horses/horse-service.js?v=20260731-4170"></script>
+<script src="src/modules/health/health-service.js?v=20260731-4170"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260731-4170"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260731-4170"></script>
+<script src="app-core.js?v=20260731-4170"></script>
+<script src="app-branding.js?v=20260731-4170"></script>
+<script src="show-office.js?v=20260731-4170"></script>
+<script src="judge-panel.js?v=20260731-4170"></script>
+<script src="live-results.js?v=20260731-4170"></script>
+<script src="horse-health.js?v=20260731-4170"></script>
+<script src="member-portal.js?v=20260731-4170"></script>
+<script src="src/components/header/header-system.js?v=20260731-4170"></script>
 </body>
 </html>

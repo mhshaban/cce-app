@@ -470,7 +470,7 @@
         canReadInstructorTable
           ? safeGet('instructors','select=*&order=name.asc',true)
           : safeRpcRows('cce_instructor_directory',{},needInstructors),
-        safeGet('booking_requests','select=id,request_type,service_code,service_name,customer_name,phone,horse_name,requested_date,start_time,end_time,rider_level,session_slots,services,request_metadata,status,amount_bd,created_at,updated_at&order=created_at.desc&limit=1500',needBookings)
+        safeRpcRows('cce_list_booking_requests',{},needBookings)
       ]);
       if (typeof normalizeLoadedPaymentStatuses === 'function') {
         normalizeLoadedPaymentStatuses(income); normalizeLoadedPaymentStatuses(expenses);

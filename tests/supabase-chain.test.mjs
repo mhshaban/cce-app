@@ -1878,6 +1878,142 @@ test('v4.16.0 the Joker fence is a chosen alternative, rejects mismatched fences
   }
 });
 
+test('v4.17.0 booking payment deadline expires stale requests, frees capacity and rollback restores the old submit function',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000070';
+  const trainer='00000000-0000-4000-8000-000000000071';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','payment-deadline-manager@example.com'),
+        ('${trainer}','payment-deadline-trainer@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager') or (p.id='${trainer}' and r.code='trainer');
+      insert into public.horses(horse_name,owner,status) values('Deadline Horse','CC','Available');
+    `);
+
+    await db.exec('set role anon');
+    const submitted=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Deadline Rider',
+        p_phone=>'39009001',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'08:00'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DL1',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    const bookingId=submitted.rows[0].result.booking_request_id;
+    assert.equal(submitted.rows[0].result.status,'Requested');
+    assert.ok(submitted.rows[0].result.payment_due_at);
+
+    // The unpaid Requested booking holds the only horse's capacity for that slot.
+    await assert.rejects(
+      db.query(`
+        select public.cce_public_submit_booking(
+          p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Second Rider',
+          p_phone=>'39009002',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+          p_start_time=>'08:00'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DL2',
+          p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+        )
+      `),
+      /No horse capacity is available/
+    );
+    await db.exec('reset role');
+
+    const due=await db.query(`select payment_due_at from public.booking_requests where id=${bookingId}`);
+    assert.ok(new Date(due.rows[0].payment_due_at).getTime()-Date.now()>23*3600*1000);
+
+    await db.exec(`set "request.jwt.claim.sub"='${trainer}'; set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_expire_stale_booking_requests()`),/Permission denied/);
+    await assert.rejects(db.query(`select * from public.cce_list_booking_requests()`),/Permission denied/);
+    await db.exec('reset role');
+
+    // Not yet due: listing (which runs the expiry sweep first) leaves it Requested.
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const beforeDue=await db.query(`select status from public.cce_list_booking_requests() where id=${bookingId}`);
+    assert.equal(beforeDue.rows[0].status,'Requested');
+    await db.exec('reset role');
+
+    // Backdate the deadline (test setup only — bypasses RLS as the db owner, mirroring
+    // the fixture-setup pattern used throughout this file).
+    await db.exec(`update public.booking_requests set payment_due_at=now()-interval '1 hour' where id=${bookingId}`);
+
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const afterDue=await db.query(`select status from public.cce_list_booking_requests() where id=${bookingId}`);
+    assert.equal(afterDue.rows[0].status,'Cancelled');
+    const auditRow=await db.query(`
+      select after_data from public.audit_logs
+      where table_name='booking_requests' and record_id='${bookingId}' and action='update_status'
+      order by id desc limit 1
+    `);
+    assert.equal(auditRow.rows[0].after_data.status,'Cancelled');
+    await db.exec('reset role');
+
+    // Capacity is freed: the same slot can be booked again.
+    await db.exec('set role anon');
+    const secondSubmit=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Second Rider',
+        p_phone=>'39009003',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'08:00'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DL3',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    assert.equal(secondSubmit.rows[0].result.status,'Requested');
+    const secondBookingId=secondSubmit.rows[0].result.booking_request_id;
+    await db.exec('reset role');
+
+    // Confirmed bookings are never auto-cancelled even past their deadline.
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const confirmedStatus=await db.query(`select public.cce_update_booking_status(${secondBookingId},'Confirmed') as result`);
+    assert.equal(confirmedStatus.rows[0].result.status,'Confirmed');
+    await db.exec('reset role');
+    await db.exec(`update public.booking_requests set payment_due_at=now()-interval '1 hour' where id=${secondBookingId}`);
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const stillConfirmed=await db.query(`select status from public.cce_list_booking_requests() where id=${secondBookingId}`);
+    assert.equal(stillConfirmed.rows[0].status,'Confirmed');
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4170_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        to_regprocedure('public.cce_expire_stale_booking_requests()') is null as expire_removed,
+        to_regprocedure('public.cce_list_booking_requests()') is null as list_removed,
+        (select count(*)::int from information_schema.columns
+          where table_schema='public' and table_name='booking_requests' and column_name='payment_due_at') as column_kept,
+        (select status from public.booking_requests where id=${bookingId}) as booking_status_kept
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{
+      expire_removed:true,list_removed:true,column_kept:1,booking_status_kept:'Cancelled'
+    });
+
+    await db.exec('set role anon');
+    const afterRollbackSubmit=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Post Rollback Rider',
+        p_phone=>'39009004',p_requested_date=>(timezone('Asia/Bahrain',now())::date+2),
+        p_start_time=>'09:30'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DL4',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    assert.equal(afterRollbackSubmit.rows[0].result.status,'Requested');
+    assert.ok(!('payment_due_at' in afterRollbackSubmit.rows[0].result));
+    await db.exec('reset role');
+    const postRollbackDue=await db.query(
+      `select payment_due_at from public.booking_requests where id=${afterRollbackSubmit.rows[0].result.booking_request_id}`
+    );
+    assert.equal(postRollbackDue.rows[0].payment_due_at,null);
+
+    await db.exec(read('supabase/migrations/20260731_booking_payment_deadline_v4170.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const reapplied=await db.query(`select to_regprocedure('public.cce_list_booking_requests()') is not null as list_restored`);
+    assert.equal(reapplied.rows[0].list_restored,true);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
