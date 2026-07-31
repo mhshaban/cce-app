@@ -2014,6 +2014,95 @@ test('v4.17.0 booking payment deadline expires stale requests, frees capacity an
   }
 });
 
+test('v4.18.0 manager can delete a booking request with its income row, enforces permission and rollback removes the RPC',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000072';
+  const trainer='00000000-0000-4000-8000-000000000073';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','delete-booking-manager@example.com'),
+        ('${trainer}','delete-booking-trainer@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager') or (p.id='${trainer}' and r.code='trainer');
+      insert into public.horses(horse_name,owner,status) values('Delete Test Horse','CC','Available');
+    `);
+
+    await db.exec('set role anon');
+    const submitted=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Delete Me Rider',
+        p_phone=>'39009005',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'10:15'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DEL1',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    const bookingId=submitted.rows[0].result.booking_request_id;
+    const incomeId=submitted.rows[0].result.income_id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${trainer}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_delete_booking_request(${bookingId})`),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_delete_booking_request(999999999)`),
+      /not found/i
+    );
+    const deleted=await db.query(`select public.cce_delete_booking_request(${bookingId}) as result`);
+    assert.deepEqual({...deleted.rows[0].result},{
+      booking_request_id:bookingId,income_rows_deleted:1,deleted:true
+    });
+    await db.exec('reset role');
+
+    const remaining=await db.query(`
+      select
+        (select count(*)::int from public.booking_requests where id=${bookingId}) as booking_rows,
+        (select count(*)::int from public.income where id=${incomeId}) as income_rows,
+        (select count(*)::int from public.booking_private_details where booking_request_id=${bookingId}) as private_rows
+    `);
+    assert.deepEqual({...remaining.rows[0]},{booking_rows:0,income_rows:0,private_rows:0});
+
+    const audit=await db.query(`
+      select before_data from public.audit_logs
+      where table_name='booking_requests' and record_id='${bookingId}' and action='delete'
+      order by id desc limit 1
+    `);
+    assert.equal(audit.rows[0].before_data.customer_name,'Delete Me Rider');
+
+    await db.exec(read('supabase/rollback/rollback_v4180_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select to_regprocedure('public.cce_delete_booking_request(bigint)') is null as delete_removed
+    `);
+    assert.equal(rolledBack.rows[0].delete_removed,true);
+
+    await db.exec(read('supabase/migrations/20260801_booking_delete_request_v4180.sql'));
+    await db.exec('set role anon');
+    const secondSubmit=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Delete Me Again',
+        p_phone=>'39009006',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'11:00'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-DEL2',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    await db.exec('reset role');
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const reapplied=await db.query(
+      `select public.cce_delete_booking_request(${secondSubmit.rows[0].result.booking_request_id}) as result`
+    );
+    assert.equal(reapplied.rows[0].result.deleted,true);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
