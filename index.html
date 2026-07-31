@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260731-4172"></script>
+<script src="app-bootstrap.js?v=20260731-4173"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260731-4172" rel="stylesheet"/>
-<link href="member-portal.css?v=20260731-4172" rel="stylesheet"/>
-<link href="show-office.css?v=20260731-4172" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260731-4172" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260731-4172" rel="stylesheet"/>
+<link href="app-core.css?v=20260731-4173" rel="stylesheet"/>
+<link href="member-portal.css?v=20260731-4173" rel="stylesheet"/>
+<link href="show-office.css?v=20260731-4173" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260731-4173" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260731-4173" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -327,16 +327,6 @@
           </div>
 </div>
 </div>
-<div class="note-box">
-<div class="note-title">💳 ملاحظة الدفع</div>
-<div class="note-text">
-          يتم تأكيد الحجز بعد الدفع. يرجى التحويل إلى:<br/>
-<span class="iban">BH23BIBB00100002375646</span><br/><br/>
-          بعد التحويل، أرسل إثبات الدفع عبر واتساب وسيتم التأكيد خلال 24 ساعة.<br/><br/>
-<strong style="color:var(--red)">⚠️ إذا لم يصلنا إثبات الدفع خلال 24 ساعة من إرسال الطلب، سيُلغى الطلب تلقائيًا.</strong>
-          <button class="whatsapp-btn" onclick="openWhatsAppProof('booking')" type="button">📱 Send Payment Proof via WhatsApp</button>
-</div>
-</div>
 <!-- Booking Terms -->
 <div class="card" style="border:1px solid var(--amber)">
 <div class="card-title">📜 Horse Renting Agreement</div>
@@ -372,7 +362,7 @@
 <div class="success-title">تم إرسال طلب الحجز بنجاح!</div>
 <div class="success-text">يرجى تحويل مبلغ الحجز إلى الآيبان:<br/><strong class="iban">BH23BIBB00100002375646</strong><br/><br/>سيتم تأكيد الحجز بعد استلام إثبات الدفع.<br/><br/><strong style="color:var(--red)">⚠️ إذا لم يصلنا إثبات الدفع خلال 24 ساعة، سيُلغى الطلب تلقائيًا.</strong></div>
 <button class="whatsapp-btn secondary" onclick="openWhatsAppProof('booking')">📱 Send Payment Proof via WhatsApp</button>
-<button class="btn" onclick="resetBooking()" style="margin-top:16px">📋 حجز جديد</button>
+<button class="btn" onclick="resetBooking()" style="margin-top:16px">🔙 رجوع</button>
 </div>
 </div>
 </div>
@@ -481,10 +471,6 @@
           </div>
 </div>
 </div>
-<div class="note-box">
-<div class="note-title">💳 ملاحظة الدفع</div>
-<div class="note-text">Transfer package fee to:<br/><span class="iban">BH23BIBB00100002375646</span><br/><br/>Confirmed within 24 hours after payment.<br/><br/><strong style="color:var(--red)">⚠️ إذا لم يصلنا إثبات الدفع خلال 24 ساعة من إرسال الطلب، سيُلغى الطلب تلقائيًا.<br/>If we do not receive payment proof within 24 hours of sending the request, it will be automatically cancelled.</strong></div>
-</div>
 <!-- Training Terms & Conditions -->
 <div class="card" style="border:1px solid var(--amber)">
 <div class="card-title">📜 Terms &amp; Conditions</div>
@@ -533,7 +519,7 @@
 <div class="success-icon">✅</div>
 <div class="success-title">تم إرسال طلب التسجيل بنجاح!</div>
 <div class="success-text" id="trainSuccessText"></div>
-<button class="btn" onclick="resetTraining()" style="margin-top:16px">📋 طلب جديد</button>
+<button class="btn" onclick="resetTraining()" style="margin-top:16px">🔙 رجوع</button>
 </div>
 </div>
 </div>
@@ -669,10 +655,6 @@
 <div class="card-title">📋 Notes</div>
 <textarea id="lv-notes" maxlength="1000" placeholder="أي ملاحظات إضافية..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;min-height:80px;resize:vertical;outline:none"></textarea>
 </div>
-<div class="note-box">
-<div class="note-title">💳 ملاحظة الدفع</div>
-<div class="note-text">Transfer to:<br/><span class="iban">BH23BIBB00100002375646</span><br/><br/>Confirmed within 24 hours after payment.<br/><br/><strong style="color:var(--red)">⚠️ إذا لم يصلنا إثبات الدفع خلال 24 ساعة من إرسال الطلب، سيُلغى الطلب تلقائيًا.<br/>If we do not receive payment proof within 24 hours of sending the request, it will be automatically cancelled.</strong></div>
-</div>
 <!-- Livery Terms & Conditions -->
 <div class="card" style="border:1px solid var(--amber)">
 <div class="card-title">📜 Terms &amp; Conditions</div>
@@ -729,7 +711,7 @@
 <div class="success-icon">✅</div>
 <div class="success-title">Livery request sent successfully!</div>
 <div class="success-text" id="liverySuccessText"></div>
-<button class="btn" onclick="resetLivery()" style="margin-top:16px">🏠 طلب جديد</button>
+<button class="btn" onclick="resetLivery()" style="margin-top:16px">🔙 رجوع</button>
 </div>
 </div>
 </div>
@@ -1268,32 +1250,32 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260731-4172"></script>
-<script src="src/core/config.js?v=20260731-4172"></script>
-<script src="src/core/store.js?v=20260731-4172"></script>
-<script src="src/services/supabase-runtime.js?v=20260731-4172"></script>
-<script src="src/services/backup-runtime.js?v=20260731-4172"></script>
-<script src="src/modules/show-office/competition-service.js?v=20260731-4172"></script>
-<script src="src/modules/show-office/class-service.js?v=20260731-4172"></script>
-<script src="src/modules/show-office/entry-service.js?v=20260731-4172"></script>
-<script src="src/modules/show-office/judging-service.js?v=20260731-4172"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20260731-4172"></script>
-<script src="src/modules/horses/horse-service.js?v=20260731-4172"></script>
-<script src="src/modules/health/health-service.js?v=20260731-4172"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260731-4172"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260731-4172"></script>
-<script src="app-core.js?v=20260731-4172"></script>
-<script src="app-branding.js?v=20260731-4172"></script>
-<script src="show-office.js?v=20260731-4172"></script>
-<script src="judge-panel.js?v=20260731-4172"></script>
-<script src="live-results.js?v=20260731-4172"></script>
-<script src="horse-health.js?v=20260731-4172"></script>
-<script src="member-portal.js?v=20260731-4172"></script>
-<script src="src/components/header/header-system.js?v=20260731-4172"></script>
+<script src="src/core/events.js?v=20260731-4173"></script>
+<script src="src/core/config.js?v=20260731-4173"></script>
+<script src="src/core/store.js?v=20260731-4173"></script>
+<script src="src/services/supabase-runtime.js?v=20260731-4173"></script>
+<script src="src/services/backup-runtime.js?v=20260731-4173"></script>
+<script src="src/modules/show-office/competition-service.js?v=20260731-4173"></script>
+<script src="src/modules/show-office/class-service.js?v=20260731-4173"></script>
+<script src="src/modules/show-office/entry-service.js?v=20260731-4173"></script>
+<script src="src/modules/show-office/judging-service.js?v=20260731-4173"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20260731-4173"></script>
+<script src="src/modules/horses/horse-service.js?v=20260731-4173"></script>
+<script src="src/modules/health/health-service.js?v=20260731-4173"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260731-4173"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260731-4173"></script>
+<script src="app-core.js?v=20260731-4173"></script>
+<script src="app-branding.js?v=20260731-4173"></script>
+<script src="show-office.js?v=20260731-4173"></script>
+<script src="judge-panel.js?v=20260731-4173"></script>
+<script src="live-results.js?v=20260731-4173"></script>
+<script src="horse-health.js?v=20260731-4173"></script>
+<script src="member-portal.js?v=20260731-4173"></script>
+<script src="src/components/header/header-system.js?v=20260731-4173"></script>
 </body>
 </html>
