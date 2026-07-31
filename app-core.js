@@ -17,7 +17,7 @@ const CCE_I18N={
     homeTrainingTitle:'Horse Riding Training',homeTrainingSub:'Private and group sessions for beginners and advanced riders',registerNow:'🎯 Register Now',
     homeRidesTitle:'Hack Rides',homeRidesSub:'Enjoyable rides on our beautiful horses',bookNow:'🐴 Book Now',
     ownerPortal:'Owner Portal',ownerPortalSub:'Horse owners access',instructorPortal:'Instructor Portal',instructorPortalSub:'Instructor daily access',adminDashboard:'Admin Dashboard',adminDashboardSub:'Staff management',
-    bookingHeroTitle:'Book a Horse Ride',trainingHeroTitle:'Training Packages',liveryHeroTitle:'Book Livery',sendBooking:'🐴 Send Booking Request',sendTraining:'🎯 Send Registration Request',
+    bookingHeroTitle:'Book a Horse Ride',trainingHeroTitle:'Training Packages',liveryHeroTitle:'Book Livery',sendBooking:'💳 Send Request & Pay',sendTraining:'💳 Send Request & Pay',sendLivery:'💳 Send Request & Pay',
     publicBrandSub:'Equestrian Club · Bahrain',
     publicMemberLogin:'🔐 Member Login',publicMemberLoginShort:'Member Login',
     publicHeroBadge:'🐎 Equestrian experiences in Bahrain',
@@ -55,7 +55,7 @@ const CCE_I18N={
     homeTrainingTitle:'تدريب ركوب الخيل',homeTrainingSub:'للمبتدئين والمحترفين — حصص فردية وجماعية',registerNow:'🎯 التسجيل الآن',
     homeRidesTitle:'جولات ركوب الخيل',homeRidesSub:'جولات ممتعة على أجمل الخيول',bookNow:'🐴 احجز الآن',
     ownerPortal:'بوابة الملاك',ownerPortalSub:'دخول ملاك الخيول',instructorPortal:'بوابة المدربين',instructorPortalSub:'دخول المدربين',adminDashboard:'لوحة الإدارة',adminDashboardSub:'إدارة النادي',
-    bookingHeroTitle:'حجز جولة ركوب الخيل',trainingHeroTitle:'باقات التدريب',liveryHeroTitle:'حجز إيواء الخيل',sendBooking:'🐴 إرسال طلب الحجز',sendTraining:'🎯 إرسال طلب التسجيل',
+    bookingHeroTitle:'حجز جولة ركوب الخيل',trainingHeroTitle:'باقات التدريب',liveryHeroTitle:'حجز إيواء الخيل',sendBooking:'💳 إرسال الطلب والدفع',sendTraining:'💳 إرسال الطلب والدفع',sendLivery:'💳 إرسال الطلب والدفع',
     publicBrandSub:'نادي الريف للفروسية',
     publicMemberLogin:'🔐 دخول الأعضاء',publicMemberLoginShort:'دخول الأعضاء',
     publicHeroBadge:'🐎 تجارب فروسية في البحرين',
@@ -2022,7 +2022,7 @@ function renderBookings(){
       const canScheduleTraining=requestType==='training'&&request&&canUpdate&&
         window.canUser('schedule.create')&&!['Completed','Cancelled','Rejected'].includes(bookingStatus);
       const statusControl=canUpdate
-        ?'<select aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
+        ?'<select class="badge-select '+statusClass+'" aria-label="Booking status" onchange="updateBookingStatus('+request.id+',this.value)">'+
           bookingStatusOptions(bookingStatus).map(value=>'<option '+(value===bookingStatus?'selected':'')+'>'+value+'</option>').join('')+'</select>'
         :'<span class="badge '+statusClass+'">'+esc(bookingStatus)+'</span>';
       return '<tr>'+
@@ -2602,7 +2602,7 @@ async function submitBooking(){
     });
     document.getElementById('bookingForm').style.display='none';
     document.getElementById('bookSuccess').style.display='block';
-  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';}
+  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent=t('sendBooking');}
 }
 
 function resetBooking(){
@@ -2612,7 +2612,7 @@ function resetBooking(){
   ['b-name','b-phone','b-birth-date','b-personal-id','b-emergency','b-health','b-date','b-time'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('b-rider-level').value='';
   document.querySelectorAll('input[name="rider-level"]').forEach(r=>r.checked=false);
-  const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent='🐴 إرسال طلب الحجز';refreshRideAvailability();
+  const btn=document.getElementById('bookBtn');btn.disabled=false;btn.textContent=t('sendBooking');refreshRideAvailability();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2718,8 +2718,9 @@ async function submitTraining(){
       'Sessions: <strong>'+selectedPkgSessions+' حصص</strong><br>'+
       'Amount: <strong>'+acceptedAmount+' BD</strong><br><br>'+
       '<div style="font-size:12px;color:#666;margin-top:8px">'+slots.map((s,i)=>'&#128197; حصة '+(i+1)+': '+esc(s.date)+' @ '+esc(s.time)).join('<br>')+'</div>'+
-      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 Send Payment Proof via WhatsApp</button>';
-  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🎯 Send Registration Request';}
+      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'training\')">📱 Send Payment Proof via WhatsApp</button>'+
+      '<br><br><strong style="color:var(--red)">⚠️ If we do not receive payment proof within 24 hours, this request will be automatically cancelled.</strong>';
+  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent=t('sendTraining');}
 }
 
 function resetTraining(){
@@ -2732,7 +2733,7 @@ function resetTraining(){
   ['t-name','t-phone','t-birth-date','t-personal-id','t-emergency','t-health'].forEach(id=>document.getElementById(id).value='');
   selectedPkg=null;selectedPrice=0;selectedPkgSessions=1;
   selectedPkgCode='';
-  const btn=document.getElementById('trainBtn');btn.disabled=false;btn.textContent='🎯 Send Registration Request';
+  const btn=document.getElementById('trainBtn');btn.disabled=false;btn.textContent=t('sendTraining');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4020,8 +4021,9 @@ if(document.getElementById('lv-teben').checked) services.push('Feed - Teben (3 B
       '🐴 Horse: <strong>'+esc(horse)+'</strong>'+(breed?' — '+esc(breed):'')+
       (date?'<br>📅 Start Date: <strong>'+esc(date)+'</strong>':'')+
       '<br><br><div style="font-size:12px;text-align:left">'+services.map(s=>'✓ '+esc(s)).join('<br>')+'</div>'+
-      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'livery\')">📱 Send Payment Proof via WhatsApp</button>';
-  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='🏠 Submit Livery Request';}
+      '<br>Transfer to IBAN:<br><strong class="iban">BH23BIBB00100002375646</strong><button class="whatsapp-btn secondary" onclick="openWhatsAppProof(\'livery\')">📱 Send Payment Proof via WhatsApp</button>'+
+      '<br><br><strong style="color:var(--red)">⚠️ If we do not receive payment proof within 24 hours, this request will be automatically cancelled.</strong>';
+  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent=t('sendLivery');}
 }
 
 function resetLivery(){
@@ -4032,7 +4034,7 @@ function resetLivery(){
   document.getElementById('lv-sex').value='';
   selectLiveryType('');
   selectedLiveryType='';
-  const btn=document.getElementById('liveryBtn');btn.disabled=false;btn.textContent='🏠 Submit Livery Request';
+  const btn=document.getElementById('liveryBtn');btn.disabled=false;btn.textContent=t('sendLivery');
 }
 
 
@@ -4151,7 +4153,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.16.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.17.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4244,7 +4246,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260730-4160', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260731-4171', {scope:'./'})
       .then(reg => {
 
         reg.update();

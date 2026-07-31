@@ -2,7 +2,7 @@
 
 Enterprise Stable Management Platform for Country Club Equestrian.
 
-الإصدار الحالي: **4.16.0**
+الإصدار الحالي: **4.17.1**
 
 ## وثائق المشروع
 
@@ -25,6 +25,7 @@ Enterprise Stable Management Platform for Country Club Equestrian.
 - [دليل نشر Accumulator with Joker v4.15.0](docs/DEPLOYMENT_V4150.md)
 - [دليل تصحيح مضاعفة Joker v4.15.1](docs/DEPLOYMENT_V4151.md)
 - [دليل نشر اختيار حاجز الجوكر البديل v4.16.0](docs/DEPLOYMENT_V4160.md)
+- [دليل نشر مهلة دفع الحجوزات v4.17.0](docs/DEPLOYMENT_V4170.md)
 - [سجل التغييرات](docs/CHANGELOG.md)
 
 ## الفحص المحلي

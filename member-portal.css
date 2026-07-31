@@ -867,13 +867,13 @@ body.member-authenticated #globalHeader .header-right{display:flex;align-items:c
 body.member-authenticated #globalHeader #backBtn{order:90}
 body.member-authenticated #globalHeader #logoutAdminBtn,body.member-authenticated #globalHeader #logoutOwnerBtn{order:91}
 body.member-authenticated #globalHeader .header-brand img{object-fit:contain!important}
-.form-group input,.form-group select,.form-group textarea,.inp,input[type="date"],input[type="time"],select{min-height:52px;box-sizing:border-box;font-size:16px!important;line-height:1.35;border-radius:12px;padding:12px 14px}
+.form-group input,.form-group select,.form-group textarea,.inp,input[type="date"],input[type="time"]{min-height:52px;box-sizing:border-box;font-size:16px!important;line-height:1.35;border-radius:12px;padding:12px 14px}
 .form-group textarea{min-height:112px}
 input[type="date"],input[type="time"]{-webkit-appearance:none;appearance:none;width:100%;background:#fff}
 input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:start;min-height:24px}
 .form-group label{font-size:14px!important;line-height:1.45;margin-bottom:7px!important}
 .health-stat-grid button span{font-size:12px}
-@media(max-width:600px){body.member-authenticated #globalHeader{grid-template-columns:1fr!important;gap:9px!important;min-height:auto!important}body.member-authenticated #globalHeader .header-right{width:100%;overflow-x:auto;padding-bottom:2px;gap:7px;order:2}body.member-authenticated #globalHeader .header-brand{order:1}#page-admin .member-field-label{font-size:13px!important}.form-group input,.form-group select,.form-group textarea,.inp,input[type="date"],input[type="time"],select{min-height:54px;font-size:16px!important}.health-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){body.member-authenticated #globalHeader{grid-template-columns:1fr!important;gap:9px!important;min-height:auto!important}body.member-authenticated #globalHeader .header-right{width:100%;overflow-x:auto;padding-bottom:2px;gap:7px;order:2}body.member-authenticated #globalHeader .header-brand{order:1}#page-admin .member-field-label{font-size:13px!important}.form-group input,.form-group select,.form-group textarea,.inp,input[type="date"],input[type="time"]{min-height:54px;font-size:16px!important}.health-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
 /* ========================================================================== 
    CCE v3.1.0 — unified typography, mobile chrome and persistence feedback
