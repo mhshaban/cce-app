@@ -2019,6 +2019,7 @@ function renderBookings(){
         ?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy)" title="Protected rider details" onclick="viewBookingSafety('+request.id+')">&#128737;&#65039;</button>'
         :'';
       const canUpdate=request&&typeof window.canUser==='function'&&window.canUser('bookings.update');
+      const canDeleteBooking=request&&typeof window.canUser==='function'&&window.canUser('bookings.delete');
       const canScheduleTraining=requestType==='training'&&request&&canUpdate&&
         window.canUser('schedule.create')&&!['Completed','Cancelled','Rejected'].includes(bookingStatus);
       const statusControl=canUpdate
@@ -2039,7 +2040,8 @@ function renderBookings(){
           (canScheduleTraining?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" title="Assign instructor and create package sessions" onclick="openScheduleTrainingBooking('+request.id+')">&#128197;</button>':'')+
           '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
           (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
-          (!request?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>':'')+
+          (!request?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>'
+            :canDeleteBooking?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" title="Delete booking request" onclick="deleteBookingRequest('+request.id+')">&#128465;&#65039;</button>':'')+
         '</td>'+
       '</tr>';
     }).join('')+'</tbody></table>';
@@ -2054,6 +2056,15 @@ async function updateBookingStatus(bookingRequestId,status){
     await sbRpc('cce_update_booking_status',{p_booking_request_id:bookingRequestId,p_status:status});
     await loadAll();
   }catch(error){showError('Booking status',error);renderBookings();}
+}
+
+async function deleteBookingRequest(bookingRequestId){
+  if(typeof window.canUser!=='function'||!window.canUser('bookings.delete'))return;
+  if(!confirm('Delete this booking request and its linked income record? This cannot be undone.'))return;
+  try{
+    await sbRpc('cce_delete_booking_request',{p_booking_request_id:bookingRequestId});
+    await loadAll();
+  }catch(error){showError('Booking not deleted',error);}
 }
 
 function openScheduleTrainingBooking(bookingRequestId){
@@ -4153,7 +4164,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.17.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.18.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4246,7 +4257,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260731-4173', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260801-4180', {scope:'./'})
       .then(reg => {
 
         reg.update();
