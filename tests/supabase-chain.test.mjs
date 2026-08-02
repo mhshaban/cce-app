@@ -2103,6 +2103,72 @@ test('v4.18.0 manager can delete a booking request with its income row, enforces
   }
 });
 
+test('v4.19.0 monthly livery income creation covers Full Livery and AC Livery, is idempotent, unreachable by client roles, and rollback removes the function',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000074';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','livery-cron-manager@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      insert into public.horses(horse_name,owner,status,livery_bd,ac_livery_bd) values
+        ('Full Livery Horse','Owner One','Available',80,0),
+        ('AC Livery Horse','Owner Two','Available',0,150),
+        ('Both Set Horse','Owner Three','Available',80,150),
+        ('Not Available Horse','Owner Four','Occupied',80,0);
+    `);
+
+    const created=await db.query(`select public.cce_create_monthly_livery_income() as rows_created`);
+    assert.equal(created.rows[0].rows_created,3);
+
+    const rows=await db.query(`
+      select horse_name,customer_name,amount_bd::text,status
+      from public.income
+      where activity='Livery' and notes ilike '%Automatic monthly livery payment%'
+      order by horse_name
+    `);
+    assert.deepEqual(rows.rows.map(r=>({...r})),[
+      {horse_name:'AC Livery Horse',customer_name:'Owner Two',amount_bd:'150.000',status:'Pending'},
+      {horse_name:'Both Set Horse',customer_name:'Owner Three',amount_bd:'150.000',status:'Pending'},
+      {horse_name:'Full Livery Horse',customer_name:'Owner One',amount_bd:'80.000',status:'Pending'}
+    ]);
+
+    // Idempotent: running again the same month creates nothing further.
+    const secondRun=await db.query(`select public.cce_create_monthly_livery_income() as rows_created`);
+    assert.equal(secondRun.rows[0].rows_created,0);
+    const countAfter=await db.query(`select count(*)::int as rows from public.income where activity='Livery'`);
+    assert.equal(countAfter.rows[0].rows,3);
+
+    // Not callable by any client role — no permission granted, cron only.
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_create_monthly_livery_income()`),
+      /permission denied/i
+    );
+    await db.exec('reset role');
+    await db.exec('set role anon');
+    await assert.rejects(
+      db.query(`select public.cce_create_monthly_livery_income()`),
+      /permission denied/i
+    );
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4190_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select to_regprocedure('public.cce_create_monthly_livery_income()') is null as function_removed
+    `);
+    assert.equal(rolledBack.rows[0].function_removed,true);
+
+    await db.exec(read('supabase/migrations/20260802_livery_income_cron_v4190.sql'));
+    const reapplied=await db.query(`
+      select to_regprocedure('public.cce_create_monthly_livery_income()') is not null as function_restored
+    `);
+    assert.equal(reapplied.rows[0].function_restored,true);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

@@ -2,7 +2,7 @@
 
 Enterprise Stable Management Platform for Country Club Equestrian.
 
-الإصدار الحالي: **4.18.1**
+الإصدار الحالي: **4.19.0**
 
 ## وثائق المشروع
 
@@ -27,6 +27,7 @@ Enterprise Stable Management Platform for Country Club Equestrian.
 - [دليل نشر اختيار حاجز الجوكر البديل v4.16.0](docs/DEPLOYMENT_V4160.md)
 - [دليل نشر مهلة دفع الحجوزات v4.17.0](docs/DEPLOYMENT_V4170.md)
 - [دليل نشر حذف طلبات الحجز v4.18.0](docs/DEPLOYMENT_V4180.md)
+- [دليل نشر جدولة دفعات الإيواء الشهرية v4.19.0](docs/DEPLOYMENT_V4190.md)
 - [سجل التغييرات](docs/CHANGELOG.md)
 
 ## الفحص المحلي
