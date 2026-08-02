@@ -697,11 +697,11 @@ async function checkAndCreateLiveryNotifications(){
   const dueDateStr=currentMonth+'-01';               // Due: 1st of CURRENT month
   const todayStr=y+'-'+String(m).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   
-  // Only Available horses with AC Livery amount > 0
-  const liveryHorses=horses.filter(h=>h.status==='Available'&&parseFloat(h.ac_livery_bd||0)>0);
-  
+  // Available horses with either Full Livery or AC Livery amount > 0
+  const liveryHorses=horses.filter(h=>h.status==='Available'&&(parseFloat(h.livery_bd||0)>0||parseFloat(h.ac_livery_bd||0)>0));
+
   let created=false;
-  
+
   for(const horse of liveryHorses){
     // Skip if a livery record for THIS month already exists (Pending OR Paid — no duplicates)
     const existing=income.find(r=>
@@ -709,8 +709,9 @@ async function checkAndCreateLiveryNotifications(){
       (r.activity||'').startsWith('Livery')&&
       r.due_date&&r.due_date.startsWith(currentMonth)
     );
-    
+
     if(!existing){
+      const liveryAmount=parseFloat(horse.ac_livery_bd||0)>0?parseFloat(horse.ac_livery_bd):parseFloat(horse.livery_bd||0);
       try{
         await sbPost('income',{
           date:todayStr,
@@ -719,7 +720,7 @@ async function checkAndCreateLiveryNotifications(){
           horse_name:horse.horse_name,
           activity:'Livery',
           qty:1,
-          amount_bd:parseFloat(horse.ac_livery_bd)||0,
+          amount_bd:liveryAmount,
           paid_bd:0,
           notes:'Automatic monthly livery payment — '+horse.horse_name,
           status:'Pending'
@@ -4164,7 +4165,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.18.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.18.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4257,7 +4258,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260801-4180', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260801-4181', {scope:'./'})
       .then(reg => {
 
         reg.update();
