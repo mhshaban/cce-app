@@ -14,6 +14,10 @@
   let loaded = false;
   let loadError = '';
   let requestId = 0;
+  let timerRunning = false;
+  let timerStartedAt = 0;
+  let timerElapsedMs = 0;
+  let timerIntervalId = null;
 
   const service = () => showOffice.judgingService;
   const clean = value => String(value == null ? '' : value).trim();
@@ -222,6 +226,62 @@
     return '<span class="so-read-only">View only</span>';
   }
 
+  function timerDisplayText(ms) {
+    const totalMs = Math.max(0, Math.round(ms));
+    const minutes = Math.floor(totalMs / 60000);
+    const seconds = Math.floor((totalMs % 60000) / 1000);
+    const millis = totalMs % 1000;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + '.' + String(millis).padStart(3, '0');
+  }
+
+  function currentTimerElapsedMs() {
+    return timerRunning ? timerElapsedMs + (Date.now() - timerStartedAt) : timerElapsedMs;
+  }
+
+  function renderTimerDisplay() {
+    const el = document.getElementById('showOfficeJudgeTimerDisplay');
+    if (el) el.textContent = timerDisplayText(currentTimerElapsedMs());
+  }
+
+  function resetTimerState() {
+    if (timerIntervalId) { window.clearInterval(timerIntervalId); timerIntervalId = null; }
+    timerRunning = false;
+    timerStartedAt = 0;
+    timerElapsedMs = 0;
+  }
+
+  function timerControlsHtml(disabledAttr) {
+    return `<div class="so-judge-timer">
+      <span class="so-judge-timer-display" id="showOfficeJudgeTimerDisplay">${timerDisplayText(currentTimerElapsedMs())}</span>
+      <button type="button" class="so-judge-timer-btn" ${disabledAttr} onclick="startShowOfficeJudgeTimer()">▶ Start</button>
+      <button type="button" class="so-judge-timer-btn" ${disabledAttr} onclick="stopShowOfficeJudgeTimer()">⏸ Stop</button>
+      <button type="button" class="so-judge-timer-btn" ${disabledAttr} onclick="resetShowOfficeJudgeTimer()">⟲ Reset</button>
+    </div>`;
+  }
+
+  window.startShowOfficeJudgeTimer = function startShowOfficeJudgeTimer() {
+    if (!canScore() || timerRunning) return;
+    timerRunning = true;
+    timerStartedAt = Date.now();
+    timerIntervalId = window.setInterval(renderTimerDisplay, 47);
+    renderTimerDisplay();
+  };
+
+  window.stopShowOfficeJudgeTimer = function stopShowOfficeJudgeTimer() {
+    if (!timerRunning) return;
+    timerElapsedMs += Date.now() - timerStartedAt;
+    timerRunning = false;
+    if (timerIntervalId) { window.clearInterval(timerIntervalId); timerIntervalId = null; }
+    renderTimerDisplay();
+    const input = document.getElementById('showOfficeJudgeTime');
+    if (input) input.value = (timerElapsedMs / 1000).toFixed(3);
+  };
+
+  window.resetShowOfficeJudgeTimer = function resetShowOfficeJudgeTimer() {
+    resetTimerState();
+    renderTimerDisplay();
+  };
+
   function entryButtons(rows) {
     return rows.map(row => {
       const score = scoreFor(row);
@@ -273,10 +333,10 @@
         : `Tap a fence to cycle Clear → Knockdown → Refusal. ${html(competitionClass.refusals_before_elimination || 3)} refusals in this round eliminate the entry automatically; correct it below if needed.`
       }</p>
       <div class="so-judge-score-fields" style="grid-template-columns:1fr">
-        <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450"></label>
+        <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450">${timerControlsHtml(disabled || special ? 'disabled' : '')}</label>
       </div>` : `
       <div class="so-judge-score-fields">
-        <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450"></label>
+        <label><span>Time (seconds)</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeTime" inputmode="decimal" min="0.001" max="86400" step="0.001" type="number" value="${attr(service().millisecondsToTime(score?.time_ms))}" placeholder="72.450">${timerControlsHtml(disabled || special ? 'disabled' : '')}</label>
         <label><span>Faults</span><input ${disabled} ${special ? 'disabled' : ''} id="showOfficeJudgeFaults" inputmode="decimal" min="0" max="999999.99" step="0.01" type="number" value="${attr(score?.faults ?? '')}" placeholder="0"></label>
         <label><span>Refusals</span><input ${disabled} ${dns ? 'disabled' : ''} id="showOfficeJudgeRefusals" inputmode="numeric" min="0" max="9" step="1" type="number" value="${attr(score?.refusals ?? 0)}"></label>
       </div>`}
@@ -452,6 +512,7 @@
     loading = false;
     loaded = false;
     loadError = '';
+    resetTimerState();
     renderPanel();
   }
 
@@ -465,6 +526,7 @@
     selectedEntryId = '';
     selectedPhase = 'first_round';
     panelData = null;
+    resetTimerState();
     renderPanel();
     return selectedClassId ? loadPanel(selectedClassId) : Promise.resolve(null);
   };
@@ -472,17 +534,20 @@
   window.selectShowOfficeJudgeClass = function selectShowOfficeJudgeClass(id) {
     selectedEntryId = '';
     selectedPhase = 'first_round';
+    resetTimerState();
     return loadPanel(id);
   };
 
   window.selectShowOfficeJudgeEntry = function selectShowOfficeJudgeEntry(id) {
     selectedEntryId = String(id || '');
+    resetTimerState();
     renderPanel();
   };
 
   window.setShowOfficeJudgePhase = function setShowOfficeJudgePhase(value) {
     selectedPhase = value === 'jump_off' ? 'jump_off' : 'first_round';
     ensureEntrySelection();
+    resetTimerState();
     renderPanel();
   };
 
@@ -571,6 +636,7 @@
         || rows.find(item => !scoreFor(item));
       await refreshAfterMutation();
       if (next) selectedEntryId = String(next.entry_id);
+      resetTimerState();
       renderPanel();
       window.setTimeout(() => document.getElementById('showOfficeJudgeTime')?.focus(), 0);
     } catch (error) {
@@ -594,6 +660,7 @@
     if (!window.confirm('Reset this score? The action remains in the immutable score history.')) return;
     try {
       await service().resetScore(row.entry_id, selectedPhase, score.row_version);
+      resetTimerState();
       await refreshAfterMutation();
     } catch (error) {
       if (/changed on another device|40001/i.test(String(error?.message || error))) await loadPanel(selectedClassId);

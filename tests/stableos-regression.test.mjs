@@ -1170,12 +1170,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.19.0 cache key',()=>{
+test('all app assets use the v4.20.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260801-4181'));
-  assert.ok((html.match(/20260802-4190/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260802-4190/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260802-4190/);
-  assert.equal(read('VERSION.txt').trim(),'4.19.0');
+  assert.ok(!html.includes('20260802-4190'));
+  assert.ok((html.match(/20260802-4200/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260802-4200/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260802-4200/);
+  assert.equal(read('VERSION.txt').trim(),'4.20.0');
 });
