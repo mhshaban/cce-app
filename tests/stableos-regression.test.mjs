@@ -136,7 +136,8 @@ test('public booking data is escaped before admin or success-page rendering',()=
   assert.match(bookings,/bookings\.sensitive\.view/);
   assert.match(bookings,/cce_booking_private_details/);
   const editIncome=functionBlock(core,'editIncome','saveIncome');
-  assert.match(editIncome,/escAttr\(r\.customer_name/);
+  assert.match(editIncome,/escAttr\(custValue\)/);
+  assert.match(editIncome,/custValue=linkedRequest\?\.customer_name\|\|r\.customer_name/);
   assert.match(editIncome,/escAttr\(r\.notes/);
   assert.match(core,/\$\{esc\(g\.name\)\}/);
   assert.match(core,/'🐴 Horse: <strong>'\+esc\(horse\)/);
@@ -252,6 +253,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260731_booking_payment_deadline_v4170.sql',
     'supabase/migrations/20260801_booking_delete_request_v4180.sql',
     'supabase/migrations/20260802_livery_income_cron_v4190.sql',
+    'supabase/migrations/20260803_booking_customer_sync_v4210.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -286,6 +288,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4180.sql',
     'supabase/verification/preflight_v4190.sql',
     'supabase/verification/verify_v4190.sql',
+    'supabase/verification/preflight_v4210.sql',
+    'supabase/verification/verify_v4210.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -308,7 +312,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4160_compatibility.sql',
     'supabase/rollback/rollback_v4170_compatibility.sql',
     'supabase/rollback/rollback_v4180_compatibility.sql',
-    'supabase/rollback/rollback_v4190_compatibility.sql'
+    'supabase/rollback/rollback_v4190_compatibility.sql',
+    'supabase/rollback/rollback_v4210_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1170,12 +1175,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.20.0 cache key',()=>{
+test('all app assets use the v4.21.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260802-4190'));
-  assert.ok((html.match(/20260802-4200/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260802-4200/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260802-4200/);
-  assert.equal(read('VERSION.txt').trim(),'4.20.0');
+  assert.ok(!html.includes('20260802-4200'));
+  assert.ok((html.match(/20260803-4210/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260803-4210/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260803-4210/);
+  assert.equal(read('VERSION.txt').trim(),'4.21.0');
 });

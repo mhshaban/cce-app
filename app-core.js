@@ -2138,10 +2138,12 @@ function editIncome(id){
   const qty=r.qty||1;const apu=qty>0?(r.amount_bd/qty):r.amount_bd;
   const splitChecked=isTrainingIncome(r)?r.training_split_enabled!==false:true;
   const splitLocked=isTrainingIncome(r)&&r.training_split_enabled===true;
+  const linkedRequest=bookingRequestForIncome(r);
+  const custValue=linkedRequest?.customer_name||r.customer_name||'';
   openModal('Edit Income',`<div class="form-grid">
     <div class="form-group"><label>Date</label><input type="date" id="ei-date" value="${escAttr(r.date||'')}"></div>
     <div class="form-group"><label>Due Date</label><input type="date" id="ei-due" value="${escAttr(r.due_date||'')}"></div>
-    <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${escAttr(r.customer_name||'')}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('')}</datalist></div>
+    <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${escAttr(custValue)}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('')}</datalist></div>
     <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
     <div class="form-group"><label>Category</label><select id="ei-act" onchange="syncIncomeInstructorField('ei')">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
     <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
@@ -2165,7 +2167,15 @@ async function saveIncome(id){
   const splitEnabled=isTrainingIncome({activity})&&!!document.getElementById('ei-training-split-enabled')?.checked;
   const trainer=selectedInstructor('ei-instructor');
   if(splitEnabled&&paid>0&&!trainer){alert('Select an active instructor before recording a training payment.');return;}
-  try{await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:document.getElementById('ei-cust').value,horse_name:document.getElementById('ei-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:splitEnabled,instructor_id:splitEnabled?(trainer?.id||null):null,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  const custName=document.getElementById('ei-cust').value;
+  const linkedRequest=bookingRequestForIncome(income.find(x=>String(x.id)===String(id)));
+  try{
+    await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:custName,horse_name:document.getElementById('ei-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:splitEnabled,instructor_id:splitEnabled?(trainer?.id||null):null,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});
+    if(linkedRequest&&custName.trim()&&custName.trim()!==(linkedRequest.customer_name||'')){
+      await sbRpc('cce_update_booking_customer',{p_booking_request_id:linkedRequest.id,p_customer_name:custName.trim()});
+    }
+    closeModal();await loadAll();
+  }catch(e){showError('Error',e);}
 }
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
@@ -4165,7 +4175,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.20.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.21.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4258,7 +4268,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260802-4200', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260803-4210', {scope:'./'})
       .then(reg => {
 
         reg.update();

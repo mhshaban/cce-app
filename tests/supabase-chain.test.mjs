@@ -2169,6 +2169,84 @@ test('v4.19.0 monthly livery income creation covers Full Livery and AC Livery, i
   }
 });
 
+test('v4.21.0 manager can sync a booking request customer name, enforces permission and rollback removes the RPC',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000075';
+  const trainer='00000000-0000-4000-8000-000000000076';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${manager}','sync-name-manager@example.com'),
+        ('${trainer}','sync-name-trainer@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager') or (p.id='${trainer}' and r.code='trainer');
+      insert into public.horses(horse_name,owner,status) values('Sync Name Horse','CC','Available');
+    `);
+
+    await db.exec('set role anon');
+    const submitted=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'اسم قديم',
+        p_phone=>'39009007',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'09:30'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-SYNC1',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    const bookingId=submitted.rows[0].result.booking_request_id;
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${trainer}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_update_booking_customer(${bookingId},'New Name')`),
+      /Permission denied/
+    );
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    await assert.rejects(
+      db.query(`select public.cce_update_booking_customer(999999999,'New Name')`),
+      /not found/i
+    );
+    await assert.rejects(
+      db.query(`select public.cce_update_booking_customer(${bookingId},'   ')`),
+      /required/i
+    );
+    const updated=await db.query(
+      `select public.cce_update_booking_customer(${bookingId},'New Name') as result`
+    );
+    assert.equal(updated.rows[0].result.customer_name,'New Name');
+    await db.exec('reset role');
+
+    const row=await db.query(`select customer_name from public.booking_requests where id=${bookingId}`);
+    assert.equal(row.rows[0].customer_name,'New Name');
+
+    const audit=await db.query(`
+      select before_data,after_data from public.audit_logs
+      where table_name='booking_requests' and record_id='${bookingId}' and action='update_customer_name'
+      order by id desc limit 1
+    `);
+    assert.equal(audit.rows[0].before_data.customer_name,'اسم قديم');
+    assert.equal(audit.rows[0].after_data.customer_name,'New Name');
+
+    await db.exec(read('supabase/rollback/rollback_v4210_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select to_regprocedure('public.cce_update_booking_customer(bigint,text)') is null as sync_removed
+    `);
+    assert.equal(rolledBack.rows[0].sync_removed,true);
+
+    await db.exec(read('supabase/migrations/20260803_booking_customer_sync_v4210.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const reapplied=await db.query(
+      `select public.cce_update_booking_customer(${bookingId},'Restored Name') as result`
+    );
+    assert.equal(reapplied.rows[0].result.customer_name,'Restored Name');
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
