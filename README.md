@@ -2,7 +2,7 @@
 
 Enterprise Stable Management Platform for Country Club Equestrian.
 
-الإصدار الحالي: **4.20.0**
+الإصدار الحالي: **4.21.0**
 
 ## وثائق المشروع
 
@@ -28,6 +28,7 @@ Enterprise Stable Management Platform for Country Club Equestrian.
 - [دليل نشر مهلة دفع الحجوزات v4.17.0](docs/DEPLOYMENT_V4170.md)
 - [دليل نشر حذف طلبات الحجز v4.18.0](docs/DEPLOYMENT_V4180.md)
 - [دليل نشر جدولة دفعات الإيواء الشهرية v4.19.0](docs/DEPLOYMENT_V4190.md)
+- [دليل نشر تزامن اسم الزبون v4.21.0](docs/DEPLOYMENT_V4210.md)
 - [سجل التغييرات](docs/CHANGELOG.md)
 
 ## الفحص المحلي
