@@ -143,6 +143,19 @@ test('public booking data is escaped before admin or success-page rendering',()=
   assert.match(core,/'🐴 Horse: <strong>'\+esc\(horse\)/);
 });
 
+test('orphaned booking requests (no linked income row) stay visible and deletable in the Bookings dashboard',()=>{
+  const core=read('app-core.js');
+  const bookings=functionBlock(core,'renderBookings','openModal');
+  assert.match(bookings,/const linkedIds=new Set\(matched\.map\(m=>m\.request\?\.id\)\.filter\(Boolean\)\)/);
+  assert.match(bookings,/booking_requests\|\|\[\]\)\.filter\(br=>!linkedIds\.has\(br\.id\)\)/);
+  assert.match(bookings,/const data=\[\.\.\.matched,\.\.\.orphans\]/);
+  // Buttons that assume an income row must be guarded for orphans (r is null).
+  assert.match(bookings,/\(r\?'<button class="action-btn" style="background:#E8EAF0;color:var\(--navy\)" onclick="editIncome/);
+  assert.match(bookings,/\(r\?'<button class="action-btn" style="background:#E8F5EE;color:var\(--green\)" onclick="printReceipt/);
+  // The delete button still works from booking_requests alone, no income needed.
+  assert.match(bookings,/canDeleteBooking\?'<button class="action-btn" style="background:#FDECEA;color:var\(--red\)" title="Delete booking request" onclick="deleteBookingRequest/);
+});
+
 test('public booking submission is a server-owned atomic transaction',()=>{
   const core=read('app-core.js');
   const runtime=read('src/services/supabase-runtime.js');
@@ -1175,12 +1188,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.21.0 cache key',()=>{
+test('all app assets use the v4.21.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260802-4200'));
-  assert.ok((html.match(/20260803-4210/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260803-4210/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260803-4210/);
-  assert.equal(read('VERSION.txt').trim(),'4.21.0');
+  assert.ok(!html.includes('20260803-4210'));
+  assert.ok((html.match(/20260803-4211/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260803-4211/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260803-4211/);
+  assert.equal(read('VERSION.txt').trim(),'4.21.1');
 });
