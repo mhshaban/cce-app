@@ -2103,6 +2103,53 @@ test('v4.18.0 manager can delete a booking request with its income row, enforces
   }
 });
 
+test('cce_delete_booking_request still removes an orphaned booking request whose income row was already deleted directly',async()=>{
+  const db=await buildDatabase();
+  const manager='00000000-0000-4000-8000-000000000077';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${manager}','orphan-delete-manager@example.com');
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${manager}' and r.code='manager';
+      insert into public.horses(horse_name,owner,status) values('Orphan Test Horse','CC','Available');
+    `);
+
+    await db.exec('set role anon');
+    const submitted=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'ride',p_service_code=>'ride_half_hour',p_customer_name=>'Orphan Rider',
+        p_phone=>'39009008',p_requested_date=>(timezone('Asia/Bahrain',now())::date+1),
+        p_start_time=>'09:30'::time,p_rider_level=>'beginner',p_personal_id=>'CPR-ORPH1',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    const bookingId=submitted.rows[0].result.booking_request_id;
+    const incomeId=submitted.rows[0].result.income_id;
+    await db.exec('reset role');
+
+    // Simulate the income row being removed some other way (e.g. a direct
+    // delete of a duplicate/legacy row), leaving booking_requests orphaned —
+    // still "Requested", still counted as a pending-booking alert, but
+    // previously invisible (and therefore undeletable) in the Bookings
+    // dashboard because it built its list purely from income rows.
+    await db.exec(`delete from public.income where id=${incomeId};`);
+
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const deleted=await db.query(`select public.cce_delete_booking_request(${bookingId}) as result`);
+    assert.deepEqual({...deleted.rows[0].result},{
+      booking_request_id:bookingId,income_rows_deleted:0,deleted:true
+    });
+    await db.exec('reset role');
+
+    const remaining=await db.query(`
+      select count(*)::int as booking_rows from public.booking_requests where id=${bookingId}
+    `);
+    assert.equal(remaining.rows[0].booking_rows,0);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.19.0 monthly livery income creation covers Full Livery and AC Livery, is idempotent, unreachable by client roles, and rollback removes the function',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000074';

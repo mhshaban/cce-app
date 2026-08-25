@@ -1983,7 +1983,7 @@ function renderBookings(){
   const st=document.getElementById('bookStFilter').value;
   // Finance and booking state are displayed independently. Legacy rows remain
   // readable until they are migrated to booking_requests.
-  let data=income.filter(r=>{
+  const matched=income.filter(r=>{
     if(!isPublicBookingIncome(r))return false;
     const request=bookingRequestForIncome(r);
     const notes=String(r.notes||'');
@@ -1992,15 +1992,26 @@ function renderBookings(){
     const haystack=[r.customer_name,r.horse_name,notes,request?.phone,request?.service_name,request?.status].join(' ').toLowerCase();
     const visibleStatus=request?.status||r.status;
     return (!q||haystack.includes(q))&&(!st||visibleStatus===st||r.status===st);
-  });
+  }).map(r=>({income:r,request:bookingRequestForIncome(r)}));
+  // A booking_requests row whose linked income row was removed directly
+  // (rather than through deleteBookingRequest) would otherwise be invisible
+  // here — and therefore undeletable — while still counting toward the
+  // pending-booking alert. Surface those orphans too so they can be cleared.
+  const linkedIds=new Set(matched.map(m=>m.request?.id).filter(Boolean));
+  const orphans=(booking_requests||[]).filter(br=>!linkedIds.has(br.id)).filter(request=>{
+    const requestType=request.request_type||'ride';
+    if(bt&&requestType!==bt)return false;
+    const haystack=[request.customer_name,request.horse_name,request.phone,request.service_name,request.status].join(' ').toLowerCase();
+    return (!q||haystack.includes(q))&&(!st||request.status===st);
+  }).map(request=>({income:null,request}));
+  const data=[...matched,...orphans];
   document.getElementById('bookCount').textContent=data.length;
   const pages=Math.ceil(data.length/PER)||1;bookPage=Math.min(bookPage,pages);
   const pageData=[...data].reverse().slice((bookPage-1)*PER,bookPage*PER);
   if(!pageData.length){document.getElementById('bookTable').innerHTML='<p style="color:var(--muted);padding:12px">No booking requests found</p>';document.getElementById('bookPag').innerHTML='';return;}
   document.getElementById('bookTable').innerHTML='<table><thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Horse</th><th>Time</th><th>Package / Notes</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
-    pageData.map(r=>{
-      const notes=String(r.notes||'');
-      const request=bookingRequestForIncome(r);
+    pageData.map(({income:r,request})=>{
+      const notes=String(r?.notes||'');
       const requestType=request?.request_type||(notes.includes('TRAINING REQUEST')?'training':notes.includes('LIVERY REQUEST')?'livery':'ride');
       const type=requestType==='training'
         ?'<span class="badge badge-navy">&#127919; Training</span>'
@@ -2009,10 +2020,10 @@ function renderBookings(){
           :'<span class="badge badge-amber">&#128052; Hack Ride</span>';
       const pkgMatch=notes.match(/Package:\s*([^|]+)/);
       const pkg=request?.service_name||(pkgMatch?pkgMatch[1].trim():'');
-      const customer=request?.customer_name||r.customer_name||'—';
+      const customer=request?.customer_name||r?.customer_name||'—';
       const phone=request?.phone||'';
-      const horse=request?.horse_name||r.horse_name||'—';
-      const start=request?.start_time||r.start_time||'—';
+      const horse=request?.horse_name||r?.horse_name||'—';
+      const start=request?.start_time||r?.start_time||'—';
       const bookingStatus=request?.status||'Legacy';
       const statusClass=['Completed','Confirmed','Scheduled'].includes(bookingStatus)?'badge-green':
         ['Cancelled','Rejected'].includes(bookingStatus)?'badge-red':'badge-amber';
@@ -2028,19 +2039,20 @@ function renderBookings(){
           bookingStatusOptions(bookingStatus).map(value=>'<option '+(value===bookingStatus?'selected':'')+'>'+value+'</option>').join('')+'</select>'
         :'<span class="badge '+statusClass+'">'+esc(bookingStatus)+'</span>';
       return '<tr>'+
-        '<td>'+fmt(request?.requested_date||r.date)+'</td>'+
+        '<td>'+fmt(request?.requested_date||r?.date)+'</td>'+
         '<td>'+type+'</td>'+
         '<td>'+esc(customer)+(phone?'<div style="font-size:11px;color:var(--muted)" dir="ltr">'+esc(phone)+'</div>':'')+'</td>'+
         '<td>'+esc(horse)+'</td>'+
         '<td>'+esc(String(start).slice(0,5))+'</td>'+
         '<td style="max-width:160px;font-size:12px;color:var(--muted)">'+esc(pkg||notes.replace(/BOOKING REQUEST — /,'').replace(/TRAINING REQUEST — /,'').replace(/LIVERY REQUEST — /,''))+'</td>'+
-        '<td class="money-green">'+BD(r.amount_bd)+'</td>'+
-        '<td>'+statusControl+'<div style="margin-top:4px"><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">Payment: '+esc(r.status||'Pending')+'</span></div></td>'+
+        '<td class="money-green">'+(r?BD(r.amount_bd):'—')+'</td>'+
+        '<td>'+statusControl+(r?'<div style="margin-top:4px"><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">Payment: '+esc(r.status||'Pending')+'</span></div>':'')+'</td>'+
         '<td style="white-space:nowrap">'+
           safetyButton+
           (canScheduleTraining?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" title="Assign instructor and create package sessions" onclick="openScheduleTrainingBooking('+request.id+')">&#128197;</button>':'')+
-          '<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>'+ '<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>'+ 
-          (r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
+          (r?'<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>':'')+
+          (r?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>':'')+
+          (r&&r.status!=='Paid'?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="markPaid(\'income\','+r.id+','+r.amount_bd+')">&#9989;</button>':'')+
           (!request?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" onclick="delRec(\'income\','+r.id+')">&#128465;&#65039;</button>'
             :canDeleteBooking?'<button class="action-btn" style="background:#FDECEA;color:var(--red)" title="Delete booking request" onclick="deleteBookingRequest('+request.id+')">&#128465;&#65039;</button>':'')+
         '</td>'+
@@ -4175,7 +4187,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.21.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.21.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4268,7 +4280,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260803-4210', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260803-4211', {scope:'./'})
       .then(reg => {
 
         reg.update();
