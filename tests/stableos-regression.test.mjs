@@ -365,7 +365,8 @@ test('a staff-only permission set (farrier care) routes to its own portal instea
   assert.match(html,/id="staffScheduleSection" style="display:none"/);
   assert.match(html,/id="staffScheduleList"/);
   const open=functionBlock(portal,'openStaffMemberPortal','renderStaffSchedule');
-  assert.match(open,/hasPermission\('schedule\.view_own'\)/);
+  assert.match(open,/hasPermission\('schedule\.view'\) \|\| hasPermission\('schedule\.view_own'\)/);
+  assert.match(open,/hasPermission\('schedule\.view'\)\s*\n\s*\? await sbGet\('schedule',/);
   assert.match(open,/cce_member_instructor_schedule/);
   // "تحذية" was misread as feeding/nutrition when this page was first built;
   // it actually means farrier work (shoeing), the same thing the Farrier
@@ -1258,12 +1259,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.4 cache key',()=>{
+test('all app assets use the v4.23.5 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260806-4233'));
-  assert.ok((html.match(/20260807-4234/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260807-4234/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4234/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.4');
+  assert.ok(!html.includes('20260807-4234'));
+  assert.ok((html.match(/20260807-4235/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260807-4235/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4235/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.5');
 });

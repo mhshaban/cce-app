@@ -619,11 +619,17 @@
       if (farrierEl) farrierEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
       if (typeof showError === 'function') showError('Staff portal', error);
     }
+    const canSeeSchedule = hasPermission('schedule.view') || hasPermission('schedule.view_own');
     const scheduleSection = document.getElementById('staffScheduleSection');
-    if (scheduleSection) scheduleSection.style.display = hasPermission('schedule.view_own') ? '' : 'none';
-    if (hasPermission('schedule.view_own')) {
+    if (scheduleSection) scheduleSection.style.display = canSeeSchedule ? '' : 'none';
+    if (canSeeSchedule) {
       try {
-        const rows = await sbRpc('cce_member_instructor_schedule', {});
+        // schedule.view (the whole stable's schedule) takes priority over
+        // schedule.view_own (just this account's own linked instructor rows)
+        // when both are granted.
+        const rows = hasPermission('schedule.view')
+          ? await sbGet('schedule', 'select=*&order=date.asc,start_time.asc&limit=500')
+          : await sbRpc('cce_member_instructor_schedule', {});
         renderStaffSchedule(Array.isArray(rows) ? rows : []);
       } catch (error) {
         const el = document.getElementById('staffScheduleList');
@@ -643,7 +649,7 @@
     el.innerHTML = upcoming.map(s => `<div class="staff-care-row">
       <div class="staff-care-name">${s.date ? html(typeof fmtDisplayDate === 'function' ? fmtDisplayDate(s.date) : s.date) : ''}
         ${s.start_time ? ' · ' + html(typeof fmtTimeShort === 'function' ? fmtTimeShort(s.start_time) : s.start_time) : ''}
-        <div class="staff-care-meta">${html(s.activity || '—')}${s.horse_name ? ' · ' + html(s.horse_name) : ''}</div>
+        <div class="staff-care-meta">${html(s.activity || '—')}${s.horse_name ? ' · ' + html(s.horse_name) : ''}${s.customer_name ? ' · ' + html(s.customer_name) : ''}${s.instructor ? ' · ' + html(s.instructor) : ''}</div>
       </div>
     </div>`).join('');
   }
