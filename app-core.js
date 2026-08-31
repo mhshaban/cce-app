@@ -12,7 +12,7 @@ const APP_MODE=(window.CCE_PORTAL_MODE||new URLSearchParams(location.search).get
 const CCE_I18N={
   en:{
     backHome:'← Home',refresh:'🔄 Refresh',backup:'💾 Backup',logout:'🔓 Logout',alerts:'🔔 Alerts',
-    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
+    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_staff:'Staff Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
     dash_dashboard:'Dashboard',dash_income:'Income',dash_expenses:'Expenses',dash_overdue:'Overdue',dash_horses:'Horses',dash_breeding:'Breeding',dash_bookings:'Bookings',dash_notifications:'Notifications',dash_schedule:'Schedule',dash_instructors:'Instructors',
     homeTrainingTitle:'Horse Riding Training',homeTrainingSub:'Private and group sessions for beginners and advanced riders',registerNow:'🎯 Register Now',
     homeRidesTitle:'Hack Rides',homeRidesSub:'Enjoyable rides on our beautiful horses',bookNow:'🐴 Book Now',
@@ -50,7 +50,7 @@ const CCE_I18N={
   },
   ar:{
     backHome:'← الرئيسية',refresh:'🔄 تحديث',backup:'💾 نسخة احتياطية',logout:'🔓 تسجيل الخروج',alerts:'🔔 التنبيهات',
-    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
+    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_staff:'بوابة الطاقم',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
     dash_dashboard:'لوحة التحكم',dash_income:'الإيرادات',dash_expenses:'المصروفات',dash_overdue:'المتأخرات',dash_horses:'الخيل',dash_breeding:'التناسل',dash_bookings:'الحجوزات',dash_notifications:'التنبيهات',dash_schedule:'الجدول',dash_instructors:'المدربون',
     homeTrainingTitle:'تدريب ركوب الخيل',homeTrainingSub:'للمبتدئين والمحترفين — حصص فردية وجماعية',registerNow:'🎯 التسجيل الآن',
     homeRidesTitle:'جولات ركوب الخيل',homeRidesSub:'جولات ممتعة على أجمل الخيول',bookNow:'🐴 احجز الآن',
@@ -853,20 +853,29 @@ function buildDash(){
   // Hide legacy Overdue alert on dashboard; use Net Overdue card instead.
   document.getElementById('overdueBanner').classList.add('hidden');
   document.getElementById('overdueBadge').classList.add('hidden');
+  // Read-only/limited roles (e.g. accountant) don't get the revenue and
+  // expense aggregate tiles — they get a simple Overdue list instead
+  // (renderDashboardOverdueSummary below), independent of dashboard.view.
+  const canSeeFinancialSummary=typeof window.canUser==='function'&&window.canUser('dashboard.financial_summary.view');
   const stats=[
-    {l:'Gross Collected',v:BD(gross),c:'var(--navy)'},
-    {l:'Stable Revenue',v:BD(rev),c:'var(--green)'},
-    {l:'Instructor Shares',v:BD(trainerShares),c:'var(--amber)'},
-    {l:'Total Expenses',v:BD(exp),c:'var(--red)'},
+    ...(canSeeFinancialSummary?[
+      {l:'Gross Collected',v:BD(gross),c:'var(--navy)'},
+      {l:'Stable Revenue',v:BD(rev),c:'var(--green)'},
+      {l:'Instructor Shares',v:BD(trainerShares),c:'var(--amber)'},
+      {l:'Total Expenses',v:BD(exp),c:'var(--red)'},
+    ]:[]),
     {l:'Net Profit',v:BD(profit),c:profit>=0?'var(--green)':'var(--red)'},
     {l:'Pending Income',v:BD(pendInc),c:'var(--amber)'},
     {l:'Unpaid Expenses',v:BD(pend),c:'var(--amber)'},
-    {l:'Net Overdue',v:BD(netOverdue),c:netOverdue>=0?'var(--green)':'var(--red)'},
+    ...(canSeeFinancialSummary?[{l:'Net Overdue',v:BD(netOverdue),c:netOverdue>=0?'var(--green)':'var(--red)'}]:[]),
     {l:'Horses (Active)',v:actH,c:'var(--navy)'},
-    {l:'Total Lessons',v:totL,c:'var(--navy)'},
-    {l:'Total Hack',v:totH,c:'var(--navy)'},
+    ...(canSeeFinancialSummary?[
+      {l:'Total Lessons',v:totL,c:'var(--navy)'},
+      {l:'Total Hack',v:totH,c:'var(--navy)'},
+    ]:[]),
   ];
   document.getElementById('statsGrid').innerHTML=stats.map(s=>`<div class="stat-box"><div class="stat-label">${s.l}</div><div class="stat-value" style="color:${s.c}">${s.v}</div></div>`).join('');
+  renderDashboardOverdueSummary(canSeeFinancialSummary);
   const mo={};
   const chartIncome=(p.year&&!p.month)?income.filter(r=>rowMonthKey(r).slice(0,4)===p.year):income;
   const chartExpenses=(p.year&&!p.month)?expenses.filter(r=>rowMonthKey(r).slice(0,4)===p.year):expenses;
@@ -880,6 +889,29 @@ function buildDash(){
   const eM={};expRows.forEach(r=>{const c=normalizeActivityCategory(r.category);eM[c]=(eM[c]||0)+calcPaidExpenseAmount(r);});
   document.getElementById('expPie').innerHTML='<div class="pie-legend">'+Object.entries(eM).sort(([,a],[,b])=>b-a).slice(0,7).map(([k,v],i)=>`<div class="pie-legend-item"><div class="pie-dot" style="background:${PC[i%8]}"></div><span>${esc(k)}</span><span style="margin-left:auto;font-weight:700;color:${PC[i%8]}">${BD(v)}</span></div>`).join('')+'</div>';
   document.getElementById('recentInc').innerHTML=recentFinancialActivityHTML(incRows,expRows,10);
+}
+
+// Read-only summary for roles without dashboard.financial_summary.view
+// (e.g. accountant): what's overdue, no edit/pay/delete actions, no
+// navigation to the Finance pages required.
+function renderDashboardOverdueSummary(canSeeFinancialSummary){
+  const el=document.getElementById('dashOverdueSummary');
+  if(!el)return;
+  if(canSeeFinancialSummary){el.classList.add('hidden');el.innerHTML='';return;}
+  el.classList.remove('hidden');
+  const incData=income.filter(isOverdueRow);
+  const expData=expenses.filter(isOverdueRow);
+  if(!incData.length&&!expData.length){
+    el.innerHTML='<div class="card"><div class="card-title">&#9888;&#65039; Overdue</div><p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p></div>';
+    return;
+  }
+  const incTable=incData.length?'<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">Overdue Income</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Customer</th><th>Horse</th><th>Remaining</th></tr></thead><tbody>'+
+    incData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.customer_name||'—')}</td><td>${esc(r.horse_name||'—')}</td><td class="money-red">${BD(calcRemaining(r))}</td></tr>`).join('')+
+    '</tbody></table></div>':'';
+  const expTable=expData.length?'<div style="font-weight:700;color:var(--navy);margin:14px 0 6px">Overdue Expenses</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Supplier / Category</th><th>Remaining</th></tr></thead><tbody>'+
+    expData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.supplier||r.category||'—')}</td><td class="money-red">${BD(expenseOverdueAmount(r))}</td></tr>`).join('')+
+    '</tbody></table></div>':'';
+  el.innerHTML='<div class="card"><div class="card-title">&#9888;&#65039; Overdue</div>'+incTable+expTable+'</div>';
 }
 
 function recentFinancialActivityRows(incRows,expRows,limit=10){
@@ -4187,7 +4219,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.21.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4280,7 +4312,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260803-4211', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260805-4230', {scope:'./'})
       .then(reg => {
 
         reg.update();

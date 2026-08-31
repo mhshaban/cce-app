@@ -2294,6 +2294,128 @@ test('v4.21.0 manager can sync a booking request customer name, enforces permiss
   }
 });
 
+test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses, marking either off the list persists correctly, enforces permission and rollback removes the RPCs',async()=>{
+  const db=await buildDatabase();
+  const staff='00000000-0000-4000-8000-000000000078';
+  const accountant='00000000-0000-4000-8000-000000000079';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${staff}','care-board-staff@example.com'),
+        ('${accountant}','care-board-accountant@example.com');
+      update public.profiles p set is_active=true,full_name='Lakh Test',role_id=r.id
+      from public.app_roles r where p.id='${staff}' and r.code='staff';
+      update public.profiles p set is_active=true,role_id=r.id
+      from public.app_roles r where p.id='${accountant}' and r.code='accountant';
+      insert into public.horses(horse_name,owner,status,farrier_date) values
+        ('Feed Me Horse','Owner One','Available',current_date),
+        ('Overdue Farrier Horse','Owner Two','Available',current_date-40),
+        ('Sold Horse','Owner Three','Sold',null);
+    `);
+    const feedHorseId=(await db.query(`select id from public.horses where horse_name='Feed Me Horse'`)).rows[0].id;
+    const overdueHorseId=(await db.query(`select id from public.horses where horse_name='Overdue Farrier Horse'`)).rows[0].id;
+
+    await db.exec(`set "request.jwt.claim.sub"='${accountant}'; set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_staff_care_board()`),/Permission denied/);
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
+    const board1=await db.query(`select public.cce_staff_care_board() as board`);
+    const feedNames1=board1.rows[0].board.feeding.map(x=>x.horse_name).sort();
+    const farrierNames1=board1.rows[0].board.farrier.map(x=>x.horse_name);
+    assert.deepEqual(feedNames1,['Feed Me Horse','Overdue Farrier Horse']);
+    assert.deepEqual(farrierNames1,['Overdue Farrier Horse']);
+    assert.equal(board1.rows[0].board.farrier[0].days_overdue,40);
+
+    const fed=await db.query(`select public.cce_mark_horse_fed(${feedHorseId}) as result`);
+    assert.equal(fed.rows[0].result.fed,true);
+
+    const board2=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.deepEqual(board2.rows[0].board.feeding.map(x=>x.horse_name),['Overdue Farrier Horse']);
+
+    const farrierDone=await db.query(`select public.cce_mark_farrier_done(${overdueHorseId}) as result`);
+    assert.equal(farrierDone.rows[0].result.done,true);
+    await db.exec('reset role');
+
+    // The existing v4.6.4 sync trigger should have updated the horse summary
+    // columns from the completed care event — no direct UPDATE needed here.
+    const horseRow=await db.query(`select farrier_date::text,farrier_name from public.horses where id=${overdueHorseId}`);
+    assert.equal(horseRow.rows[0].farrier_date,new Date().toISOString().slice(0,10));
+    assert.equal(horseRow.rows[0].farrier_name,'Lakh Test');
+
+    await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
+    const board3=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.deepEqual(board3.rows[0].board.farrier,[]);
+    await db.exec('reset role');
+
+    await db.exec(`set "request.jwt.claim.sub"='${accountant}'; set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_mark_horse_fed(${feedHorseId})`),/Permission denied/);
+    await assert.rejects(db.query(`select public.cce_mark_farrier_done(${overdueHorseId})`),/Permission denied/);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4220_compatibility.sql'));
+    const rolledBack=await db.query(`
+      select
+        to_regprocedure('public.cce_staff_care_board()') is null as board_removed,
+        to_regprocedure('public.cce_mark_horse_fed(bigint)') is null as mark_fed_removed,
+        to_regprocedure('public.cce_mark_farrier_done(bigint)') is null as mark_farrier_removed
+    `);
+    assert.deepEqual({...rolledBack.rows[0]},{board_removed:true,mark_fed_removed:true,mark_farrier_removed:true});
+
+    await db.exec(read('supabase/migrations/20260804_staff_care_board_v4220.sql'));
+    await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
+    const reapplied=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.deepEqual(reapplied.rows[0].board.farrier,[]);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.23.0 dashboard.financial_summary.view defaults to super_admin/manager/reception and not accountant, rollback removes it cleanly',async()=>{
+  const db=await buildDatabase();
+  const superAdmin='00000000-0000-4000-8000-000000000080';
+  const manager='00000000-0000-4000-8000-000000000081';
+  const reception='00000000-0000-4000-8000-000000000082';
+  const accountant='00000000-0000-4000-8000-000000000083';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${superAdmin}','fin-summary-superadmin@example.com'),
+        ('${manager}','fin-summary-manager@example.com'),
+        ('${reception}','fin-summary-reception@example.com'),
+        ('${accountant}','fin-summary-accountant@example.com');
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${superAdmin}' and r.code='super_admin';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${reception}' and r.code='reception';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${accountant}' and r.code='accountant';
+    `);
+
+    const checkAll=async()=>{
+      const results={};
+      for(const[label,id] of [['superAdmin',superAdmin],['manager',manager],['reception',reception],['accountant',accountant]]){
+        await db.exec(`set "request.jwt.claim.sub"='${id}'; set role authenticated`);
+        const r=await db.query(`select public.cce_has_permission('dashboard.financial_summary.view') as allowed`);
+        results[label]=r.rows[0].allowed;
+        await db.exec('reset role');
+      }
+      return results;
+    };
+
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:true,reception:true,accountant:false});
+
+    await db.exec(read('supabase/rollback/rollback_v4230_compatibility.sql'));
+    const rolledBack=await db.query(`select exists(select 1 from public.app_permissions where code='dashboard.financial_summary.view') as permission_exists`);
+    assert.equal(rolledBack.rows[0].permission_exists,false);
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:false,reception:false,accountant:false});
+
+    await db.exec(read('supabase/migrations/20260805_dashboard_financial_summary_permission_v4230.sql'));
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:true,reception:true,accountant:false});
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

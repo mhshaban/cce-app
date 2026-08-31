@@ -5,7 +5,7 @@
   const REFRESH_KEY = 'cce_sb_refresh_token';
   const MEMBER_KEY = 'cce_member_access';
   const ACCESS_FN = `${SB_URL}/functions/v1/admin-users`;
-  const protectedPages = new Set(['owner', 'instructor', 'dashboard']);
+  const protectedPages = new Set(['owner', 'instructor', 'staff', 'dashboard']);
   const pagePermission = {
     dashboard: ['dashboard.view'],
     'show-office': [
@@ -199,7 +199,7 @@
   window.logoutInstructor = window.logoutMember;
 
   function activePortalPage() {
-    const pageClass = [...document.body.classList].find(name => /^page-(dashboard|owner|instructor)$/.test(name));
+    const pageClass = [...document.body.classList].find(name => /^page-(dashboard|owner|instructor|staff)$/.test(name));
     return pageClass ? pageClass.slice(5) : '';
   }
 
@@ -207,10 +207,11 @@
     const activePage = activePortalPage();
     const memberSession = hasMemberSession();
     const routes = {
-      // The instructor page uses the global workspace header on every viewport.
-      // Reuse its single member logout action because the legacy instructor
-      // header (which owns instrLogoutBtn) is intentionally not rendered.
-      logoutAdminBtn: {pages:['dashboard','instructor'], allowed:memberSession},
+      // The instructor and staff pages use the global workspace header on
+      // every viewport. Reuse its single member logout action because the
+      // legacy instructor header (which owns instrLogoutBtn) is intentionally
+      // not rendered, and the staff page never had its own header.
+      logoutAdminBtn: {pages:['dashboard','instructor','staff'], allowed:memberSession},
       logoutOwnerBtn: {page:'owner', allowed:memberSession || !!sessionStorage.getItem('owner_phone')},
       instrLogoutBtn: {page:'instructor', allowed:memberSession || !!currentInstructor}
     };
@@ -258,6 +259,8 @@
     const ownerPortal = document.getElementById('ownerPortal'); if (ownerPortal) ownerPortal.style.display = 'none';
     const instructorLogin = document.getElementById('instrLoginWrap'); if (instructorLogin) instructorLogin.style.display = 'none';
     const instructorPortal = document.getElementById('instrPortal'); if (instructorPortal) instructorPortal.style.display = 'none';
+    const staffLogin = document.getElementById('staffLoginWrap'); if (staffLogin) staffLogin.style.display = 'none';
+    const staffPortal = document.getElementById('staffPortal'); if (staffPortal) staffPortal.style.display = 'none';
   }
 
   function routeForMember() {
@@ -265,8 +268,16 @@
     const permissions = [...permissionSet];
     const ownerCodes = new Set(['owner.horses.view','owner.horses.update','horses.view','horses.update']);
     const trainerCodes = new Set(['schedule.view_own','schedule.update_own','schedule.view','schedule.update']);
+    // The stable-hand/farrier portal: a permission set confined to horse
+    // care work (feeding, farrier, health read access) gets its own simple
+    // daily checklist instead of the full admin dashboard.
+    const staffCodes = new Set([
+      'horse_care.view','horse_care.manage','horse_health.view','horse_medical.view',
+      'horse_vaccinations.view','horse_events.view','show_office.results.view'
+    ]);
     const ownerOnly = permissions.length > 0 && permissions.every(code => ownerCodes.has(code));
     const trainerOnly = permissions.length > 0 && permissions.every(code => trainerCodes.has(code));
+    const staffOnly = permissions.length > 0 && permissions.every(code => staffCodes.has(code));
     // The explicit portal role owns the landing page. Extra read-only health
     // permissions must not accidentally redirect a trainer into Dashboard.
     if ((portal === 'owner' || portal === 'horse_owner') && hasPermission('owner.horses.view') && !hasPermission('dashboard.view')) return 'owner';
@@ -275,6 +286,7 @@
     // effective permission set is limited to that portal.
     if ((portal === 'owner' || portal === 'horse_owner') && ownerOnly) return 'owner';
     if ((portal === 'trainer' || portal === 'instructor') && trainerOnly) return 'instructor';
+    if (portal === 'staff' && staffOnly && !hasPermission('dashboard.view')) return 'staff';
     return 'dashboard';
   }
 
@@ -288,6 +300,11 @@
     if (route === 'instructor') {
       window.navigate('instructor');
       await openInstructorMemberPortal();
+      return;
+    }
+    if (route === 'staff') {
+      window.navigate('staff');
+      await openStaffMemberPortal();
       return;
     }
     window.navigate('dashboard');
@@ -308,6 +325,7 @@
     if (page === 'booking') loadCCHorses();
     if (page === 'owner' && hasMemberSession()) openOwnerMemberPortal();
     if (page === 'instructor' && hasMemberSession()) openInstructorMemberPortal();
+    if (page === 'staff' && hasMemberSession()) openStaffMemberPortal();
     if (page === 'dashboard' && hasMemberSession()) {
       applyMemberUI();
       window.loadAll();
@@ -315,7 +333,15 @@
   };
 
   function permissionForPage(id) { return pagePermission[id] || []; }
-  function canOpenDashPage(id) { return hasAny(permissionForPage(id)); }
+  // The accountant role reads income/expenses (needed for the Dashboard's
+  // own stats and its read-only Overdue summary) without being able to
+  // reach the Finance pages themselves — a deliberately restricted,
+  // Dashboard-only view rather than a general permission concept.
+  const financeOnlyPages = new Set(['income','expenses','overdue','receipts','reports']);
+  function canOpenDashPage(id) {
+    if (financeOnlyPages.has(id) && String(memberAccess?.role?.code || '').toLowerCase() === 'accountant') return false;
+    return hasAny(permissionForPage(id));
+  }
 
   function prefersSchedule() {
     const role = String(memberAccess?.role?.code || memberAccess?.portal || '').toLowerCase();
@@ -552,6 +578,79 @@
     const payload = {p_horse_id: id};
     Object.keys(data).forEach(key => { payload['p_' + key] = data[key]; });
     return sbRpc('cce_member_owner_update_horse', payload);
+  };
+
+  function staffCareRow(entry, kind) {
+    const canManage = hasPermission('horse_care.manage');
+    const label = kind === 'feeding'
+      ? html(entry.horse_name) + (entry.stable_no ? ` <span class="staff-care-stable">#${html(entry.stable_no)}</span>` : '')
+      : html(entry.horse_name) + (entry.stable_no ? ` <span class="staff-care-stable">#${html(entry.stable_no)}</span>` : '')
+        + `<div class="staff-care-meta">${entry.farrier_date ? `Last: ${html(entry.farrier_date)} (${entry.days_overdue} days ago)` : 'No farrier record yet'}</div>`;
+    const action = !canManage ? '' : kind === 'feeding'
+      ? `<button class="btn btn-green staff-care-btn" onclick="staffMarkFed(${entry.horse_id},this)">✅ Fed</button>`
+      : `<button class="btn btn-green staff-care-btn" onclick="staffMarkFarrierDone(${entry.horse_id},this)">✅ Done</button>`;
+    return `<div class="staff-care-row" id="staff-${kind}-${entry.horse_id}"><div class="staff-care-name">${label}</div>${action}</div>`;
+  }
+
+  function renderStaffCareBoard(board) {
+    const feedingEl = document.getElementById('staffFeedingList');
+    const farrierEl = document.getElementById('staffFarrierList');
+    if (feedingEl) {
+      feedingEl.innerHTML = (board.feeding || []).length
+        ? board.feeding.map(entry => staffCareRow(entry, 'feeding')).join('')
+        : '<div class="member-empty">✅ All horses fed today.</div>';
+    }
+    if (farrierEl) {
+      farrierEl.innerHTML = (board.farrier || []).length
+        ? board.farrier.map(entry => staffCareRow(entry, 'farrier')).join('')
+        : '<div class="member-empty">✅ No overdue farrier visits.</div>';
+    }
+  }
+
+  async function openStaffMemberPortal() {
+    if (!hasMemberSession()) return;
+    if (routeForMember() !== 'staff' && !hasPermission('horse_care.view')) return;
+    if (!document.body.classList.contains('page-staff')) {
+      syncMemberLogoutButtons();
+      return;
+    }
+    const login = document.getElementById('staffLoginWrap'); if (login) login.style.display = 'none';
+    const portal = document.getElementById('staffPortal'); if (portal) portal.style.display = 'block';
+    syncMemberLogoutButtons();
+    const staffName = memberAccess.profile?.full_name || 'Staff';
+    const display = document.getElementById('staffNameDisplay'); if (display) display.textContent = staffName;
+    try {
+      const board = await sbRpc('cce_staff_care_board', {});
+      renderStaffCareBoard(board || {feeding: [], farrier: []});
+    } catch (error) {
+      const feedingEl = document.getElementById('staffFeedingList');
+      if (feedingEl) feedingEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
+      if (typeof showError === 'function') showError('Staff portal', error);
+    }
+  }
+
+  window.staffMarkFed = async function markHorseFedFromStaffPortal(horseId, btn) {
+    if (!hasPermission('horse_care.manage')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      await sbRpc('cce_mark_horse_fed', {p_horse_id: horseId});
+      await openStaffMemberPortal();
+    } catch (error) {
+      if (typeof showError === 'function') showError('Feeding', error);
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Fed'; }
+    }
+  };
+
+  window.staffMarkFarrierDone = async function markFarrierDoneFromStaffPortal(horseId, btn) {
+    if (!hasPermission('horse_care.manage')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      await sbRpc('cce_mark_farrier_done', {p_horse_id: horseId});
+      await openStaffMemberPortal();
+    } catch (error) {
+      if (typeof showError === 'function') showError('Farrier', error);
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Done'; }
+    }
   };
 
   async function openInstructorMemberPortal() {
@@ -949,7 +1048,7 @@
     const open = new URLSearchParams(location.search).get('open');
     if (open === 'booking') window.navigate('booking');
     else if (open === 'login') restored ? routeMemberHome() : window.navigate('admin');
-    else if (restored && ['owner','instructor','dashboard','admin'].includes(currentPage)) routeMemberHome();
+    else if (restored && ['owner','instructor','staff','dashboard','admin'].includes(currentPage)) routeMemberHome();
     const overlay = document.getElementById('loadingOverlay'); if (overlay && overlay.style.display !== 'flex') overlay.style.display = 'none';
   });
 })();
