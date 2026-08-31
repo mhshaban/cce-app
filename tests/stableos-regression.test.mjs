@@ -343,6 +343,7 @@ test('a staff-only permission set (feeding + farrier care) routes to its own por
   const route=functionBlock(portal,'routeForMember','routeMemberHome');
   assert.match(route,/staffCodes = new Set\(\[/);
   assert.match(route,/'horse_care\.view','horse_care\.manage'/);
+  assert.match(route,/'schedule\.view','schedule\.view_own'/);
   assert.match(route,/staffOnly = permissions\.length > 0 && permissions\.every\(code => staffCodes\.has\(code\)\)/);
   assert.match(route,/portal === 'staff' && staffOnly && !hasPermission\('dashboard\.view'\)\) return 'staff'/);
   const home=functionBlock(portal,'routeMemberHome','unifiedNavigate');
@@ -353,6 +354,11 @@ test('a staff-only permission set (feeding + farrier care) routes to its own por
   assert.match(html,/id="page-staff"/);
   assert.match(html,/id="staffFeedingList"/);
   assert.match(html,/id="staffFarrierList"/);
+  assert.match(html,/id="staffScheduleSection" style="display:none"/);
+  assert.match(html,/id="staffScheduleList"/);
+  const open=functionBlock(portal,'openStaffMemberPortal','renderStaffSchedule');
+  assert.match(open,/hasPermission\('schedule\.view_own'\)/);
+  assert.match(open,/cce_member_instructor_schedule/);
 });
 
 test('an accountant (read-only finance viewer) cannot open the Finance pages and gets a limited dashboard with an inline Overdue summary',()=>{
@@ -1239,12 +1245,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.1 cache key',()=>{
+test('all app assets use the v4.23.2 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260805-4230'));
-  assert.ok((html.match(/20260805-4231/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260805-4231/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4231/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.1');
+  assert.ok(!html.includes('20260805-4231'));
+  assert.ok((html.match(/20260805-4232/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260805-4232/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4232/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.2');
 });

@@ -269,11 +269,13 @@
     const ownerCodes = new Set(['owner.horses.view','owner.horses.update','horses.view','horses.update']);
     const trainerCodes = new Set(['schedule.view_own','schedule.update_own','schedule.view','schedule.update']);
     // The stable-hand/farrier portal: a permission set confined to horse
-    // care work (feeding, farrier, health read access) gets its own simple
-    // daily checklist instead of the full admin dashboard.
+    // care work (feeding, farrier, health read access) plus optionally their
+    // own schedule gets its own simple daily checklist instead of the full
+    // admin dashboard.
     const staffCodes = new Set([
       'horse_care.view','horse_care.manage','horse_health.view','horse_medical.view',
-      'horse_vaccinations.view','horse_events.view','show_office.results.view'
+      'horse_vaccinations.view','horse_events.view','show_office.results.view',
+      'schedule.view','schedule.view_own'
     ]);
     const ownerOnly = permissions.length > 0 && permissions.every(code => ownerCodes.has(code));
     const trainerOnly = permissions.length > 0 && permissions.every(code => trainerCodes.has(code));
@@ -627,6 +629,33 @@
       if (feedingEl) feedingEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
       if (typeof showError === 'function') showError('Staff portal', error);
     }
+    const scheduleSection = document.getElementById('staffScheduleSection');
+    if (scheduleSection) scheduleSection.style.display = hasPermission('schedule.view_own') ? '' : 'none';
+    if (hasPermission('schedule.view_own')) {
+      try {
+        const rows = await sbRpc('cce_member_instructor_schedule', {});
+        renderStaffSchedule(Array.isArray(rows) ? rows : []);
+      } catch (error) {
+        const el = document.getElementById('staffScheduleList');
+        if (el) el.innerHTML = `<div class="permission-denied"><strong>Unable to load the schedule.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
+      }
+    }
+  }
+
+  function renderStaffSchedule(rows) {
+    const el = document.getElementById('staffScheduleList');
+    if (!el) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const upcoming = rows
+      .filter(s => !s.date || new Date(s.date) >= today)
+      .filter(s => !['Cancelled', 'Done'].includes(s.status));
+    if (!upcoming.length) { el.innerHTML = '<div class="member-empty">No upcoming sessions.</div>'; return; }
+    el.innerHTML = upcoming.map(s => `<div class="staff-care-row">
+      <div class="staff-care-name">${s.date ? html(typeof fmtDisplayDate === 'function' ? fmtDisplayDate(s.date) : s.date) : ''}
+        ${s.start_time ? ' · ' + html(typeof fmtTimeShort === 'function' ? fmtTimeShort(s.start_time) : s.start_time) : ''}
+        <div class="staff-care-meta">${html(s.activity || '—')}${s.horse_name ? ' · ' + html(s.horse_name) : ''}</div>
+      </div>
+    </div>`).join('');
   }
 
   window.staffMarkFed = async function markHorseFedFromStaffPortal(horseId, btn) {
