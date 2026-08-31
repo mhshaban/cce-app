@@ -905,11 +905,11 @@ function renderDashboardOverdueSummary(canSeeFinancialSummary){
     el.innerHTML='<div class="card"><div class="card-title">&#9888;&#65039; Overdue</div><p style="color:var(--green);font-weight:700;padding:12px">&#10003; No overdue payments!</p></div>';
     return;
   }
-  const incTable=incData.length?'<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">Overdue Income</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Customer</th><th>Horse</th><th>Remaining</th></tr></thead><tbody>'+
-    incData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.customer_name||'—')}</td><td>${esc(r.horse_name||'—')}</td><td class="money-red">${BD(calcRemaining(r))}</td></tr>`).join('')+
+  const incTable=incData.length?'<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">Overdue Income</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Customer</th><th>Horse</th><th>Category</th><th>Details</th><th>Remaining</th></tr></thead><tbody>'+
+    incData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.customer_name||'—')}</td><td>${esc(r.horse_name||'—')}</td><td><span class="badge badge-amber">${esc(r.activity||'—')}</span></td><td>${esc(r.notes||'—')}</td><td class="money-red">${BD(calcRemaining(r))}</td></tr>`).join('')+
     '</tbody></table></div>':'';
-  const expTable=expData.length?'<div style="font-weight:700;color:var(--navy);margin:14px 0 6px">Overdue Expenses</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Supplier / Category</th><th>Remaining</th></tr></thead><tbody>'+
-    expData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.supplier||r.category||'—')}</td><td class="money-red">${BD(expenseOverdueAmount(r))}</td></tr>`).join('')+
+  const expTable=expData.length?'<div style="font-weight:700;color:var(--navy);margin:14px 0 6px">Overdue Expenses</div><div class="tbl-wrap"><table><thead><tr><th>Due Date</th><th>Supplier</th><th>Category</th><th>Details</th><th>Remaining</th></tr></thead><tbody>'+
+    expData.map(r=>`<tr><td>${fmt(r.due_date||r.date)}</td><td>${esc(r.supplier||'—')}</td><td><span class="badge badge-amber">${esc(r.category||'—')}</span></td><td style="font-size:11px;color:var(--muted)">${expenseDetailsPreview(r)}</td><td class="money-red">${BD(expenseOverdueAmount(r))}</td></tr>`).join('')+
     '</tbody></table></div>':'';
   el.innerHTML='<div class="card"><div class="card-title">&#9888;&#65039; Overdue</div>'+incTable+expTable+'</div>';
 }
@@ -4219,7 +4219,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4312,7 +4312,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260805-4230', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260805-4231', {scope:'./'})
       .then(reg => {
 
         reg.update();
