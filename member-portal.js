@@ -269,8 +269,8 @@
     const ownerCodes = new Set(['owner.horses.view','owner.horses.update','horses.view','horses.update']);
     const trainerCodes = new Set(['schedule.view_own','schedule.update_own','schedule.view','schedule.update']);
     // The stable-hand/farrier portal: a permission set confined to horse
-    // care work (feeding, farrier, health read access) plus optionally their
-    // own schedule gets its own simple daily checklist instead of the full
+    // care work (farrier, health read access) plus optionally their own
+    // schedule gets its own simple daily checklist instead of the full
     // admin dashboard.
     const staffCodes = new Set([
       'horse_care.view','horse_care.manage','horse_health.view','horse_medical.view',
@@ -582,29 +582,19 @@
     return sbRpc('cce_member_owner_update_horse', payload);
   };
 
-  function staffCareRow(entry, kind) {
+  function staffCareRow(entry) {
     const canManage = hasPermission('horse_care.manage');
-    const label = kind === 'feeding'
-      ? html(entry.horse_name) + (entry.stable_no ? ` <span class="staff-care-stable">#${html(entry.stable_no)}</span>` : '')
-      : html(entry.horse_name) + (entry.stable_no ? ` <span class="staff-care-stable">#${html(entry.stable_no)}</span>` : '')
-        + `<div class="staff-care-meta">${entry.farrier_date ? `Last: ${html(entry.farrier_date)} (${entry.days_overdue} days ago)` : 'No farrier record yet'}</div>`;
-    const action = !canManage ? '' : kind === 'feeding'
-      ? `<button class="btn btn-green staff-care-btn" onclick="staffMarkFed(${entry.horse_id},this)">✅ Fed</button>`
-      : `<button class="btn btn-green staff-care-btn" onclick="staffMarkFarrierDone(${entry.horse_id},this)">✅ Done</button>`;
-    return `<div class="staff-care-row" id="staff-${kind}-${entry.horse_id}"><div class="staff-care-name">${label}</div>${action}</div>`;
+    const label = html(entry.horse_name) + (entry.stable_no ? ` <span class="staff-care-stable">#${html(entry.stable_no)}</span>` : '')
+      + `<div class="staff-care-meta">${entry.farrier_date ? `Last: ${html(entry.farrier_date)} (${entry.days_overdue} days ago)` : 'No farrier record yet'}</div>`;
+    const action = canManage ? `<button class="btn btn-green staff-care-btn" onclick="staffMarkFarrierDone(${entry.horse_id},this)">✅ Done</button>` : '';
+    return `<div class="staff-care-row" id="staff-farrier-${entry.horse_id}"><div class="staff-care-name">${label}</div>${action}</div>`;
   }
 
   function renderStaffCareBoard(board) {
-    const feedingEl = document.getElementById('staffFeedingList');
     const farrierEl = document.getElementById('staffFarrierList');
-    if (feedingEl) {
-      feedingEl.innerHTML = (board.feeding || []).length
-        ? board.feeding.map(entry => staffCareRow(entry, 'feeding')).join('')
-        : '<div class="member-empty">✅ All horses fed today.</div>';
-    }
     if (farrierEl) {
       farrierEl.innerHTML = (board.farrier || []).length
-        ? board.farrier.map(entry => staffCareRow(entry, 'farrier')).join('')
+        ? board.farrier.map(entry => staffCareRow(entry)).join('')
         : '<div class="member-empty">✅ No overdue farrier visits.</div>';
     }
   }
@@ -623,10 +613,10 @@
     const display = document.getElementById('staffNameDisplay'); if (display) display.textContent = staffName;
     try {
       const board = await sbRpc('cce_staff_care_board', {});
-      renderStaffCareBoard(board || {feeding: [], farrier: []});
+      renderStaffCareBoard(board || {farrier: []});
     } catch (error) {
-      const feedingEl = document.getElementById('staffFeedingList');
-      if (feedingEl) feedingEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
+      const farrierEl = document.getElementById('staffFarrierList');
+      if (farrierEl) farrierEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
       if (typeof showError === 'function') showError('Staff portal', error);
     }
     const scheduleSection = document.getElementById('staffScheduleSection');
@@ -657,18 +647,6 @@
       </div>
     </div>`).join('');
   }
-
-  window.staffMarkFed = async function markHorseFedFromStaffPortal(horseId, btn) {
-    if (!hasPermission('horse_care.manage')) return;
-    if (btn) { btn.disabled = true; btn.textContent = '…'; }
-    try {
-      await sbRpc('cce_mark_horse_fed', {p_horse_id: horseId});
-      await openStaffMemberPortal();
-    } catch (error) {
-      if (typeof showError === 'function') showError('Feeding', error);
-      if (btn) { btn.disabled = false; btn.textContent = '✅ Fed'; }
-    }
-  };
 
   window.staffMarkFarrierDone = async function markFarrierDoneFromStaffPortal(horseId, btn) {
     if (!hasPermission('horse_care.manage')) return;

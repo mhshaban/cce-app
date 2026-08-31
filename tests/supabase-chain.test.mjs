@@ -2294,7 +2294,7 @@ test('v4.21.0 manager can sync a booking request customer name, enforces permiss
   }
 });
 
-test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses, marking either off the list persists correctly, enforces permission and rollback removes the RPCs',async()=>{
+test('v4.22.0/v4.23.4 staff care board lists farrier-overdue horses, marking done persists via the existing sync trigger, and enforces permission',async()=>{
   const db=await buildDatabase();
   const staff='00000000-0000-4000-8000-000000000078';
   const accountant='00000000-0000-4000-8000-000000000079';
@@ -2308,11 +2308,10 @@ test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses
       update public.profiles p set is_active=true,role_id=r.id
       from public.app_roles r where p.id='${accountant}' and r.code='accountant';
       insert into public.horses(horse_name,owner,status,farrier_date) values
-        ('Feed Me Horse','Owner One','Available',current_date),
+        ('Recently Shod Horse','Owner One','Available',current_date),
         ('Overdue Farrier Horse','Owner Two','Available',current_date-40),
         ('Sold Horse','Owner Three','Sold',null);
     `);
-    const feedHorseId=(await db.query(`select id from public.horses where horse_name='Feed Me Horse'`)).rows[0].id;
     const overdueHorseId=(await db.query(`select id from public.horses where horse_name='Overdue Farrier Horse'`)).rows[0].id;
 
     await db.exec(`set "request.jwt.claim.sub"='${accountant}'; set role authenticated`);
@@ -2321,17 +2320,10 @@ test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses
 
     await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
     const board1=await db.query(`select public.cce_staff_care_board() as board`);
-    const feedNames1=board1.rows[0].board.feeding.map(x=>x.horse_name).sort();
     const farrierNames1=board1.rows[0].board.farrier.map(x=>x.horse_name);
-    assert.deepEqual(feedNames1,['Feed Me Horse','Overdue Farrier Horse']);
     assert.deepEqual(farrierNames1,['Overdue Farrier Horse']);
     assert.equal(board1.rows[0].board.farrier[0].days_overdue,40);
-
-    const fed=await db.query(`select public.cce_mark_horse_fed(${feedHorseId}) as result`);
-    assert.equal(fed.rows[0].result.fed,true);
-
-    const board2=await db.query(`select public.cce_staff_care_board() as board`);
-    assert.deepEqual(board2.rows[0].board.feeding.map(x=>x.horse_name),['Overdue Farrier Horse']);
+    assert.equal(board1.rows[0].board.feeding,undefined);
 
     const farrierDone=await db.query(`select public.cce_mark_farrier_done(${overdueHorseId}) as result`);
     assert.equal(farrierDone.rows[0].result.done,true);
@@ -2344,28 +2336,51 @@ test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses
     assert.equal(horseRow.rows[0].farrier_name,'Lakh Test');
 
     await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
-    const board3=await db.query(`select public.cce_staff_care_board() as board`);
-    assert.deepEqual(board3.rows[0].board.farrier,[]);
+    const board2=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.deepEqual(board2.rows[0].board.farrier,[]);
     await db.exec('reset role');
 
     await db.exec(`set "request.jwt.claim.sub"='${accountant}'; set role authenticated`);
-    await assert.rejects(db.query(`select public.cce_mark_horse_fed(${feedHorseId})`),/Permission denied/);
     await assert.rejects(db.query(`select public.cce_mark_farrier_done(${overdueHorseId})`),/Permission denied/);
+    await assert.rejects(db.query(`select public.cce_mark_horse_fed(1)`),/does not exist/i);
+    await db.exec('reset role');
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.23.4 removes the mistaken Feeding concept from the staff care board, rollback restores it and reapply removes it again',async()=>{
+  const db=await buildDatabase();
+  const staff='00000000-0000-4000-8000-000000000086';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${staff}','care-board-cleanup-staff@example.com');
+      update public.profiles p set is_active=true,full_name='Lakh Test',role_id=r.id
+      from public.app_roles r where p.id='${staff}' and r.code='staff';
+      insert into public.horses(horse_name,owner,status) values('Feed Me Horse','Owner One','Available');
+    `);
+    const feedHorseId=(await db.query(`select id from public.horses where horse_name='Feed Me Horse'`)).rows[0].id;
+
+    const rolledBackFirst=await db.query(`select to_regprocedure('public.cce_mark_horse_fed(bigint)') is null as removed`);
+    assert.equal(rolledBackFirst.rows[0].removed,true);
+
+    await db.exec(read('supabase/rollback/rollback_v4234_compatibility.sql'));
+    const restored=await db.query(`select to_regprocedure('public.cce_mark_horse_fed(bigint)') is not null as exists`);
+    assert.equal(restored.rows[0].exists,true);
+
+    await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
+    const boardWithFeeding=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.deepEqual(boardWithFeeding.rows[0].board.feeding.map(x=>x.horse_name),['Feed Me Horse']);
+    const fed=await db.query(`select public.cce_mark_horse_fed(${feedHorseId}) as result`);
+    assert.equal(fed.rows[0].result.fed,true);
     await db.exec('reset role');
 
-    await db.exec(read('supabase/rollback/rollback_v4220_compatibility.sql'));
-    const rolledBack=await db.query(`
-      select
-        to_regprocedure('public.cce_staff_care_board()') is null as board_removed,
-        to_regprocedure('public.cce_mark_horse_fed(bigint)') is null as mark_fed_removed,
-        to_regprocedure('public.cce_mark_farrier_done(bigint)') is null as mark_farrier_removed
-    `);
-    assert.deepEqual({...rolledBack.rows[0]},{board_removed:true,mark_fed_removed:true,mark_farrier_removed:true});
-
-    await db.exec(read('supabase/migrations/20260804_staff_care_board_v4220.sql'));
+    await db.exec(read('supabase/migrations/20260807_staff_care_board_remove_feeding_v4234.sql'));
+    const removedAgain=await db.query(`select to_regprocedure('public.cce_mark_horse_fed(bigint)') is null as removed`);
+    assert.equal(removedAgain.rows[0].removed,true);
     await db.exec(`set "request.jwt.claim.sub"='${staff}'; set role authenticated`);
-    const reapplied=await db.query(`select public.cce_staff_care_board() as board`);
-    assert.deepEqual(reapplied.rows[0].board.farrier,[]);
+    const boardAfterReapply=await db.query(`select public.cce_staff_care_board() as board`);
+    assert.equal(boardAfterReapply.rows[0].board.feeding,undefined);
     await db.exec('reset role');
   }finally{
     await db.close();
