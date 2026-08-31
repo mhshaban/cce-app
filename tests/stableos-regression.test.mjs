@@ -371,8 +371,14 @@ test('an accountant (read-only finance viewer) cannot open the Finance pages and
   assert.match(summary,/if\(canSeeFinancialSummary\)\{el\.classList\.add\('hidden'\);el\.innerHTML='';return;\}/);
   assert.match(summary,/income\.filter\(isOverdueRow\)/);
   assert.match(summary,/expenses\.filter\(isOverdueRow\)/);
-  assert.doesNotMatch(summary,/markPaid|editIncome|editExpense|delRec/);
-  assert.match(read('index.html'),/id="dashOverdueSummary" class="hidden"/);
+  assert.match(summary,/<th>Category<\/th><th>Details<\/th>/);
+  assert.doesNotMatch(summary,/markPaid|editIncome|editExpense|delRec|viewExpenseDetails/);
+  const html=read('index.html');
+  assert.match(html,/id="dashOverdueSummary" class="hidden"/);
+  // The Overdue summary sits after the last dashboard card (Recent Financial
+  // Activity), not up near the stats grid.
+  const dashboardSection=html.slice(html.indexOf('id="page-main-dashboard"'),html.indexOf('id="page-show-office"'));
+  assert.ok(dashboardSection.indexOf('Recent Financial Activity')<dashboardSection.indexOf('id="dashOverdueSummary"'));
 });
 
 test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
@@ -1233,12 +1239,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.0 cache key',()=>{
+test('all app assets use the v4.23.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260804-4220'));
-  assert.ok((html.match(/20260805-4230/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260805-4230/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4230/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.0');
+  assert.ok(!html.includes('20260805-4230'));
+  assert.ok((html.match(/20260805-4231/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260805-4231/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4231/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.1');
 });
