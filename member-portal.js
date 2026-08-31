@@ -333,7 +333,15 @@
   };
 
   function permissionForPage(id) { return pagePermission[id] || []; }
-  function canOpenDashPage(id) { return hasAny(permissionForPage(id)); }
+  // The accountant role reads income/expenses (needed for the Dashboard's
+  // own stats and its read-only Overdue summary) without being able to
+  // reach the Finance pages themselves — a deliberately restricted,
+  // Dashboard-only view rather than a general permission concept.
+  const financeOnlyPages = new Set(['income','expenses','overdue','receipts','reports']);
+  function canOpenDashPage(id) {
+    if (financeOnlyPages.has(id) && String(memberAccess?.role?.code || '').toLowerCase() === 'accountant') return false;
+    return hasAny(permissionForPage(id));
+  }
 
   function prefersSchedule() {
     const role = String(memberAccess?.role?.code || memberAccess?.portal || '').toLowerCase();

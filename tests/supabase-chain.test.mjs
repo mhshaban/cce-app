@@ -2372,6 +2372,50 @@ test('v4.22.0 staff care board lists today\'s feeding and farrier-overdue horses
   }
 });
 
+test('v4.23.0 dashboard.financial_summary.view defaults to super_admin/manager/reception and not accountant, rollback removes it cleanly',async()=>{
+  const db=await buildDatabase();
+  const superAdmin='00000000-0000-4000-8000-000000000080';
+  const manager='00000000-0000-4000-8000-000000000081';
+  const reception='00000000-0000-4000-8000-000000000082';
+  const accountant='00000000-0000-4000-8000-000000000083';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${superAdmin}','fin-summary-superadmin@example.com'),
+        ('${manager}','fin-summary-manager@example.com'),
+        ('${reception}','fin-summary-reception@example.com'),
+        ('${accountant}','fin-summary-accountant@example.com');
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${superAdmin}' and r.code='super_admin';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${reception}' and r.code='reception';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${accountant}' and r.code='accountant';
+    `);
+
+    const checkAll=async()=>{
+      const results={};
+      for(const[label,id] of [['superAdmin',superAdmin],['manager',manager],['reception',reception],['accountant',accountant]]){
+        await db.exec(`set "request.jwt.claim.sub"='${id}'; set role authenticated`);
+        const r=await db.query(`select public.cce_has_permission('dashboard.financial_summary.view') as allowed`);
+        results[label]=r.rows[0].allowed;
+        await db.exec('reset role');
+      }
+      return results;
+    };
+
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:true,reception:true,accountant:false});
+
+    await db.exec(read('supabase/rollback/rollback_v4230_compatibility.sql'));
+    const rolledBack=await db.query(`select exists(select 1 from public.app_permissions where code='dashboard.financial_summary.view') as permission_exists`);
+    assert.equal(rolledBack.rows[0].permission_exists,false);
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:false,reception:false,accountant:false});
+
+    await db.exec(read('supabase/migrations/20260805_dashboard_financial_summary_permission_v4230.sql'));
+    assert.deepEqual(await checkAll(),{superAdmin:true,manager:true,reception:true,accountant:false});
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

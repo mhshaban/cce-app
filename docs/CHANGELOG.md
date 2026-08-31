@@ -2,6 +2,20 @@
 
 يتبع السجل ترتيبًا تنازليًا. تُكتب التغييرات المؤثرة في المستخدم أو قاعدة البيانات، ولا تُسجل التعديلات الشكلية الداخلية غير المهمة.
 
+## 4.23.0 — لوحة تحكم مبسّطة للمحاسب (قراءة فقط)
+
+### Dashboard
+
+- حساب دور "Accountant" (مثل مجيد) لم يعد يرى في لوحة التحكم البطاقات المالية الإجمالية: Gross Collected، Stable Revenue، Instructor Shares، Total Expenses، Net Overdue، Total Lessons، Total Hack. تبقى البطاقات الأخرى (Net Profit، Pending Income، Unpaid Expenses، Horses Active) ظاهرة كما هي.
+- بدلًا من ذلك، تظهر له مباشرة في نفس صفحة Dashboard قائمة "⚠️ Overdue" (الإيرادات والمصروفات المتأخرة) بشكل قراءة فقط — بلا أزرار تعديل أو تسديد أو حذف.
+- صفحة "💰 Finance" بكامل تبويباتها (Income، Expenses، Overdue، Receipts، Reports) لم تعد تظهر أو يمكن فتحها لهذا الدور، حتى لو حاول الوصول إليها مباشرة.
+- صلاحيات إضافة/تعديل الإيرادات والمصروفات (income.create/update، expenses.create/update) أُزيلت من حساب مجيد تحديدًا (تخصيص فردي، لا يؤثر على أي حساب آخر) — أصبح قراءة فقط بالكامل.
+
+### Database, Security and Backup
+
+- إضافة صلاحية جديدة `dashboard.financial_summary.view` تتحكم في ظهور البطاقات المالية الإجمالية على لوحة التحكم، ممنوحة افتراضيًا لـ super_admin وmanager وreception فقط (نفس الوضع الحالي لهم، لا تغيير). لا تُمنح لدور accountant.
+- إضافة Preflight وVerification وRollback (لا يحذف أي شيء آخر غير هذه الصلاحية عند التراجع).
+
 ## 4.22.0 — بوابة الطاقم: قائمة تحذية يومية وحدادة متأخرة
 
 ### Staff Portal (جديد)

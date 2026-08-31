@@ -268,6 +268,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260802_livery_income_cron_v4190.sql',
     'supabase/migrations/20260803_booking_customer_sync_v4210.sql',
     'supabase/migrations/20260804_staff_care_board_v4220.sql',
+    'supabase/migrations/20260805_dashboard_financial_summary_permission_v4230.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -306,6 +307,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4210.sql',
     'supabase/verification/preflight_v4220.sql',
     'supabase/verification/verify_v4220.sql',
+    'supabase/verification/preflight_v4230.sql',
+    'supabase/verification/verify_v4230.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -330,7 +333,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4180_compatibility.sql',
     'supabase/rollback/rollback_v4190_compatibility.sql',
     'supabase/rollback/rollback_v4210_compatibility.sql',
-    'supabase/rollback/rollback_v4220_compatibility.sql'
+    'supabase/rollback/rollback_v4220_compatibility.sql',
+    'supabase/rollback/rollback_v4230_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -349,6 +353,26 @@ test('a staff-only permission set (feeding + farrier care) routes to its own por
   assert.match(html,/id="page-staff"/);
   assert.match(html,/id="staffFeedingList"/);
   assert.match(html,/id="staffFarrierList"/);
+});
+
+test('an accountant (read-only finance viewer) cannot open the Finance pages and gets a limited dashboard with an inline Overdue summary',()=>{
+  const portal=read('member-portal.js');
+  assert.match(portal,/financeOnlyPages = new Set\(\['income','expenses','overdue','receipts','reports'\]\)/);
+  const canOpen=functionBlock(portal,'canOpenDashPage','prefersSchedule');
+  assert.match(canOpen,/financeOnlyPages\.has\(id\) && String\(memberAccess\?\.role\?\.code \|\| ''\)\.toLowerCase\(\) === 'accountant'\) return false/);
+  const core=read('app-core.js');
+  const dash=functionBlock(core,'buildDash','renderDashboardOverdueSummary');
+  assert.match(dash,/canSeeFinancialSummary=typeof window\.canUser==='function'&&window\.canUser\('dashboard\.financial_summary\.view'\)/);
+  for(const hiddenLabel of ["l:'Gross Collected'","l:'Stable Revenue'","l:'Instructor Shares'","l:'Total Expenses'","l:'Net Overdue'","l:'Total Lessons'","l:'Total Hack'"]){
+    assert.match(dash,new RegExp(`canSeeFinancialSummary\\?\\[[\\s\\S]*?\\{${hiddenLabel.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`));
+  }
+  assert.match(dash,/renderDashboardOverdueSummary\(canSeeFinancialSummary\)/);
+  const summary=functionBlock(core,'renderDashboardOverdueSummary','recentFinancialActivityRows');
+  assert.match(summary,/if\(canSeeFinancialSummary\)\{el\.classList\.add\('hidden'\);el\.innerHTML='';return;\}/);
+  assert.match(summary,/income\.filter\(isOverdueRow\)/);
+  assert.match(summary,/expenses\.filter\(isOverdueRow\)/);
+  assert.doesNotMatch(summary,/markPaid|editIncome|editExpense|delRec/);
+  assert.match(read('index.html'),/id="dashOverdueSummary" class="hidden"/);
 });
 
 test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
@@ -1209,12 +1233,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.22.0 cache key',()=>{
+test('all app assets use the v4.23.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260803-4211'));
-  assert.ok((html.match(/20260804-4220/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260804-4220/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260804-4220/);
-  assert.equal(read('VERSION.txt').trim(),'4.22.0');
+  assert.ok(!html.includes('20260804-4220'));
+  assert.ok((html.match(/20260805-4230/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260805-4230/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4230/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.0');
 });
