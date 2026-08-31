@@ -24,6 +24,13 @@
 .member-admin-tabs button{border:none;border-radius:8px;background:transparent;padding:8px 14px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
 .member-admin-tabs button.active{background:var(--navy);color:#fff}
 .member-loading,.member-empty{background:#fff;border:1px solid var(--border);border-radius:14px;padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.staff-care-section{margin-bottom:20px}
+.staff-care-section h3{font-size:15px;color:var(--navy);margin:0 0 10px}
+.staff-care-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px}
+.staff-care-name{font-size:15px;font-weight:700;color:var(--navy)}
+.staff-care-stable{font-size:12px;font-weight:600;color:var(--muted)}
+.staff-care-meta{font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.staff-care-btn{width:auto;padding:10px 16px;flex-shrink:0}
 .member-user-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:11px}
 .member-user-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:0 2px 8px rgba(26,39,68,.04)}
 .member-user-head{display:flex;gap:11px;align-items:center;margin-bottom:11px}

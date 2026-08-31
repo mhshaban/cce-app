@@ -12,7 +12,7 @@ const APP_MODE=(window.CCE_PORTAL_MODE||new URLSearchParams(location.search).get
 const CCE_I18N={
   en:{
     backHome:'← Home',refresh:'🔄 Refresh',backup:'💾 Backup',logout:'🔓 Logout',alerts:'🔔 Alerts',
-    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
+    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_staff:'Staff Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
     dash_dashboard:'Dashboard',dash_income:'Income',dash_expenses:'Expenses',dash_overdue:'Overdue',dash_horses:'Horses',dash_breeding:'Breeding',dash_bookings:'Bookings',dash_notifications:'Notifications',dash_schedule:'Schedule',dash_instructors:'Instructors',
     homeTrainingTitle:'Horse Riding Training',homeTrainingSub:'Private and group sessions for beginners and advanced riders',registerNow:'🎯 Register Now',
     homeRidesTitle:'Hack Rides',homeRidesSub:'Enjoyable rides on our beautiful horses',bookNow:'🐴 Book Now',
@@ -50,7 +50,7 @@ const CCE_I18N={
   },
   ar:{
     backHome:'← الرئيسية',refresh:'🔄 تحديث',backup:'💾 نسخة احتياطية',logout:'🔓 تسجيل الخروج',alerts:'🔔 التنبيهات',
-    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
+    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_staff:'بوابة الطاقم',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
     dash_dashboard:'لوحة التحكم',dash_income:'الإيرادات',dash_expenses:'المصروفات',dash_overdue:'المتأخرات',dash_horses:'الخيل',dash_breeding:'التناسل',dash_bookings:'الحجوزات',dash_notifications:'التنبيهات',dash_schedule:'الجدول',dash_instructors:'المدربون',
     homeTrainingTitle:'تدريب ركوب الخيل',homeTrainingSub:'للمبتدئين والمحترفين — حصص فردية وجماعية',registerNow:'🎯 التسجيل الآن',
     homeRidesTitle:'جولات ركوب الخيل',homeRidesSub:'جولات ممتعة على أجمل الخيول',bookNow:'🐴 احجز الآن',
@@ -4187,7 +4187,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.21.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.22.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4280,7 +4280,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260803-4211', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260804-4220', {scope:'./'})
       .then(reg => {
 
         reg.update();

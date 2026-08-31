@@ -107,7 +107,7 @@ test('only the active portal exposes its logout action',()=>{
   const portal=read('member-portal.js');
   const sync=functionBlock(portal,'syncMemberLogoutButtons','updateMemberChrome');
   for(const mapping of [
-    /logoutAdminBtn:\s*\{pages:\['dashboard','instructor'\]/,
+    /logoutAdminBtn:\s*\{pages:\['dashboard','instructor','staff'\]/,
     /logoutOwnerBtn:\s*\{page:'owner'/,
     /instrLogoutBtn:\s*\{page:'instructor'/
   ]) assert.match(sync,mapping);
@@ -267,6 +267,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260801_booking_delete_request_v4180.sql',
     'supabase/migrations/20260802_livery_income_cron_v4190.sql',
     'supabase/migrations/20260803_booking_customer_sync_v4210.sql',
+    'supabase/migrations/20260804_staff_care_board_v4220.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -303,6 +304,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4190.sql',
     'supabase/verification/preflight_v4210.sql',
     'supabase/verification/verify_v4210.sql',
+    'supabase/verification/preflight_v4220.sql',
+    'supabase/verification/verify_v4220.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -326,8 +329,26 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4170_compatibility.sql',
     'supabase/rollback/rollback_v4180_compatibility.sql',
     'supabase/rollback/rollback_v4190_compatibility.sql',
-    'supabase/rollback/rollback_v4210_compatibility.sql'
+    'supabase/rollback/rollback_v4210_compatibility.sql',
+    'supabase/rollback/rollback_v4220_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
+});
+
+test('a staff-only permission set (feeding + farrier care) routes to its own portal instead of the full dashboard',()=>{
+  const portal=read('member-portal.js');
+  const route=functionBlock(portal,'routeForMember','routeMemberHome');
+  assert.match(route,/staffCodes = new Set\(\[/);
+  assert.match(route,/'horse_care\.view','horse_care\.manage'/);
+  assert.match(route,/staffOnly = permissions\.length > 0 && permissions\.every\(code => staffCodes\.has\(code\)\)/);
+  assert.match(route,/portal === 'staff' && staffOnly && !hasPermission\('dashboard\.view'\)\) return 'staff'/);
+  const home=functionBlock(portal,'routeMemberHome','unifiedNavigate');
+  assert.match(home,/route === 'staff'/);
+  assert.match(home,/openStaffMemberPortal\(\)/);
+  assert.match(portal,/protectedPages = new Set\(\['owner', 'instructor', 'staff', 'dashboard'\]\)/);
+  const html=read('index.html');
+  assert.match(html,/id="page-staff"/);
+  assert.match(html,/id="staffFeedingList"/);
+  assert.match(html,/id="staffFarrierList"/);
 });
 
 test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
@@ -1188,12 +1209,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.21.1 cache key',()=>{
+test('all app assets use the v4.22.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260803-4210'));
-  assert.ok((html.match(/20260803-4211/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260803-4211/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260803-4211/);
-  assert.equal(read('VERSION.txt').trim(),'4.21.1');
+  assert.ok(!html.includes('20260803-4211'));
+  assert.ok((html.match(/20260804-4220/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260804-4220/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260804-4220/);
+  assert.equal(read('VERSION.txt').trim(),'4.22.0');
 });
