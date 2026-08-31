@@ -2416,6 +2416,39 @@ test('v4.23.0 dashboard.financial_summary.view defaults to super_admin/manager/r
   }
 });
 
+test('v4.23.3 cce_my_access() reports portal=staff for the staff role (was silently stuck on dashboard), rollback restores the old behavior',async()=>{
+  const db=await buildDatabase();
+  const staff='00000000-0000-4000-8000-000000000084';
+  const accountant='00000000-0000-4000-8000-000000000085';
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${staff}','portal-fix-staff@example.com'),
+        ('${accountant}','portal-fix-accountant@example.com');
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${staff}' and r.code='staff';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${accountant}' and r.code='accountant';
+    `);
+
+    const portalFor=async(id)=>{
+      await db.exec(`set "request.jwt.claim.sub"='${id}'; set role authenticated`);
+      const r=await db.query(`select public.cce_my_access() as access`);
+      await db.exec('reset role');
+      return r.rows[0].access.portal;
+    };
+
+    assert.equal(await portalFor(staff),'staff');
+    assert.equal(await portalFor(accountant),'dashboard');
+
+    await db.exec(read('supabase/rollback/rollback_v4233_compatibility.sql'));
+    assert.equal(await portalFor(staff),'dashboard');
+
+    await db.exec(read('supabase/migrations/20260806_staff_portal_field_fix_v4233.sql'));
+    assert.equal(await portalFor(staff),'staff');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
