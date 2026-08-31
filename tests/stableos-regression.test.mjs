@@ -269,6 +269,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260803_booking_customer_sync_v4210.sql',
     'supabase/migrations/20260804_staff_care_board_v4220.sql',
     'supabase/migrations/20260805_dashboard_financial_summary_permission_v4230.sql',
+    'supabase/migrations/20260806_staff_portal_field_fix_v4233.sql',
+    'supabase/migrations/20260807_staff_care_board_remove_feeding_v4234.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -309,6 +311,10 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4220.sql',
     'supabase/verification/preflight_v4230.sql',
     'supabase/verification/verify_v4230.sql',
+    'supabase/verification/preflight_v4233.sql',
+    'supabase/verification/verify_v4233.sql',
+    'supabase/verification/preflight_v4234.sql',
+    'supabase/verification/verify_v4234.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -334,11 +340,13 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4190_compatibility.sql',
     'supabase/rollback/rollback_v4210_compatibility.sql',
     'supabase/rollback/rollback_v4220_compatibility.sql',
-    'supabase/rollback/rollback_v4230_compatibility.sql'
+    'supabase/rollback/rollback_v4230_compatibility.sql',
+    'supabase/rollback/rollback_v4233_compatibility.sql',
+    'supabase/rollback/rollback_v4234_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
-test('a staff-only permission set (feeding + farrier care) routes to its own portal instead of the full dashboard',()=>{
+test('a staff-only permission set (farrier care) routes to its own portal instead of the full dashboard',()=>{
   const portal=read('member-portal.js');
   const route=functionBlock(portal,'routeForMember','routeMemberHome');
   assert.match(route,/staffCodes = new Set\(\[/);
@@ -352,13 +360,18 @@ test('a staff-only permission set (feeding + farrier care) routes to its own por
   assert.match(portal,/protectedPages = new Set\(\['owner', 'instructor', 'staff', 'dashboard'\]\)/);
   const html=read('index.html');
   assert.match(html,/id="page-staff"/);
-  assert.match(html,/id="staffFeedingList"/);
+  assert.doesNotMatch(html,/id="staffFeedingList"/);
   assert.match(html,/id="staffFarrierList"/);
   assert.match(html,/id="staffScheduleSection" style="display:none"/);
   assert.match(html,/id="staffScheduleList"/);
   const open=functionBlock(portal,'openStaffMemberPortal','renderStaffSchedule');
   assert.match(open,/hasPermission\('schedule\.view_own'\)/);
   assert.match(open,/cce_member_instructor_schedule/);
+  // "تحذية" was misread as feeding/nutrition when this page was first built;
+  // it actually means farrier work (shoeing), the same thing the Farrier
+  // overdue list already covers — the feeding concept was removed entirely.
+  assert.doesNotMatch(portal,/staffMarkFed\b/);
+  assert.doesNotMatch(portal,/cce_mark_horse_fed/);
 });
 
 test('an accountant (read-only finance viewer) cannot open the Finance pages and gets a limited dashboard with an inline Overdue summary',()=>{
@@ -1245,12 +1258,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.2 cache key',()=>{
+test('all app assets use the v4.23.4 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260805-4231'));
-  assert.ok((html.match(/20260805-4232/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260805-4232/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260805-4232/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.2');
+  assert.ok(!html.includes('20260806-4233'));
+  assert.ok((html.match(/20260807-4234/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260807-4234/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4234/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.4');
 });
