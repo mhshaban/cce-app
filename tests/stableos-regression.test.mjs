@@ -401,6 +401,17 @@ test('an accountant (read-only finance viewer) cannot open the Finance pages and
   assert.ok(dashboardSection.indexOf('Recent Financial Activity')<dashboardSection.indexOf('id="dashOverdueSummary"'));
 });
 
+test('Income, Expenses and Overdue tables sort by date (not due_date), newest first',()=>{
+  const core=read('app-core.js');
+  const sortExpr=/data=\[\.\.\.data\]\.sort\(\(a,b\)=>String\(b\.date\)\.localeCompare\(String\(a\.date\)\)\|\|Number\(b\.id\|\|0\)-Number\(a\.id\|\|0\)\)/;
+  assert.match(functionBlock(core,'renderIncome','addIncome'),sortExpr);
+  assert.match(functionBlock(core,'renderExpenses','addExpense'),sortExpr);
+  const overdue=functionBlock(core,'renderOverdue','renderHorses');
+  assert.match(overdue,/const byDateDesc=\(a,b\)=>String\(b\.date\)\.localeCompare\(String\(a\.date\)\)\|\|Number\(b\.id\|\|0\)-Number\(a\.id\|\|0\)/);
+  assert.match(overdue,/expenses\.filter\(isOverdueRow\)\.sort\(byDateDesc\)/);
+  assert.match(overdue,/income\.filter\(isOverdueRow\)\.sort\(byDateDesc\)/);
+});
+
 test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
   const html=read('index.html');
   const core=read('app-core.js');
@@ -1259,12 +1270,12 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.5 cache key',()=>{
+test('all app assets use the v4.23.6 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260807-4234'));
-  assert.ok((html.match(/20260807-4235/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260807-4235/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4235/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.5');
+  assert.ok(!html.includes('20260807-4235'));
+  assert.ok((html.match(/20260807-4236/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260807-4236/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4236/);
+  assert.equal(read('VERSION.txt').trim(),'4.23.6');
 });

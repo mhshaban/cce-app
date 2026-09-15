@@ -984,8 +984,9 @@ function renderIncome(){
   let data=income.filter(r=>{const m=!q||(r.customer_name||'').toLowerCase().includes(q)||(r.horse_name||'').toLowerCase().includes(q)||(r.activity||'').toLowerCase().includes(q);return m&&(!ac||normalizeActivityCategory(r.activity)===ac)&&(!st||r.status===st);});
   document.getElementById('incCount').textContent=data.length;
   document.getElementById('incTotalAmt').textContent='Gross: '+BD(calcGrossIncomeReceived(data))+' • Stable: '+BD(calcIncomeReceived(data))+' • Instructor: '+BD(calcInstructorShares(data));
+  data=[...data].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id||0)-Number(a.id||0));
   const pages=Math.ceil(data.length/PER)||1;incPage=Math.min(incPage,pages);
-  document.getElementById('incTable').innerHTML=incTblHTML([...data].reverse().slice((incPage-1)*PER,incPage*PER));
+  document.getElementById('incTable').innerHTML=incTblHTML(data.slice((incPage-1)*PER,incPage*PER));
   renderPag('incPag',pages,incPage,p=>{incPage=p;renderIncome();});
 }
 async function addIncome(){
@@ -1527,8 +1528,9 @@ function renderExpenses(){
   // Remaining amount for filtered expense rows
   const totalExpense = data.reduce((s,r) => s + calcRemaining(r), 0);
   document.getElementById('expTotalAmt').textContent='Remaining: '+BD(totalExpense);
+  data=[...data].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id||0)-Number(a.id||0));
   const pages=Math.ceil(data.length/PER)||1;expPage=Math.min(expPage,pages);
-  document.getElementById('expTable').innerHTML=expTblHTML([...data].reverse().slice((expPage-1)*PER,expPage*PER));
+  document.getElementById('expTable').innerHTML=expTblHTML(data.slice((expPage-1)*PER,expPage*PER));
   renderPag('expPag',pages,expPage,p=>{expPage=p;renderExpenses();});
 }
 async function addExpense(){
@@ -1697,8 +1699,9 @@ function waSendGroup(i){
 }
 
 function renderOverdue(){
-  const expData=expenses.filter(isOverdueRow);
-  const incData=income.filter(isOverdueRow);
+  const byDateDesc=(a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id||0)-Number(a.id||0);
+  const expData=expenses.filter(isOverdueRow).sort(byDateDesc);
+  const incData=income.filter(isOverdueRow).sort(byDateDesc);
   const totalExp=expData.reduce((s,r)=>s+expenseOverdueAmount(r),0);
   const totalInc=incData.reduce((s,r)=>s+calcRemaining(r),0);
   let html='';
@@ -4219,7 +4222,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.5',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.6',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4312,7 +4315,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260807-4235', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260807-4236', {scope:'./'})
       .then(reg => {
 
         reg.update();
