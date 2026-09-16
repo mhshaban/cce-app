@@ -1277,10 +1277,10 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
 test('all app assets use the v4.25.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260812-4244'));
-  assert.ok((html.match(/20260813-4250/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260813-4250/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260813-4250/);
+  assert.ok(!html.includes('20260813-4250'));
+  assert.ok((html.match(/20260814-4250/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260814-4250/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260814-4250/);
   assert.equal(read('VERSION.txt').trim(),'4.25.0');
 });
 
@@ -1296,14 +1296,14 @@ test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electro
   assert.match(functionBlock(core,'submitLivery','resetLivery'),/Full Livery \(90 BD\/mo\)/);
 });
 
-test('Edit Horse modal captures Extra Care Add-ons, Feed Selection and Notes per horse, and saveHorse() persists all of them',()=>{
+test('Edit Horse modal captures Standard Package, Extra Care Add-ons, Feed Selection and Notes per horse, and saveHorse() persists all of them',()=>{
   const core=read('app-core.js');
   const editFn=functionBlock(core,'editHorse','saveHorse');
-  ['eh-extra-shower','eh-extra-vip-shower','eh-extra-cleaning','eh-extra-outdoor','eh-extra-training','eh-feed-teben','eh-feed-hay','eh-feed-wood','eh-livery-notes'].forEach(id=>{
+  ['eh-std-wash','eh-std-feed','eh-std-cleaning','eh-extra-shower','eh-extra-vip-shower','eh-extra-cleaning','eh-extra-outdoor','eh-extra-training','eh-feed-teben','eh-feed-hay','eh-feed-wood','eh-livery-notes'].forEach(id=>{
     assert.ok(editFn.includes(id),`editHorse should render #${id}`);
   });
   const saveFn=functionBlock(core,'saveHorse','editBreeding');
-  ['extra_shower','extra_vip_shower','extra_cleaning','extra_outdoor_leading','extra_training','feed_teben','feed_hay','feed_wood_shavings','livery_notes'].forEach(field=>{
+  ['standard_wash','standard_feed','standard_cleaning','extra_shower','extra_vip_shower','extra_cleaning','extra_outdoor_leading','extra_training','feed_teben','feed_hay','feed_wood_shavings','livery_notes'].forEach(field=>{
     assert.ok(saveFn.includes(field),`saveHorse should persist ${field}`);
   });
 });
@@ -1326,6 +1326,15 @@ test('liveryFixedAddonsTotal() sums only the flat recurring add-ons (shower, VIP
   assert.doesNotMatch(fn,/feed_/);
 });
 
+test('liveryStandardSummary() lists only the standard-package components the customer kept (wash/feed/cleaning), or says none were kept',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'liveryStandardSummary','liveryPricingRows');
+  assert.match(fn,/h\.standard_wash!==false/);
+  assert.match(fn,/h\.standard_feed!==false/);
+  assert.match(fn,/h\.standard_cleaning!==false/);
+  assert.match(fn,/None \(customer opted out of the standard package\)/);
+});
+
 test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fee for Fan stables, never summing winter+summer, and folds in selected fixed add-ons',()=>{
   const core=read('app-core.js');
   const fn=functionBlock(core,'liveryPricingRows','liveryContractHtml');
@@ -1337,6 +1346,9 @@ test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fe
   assert.match(fn,/Total Winter Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
   assert.match(fn,/Total Summer Monthly.*BD\(moneyNum\(h\.ac_livery_bd\)\+addonsTotal\)/);
   assert.match(fn,/Total Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
+  assert.match(fn,/Standard Package Included/);
+  assert.match(fn,/liveryStandardSummary\(h,'A\/C in summer'\)/);
+  assert.match(fn,/liveryStandardSummary\(h\)\)/);
   assert.match(fn,/Extra Care Add-ons/);
   assert.match(fn,/Feed Selection/);
   assert.doesNotMatch(fn,/year-round|طوال العام/);

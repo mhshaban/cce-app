@@ -4,7 +4,7 @@ select
   to_regclass('public.horses') is not null as horses_ready,
   not exists(
     select 1 from information_schema.columns
-    where table_schema='public' and table_name='horses' and column_name='extra_shower'
+    where table_schema='public' and table_name='horses' and column_name='standard_wash'
   ) as columns_not_yet_added;
 
 do $$

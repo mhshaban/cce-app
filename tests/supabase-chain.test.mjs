@@ -2464,7 +2464,7 @@ test('v4.23.3 cce_my_access() reports portal=staff for the staff role (was silen
   }
 });
 
-test('v4.25.0 adds per-horse Extra Care/Feed Selection flags and notes, all defaulting to false/null, rollback drops them and reapply restores them',async()=>{
+test('v4.25.0 adds per-horse Standard Package/Extra Care/Feed Selection flags and notes, standard_* default true and extra_*/feed_* default false, rollback drops them and reapply restores them',async()=>{
   const db=await buildDatabase();
   try{
     const columns=await db.query(`
@@ -2472,25 +2472,30 @@ test('v4.25.0 adds per-horse Extra Care/Feed Selection flags and notes, all defa
       from information_schema.columns
       where table_schema='public' and table_name='horses'
         and column_name in (
+          'standard_wash','standard_feed','standard_cleaning',
           'extra_shower','extra_vip_shower','extra_cleaning','extra_outdoor_leading','extra_training',
           'feed_teben','feed_hay','feed_wood_shavings','livery_notes'
         )
       order by column_name
     `);
-    assert.equal(columns.rows.length,9);
+    assert.equal(columns.rows.length,12);
     for(const row of columns.rows){
       if(row.column_name==='livery_notes'){
         assert.equal(row.is_nullable,'YES');
+      }else if(row.column_name.startsWith('standard_')){
+        assert.equal(row.is_nullable,'NO');
+        assert.match(row.column_default,/true/);
       }else{
         assert.equal(row.is_nullable,'NO');
         assert.match(row.column_default,/false/);
       }
     }
 
-    await db.exec(`insert into public.horses(horse_name,owner,stable_no,extra_shower,extra_training,feed_hay,livery_notes)
-      values('Test Horse','Test Owner','A9',true,true,true,'Owner asked for extra outdoor time')`);
-    const inserted=await db.query(`select extra_shower,extra_vip_shower,extra_training,feed_hay,feed_teben,livery_notes from public.horses where horse_name='Test Horse'`);
+    await db.exec(`insert into public.horses(horse_name,owner,stable_no,standard_cleaning,extra_shower,extra_training,feed_hay,livery_notes)
+      values('Test Horse','Test Owner','A9',false,true,true,true,'Owner asked for extra outdoor time')`);
+    const inserted=await db.query(`select standard_wash,standard_feed,standard_cleaning,extra_shower,extra_vip_shower,extra_training,feed_hay,feed_teben,livery_notes from public.horses where horse_name='Test Horse'`);
     assert.deepEqual(inserted.rows[0],{
+      standard_wash:true,standard_feed:true,standard_cleaning:false,
       extra_shower:true,extra_vip_shower:false,extra_training:true,feed_hay:true,feed_teben:false,
       livery_notes:'Owner asked for extra outdoor time'
     });
@@ -2498,16 +2503,16 @@ test('v4.25.0 adds per-horse Extra Care/Feed Selection flags and notes, all defa
     await db.exec(read('supabase/rollback/rollback_v4250_compatibility.sql'));
     const afterRollback=await db.query(`
       select count(*)::int as n from information_schema.columns
-      where table_schema='public' and table_name='horses' and column_name in ('extra_shower','livery_notes')
+      where table_schema='public' and table_name='horses' and column_name in ('standard_wash','extra_shower','livery_notes')
     `);
     assert.equal(afterRollback.rows[0].n,0);
 
     await db.exec(read('supabase/migrations/20260813_horse_livery_addons_v4250.sql'));
     const afterReapply=await db.query(`
       select count(*)::int as n from information_schema.columns
-      where table_schema='public' and table_name='horses' and column_name in ('extra_shower','livery_notes')
+      where table_schema='public' and table_name='horses' and column_name in ('standard_wash','extra_shower','livery_notes')
     `);
-    assert.equal(afterReapply.rows[0].n,2);
+    assert.equal(afterReapply.rows[0].n,3);
   }finally{
     await db.close();
   }

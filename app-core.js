@@ -1813,6 +1813,14 @@ function liverySelectionSummary(h,priceMap){
     return p.en+' ('+p.price+' BD'+p.unit+')';
   });
 }
+function liveryStandardSummary(h,extra){
+  const items=[];
+  if(h.standard_wash!==false)items.push('daily wash');
+  if(h.standard_feed!==false)items.push('feed (2 meals)');
+  if(h.standard_cleaning!==false)items.push('stable cleaning');
+  if(extra)items.push(extra);
+  return items.length?items.join(' + '):'None (customer opted out of the standard package)';
+}
 function liveryPricingRows(h){
   const addons=liverySelectionSummary(h,LIVERY_ADDON_PRICES);
   const feeds=liverySelectionSummary(h,LIVERY_FEED_PRICES);
@@ -1824,7 +1832,7 @@ function liveryPricingRows(h){
     liveryContractField('Livery Type','نوع الإيواء','AC Livery'),
     liveryContractField('Winter Fee (Oct&#8211;Apr)','الرسوم الشتوية',BD(h.livery_bd)),
     liveryContractField('Summer Fee (May&#8211;Sep, incl. A/C)','الرسوم الصيفية (شامل التكييف)',BD(h.ac_livery_bd)),
-    liveryContractField('Included','الخدمات المشمولة','Feed (2 meals) + daily wash + cleaning, + A/C in summer'),
+    liveryContractField('Standard Package Included','الباقة العادية المشمولة',esc(liveryStandardSummary(h,'A/C in summer'))),
     addonsRow,feedRow,
     liveryContractField('Total Winter Monthly','الإجمالي الشتوي الشهري',BD(moneyNum(h.livery_bd)+addonsTotal),true),
     liveryContractField('Total Summer Monthly','الإجمالي الصيفي الشهري',BD(moneyNum(h.ac_livery_bd)+addonsTotal),true),
@@ -1835,7 +1843,7 @@ function liveryPricingRows(h){
   return [
     liveryContractField('Livery Type','نوع الإيواء','Fan Livery'),
     liveryContractField('Monthly Fee','الرسوم الشهرية',BD(h.livery_bd)),
-    liveryContractField('Included','الخدمات المشمولة','Feed (2 meals) + daily wash + cleaning'),
+    liveryContractField('Standard Package Included','الباقة العادية المشمولة',esc(liveryStandardSummary(h))),
     addonsRow,feedRow,
     liveryContractField('Total Monthly','الإجمالي الشهري',BD(moneyNum(h.livery_bd)+addonsTotal),true),
     liveryContractField('Payment Terms','شروط الدفع',esc(h.payment||'Due on the 1st of each month')),
@@ -2477,6 +2485,14 @@ function editHorse(id){
     <div class="form-group"><label>Medicant</label><input type="text" id="eh-medicant" value="${escAttr(h.medicant||'')}"></div>
     <div class="form-group"><label>Med Date</label><input type="date" id="eh-meddate" value="${h.med_date||''}"></div>
     <div class="form-group" style="grid-column:1/-1">
+      <label>Standard Package</label>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="checkbox" id="eh-std-wash" ${h.standard_wash!==false?'checked':''}> Wash (daily)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="checkbox" id="eh-std-feed" ${h.standard_feed!==false?'checked':''}> Feed (2 meals/day)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="checkbox" id="eh-std-cleaning" ${h.standard_cleaning!==false?'checked':''}> Stable Cleaning</label>
+      </div>
+    </div>
+    <div class="form-group" style="grid-column:1/-1">
       <label>Extra Care Add-ons</label>
       <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
         <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;cursor:pointer"><input type="checkbox" id="eh-extra-shower" ${h.extra_shower?'checked':''}> Shower (3 BD)</label>
@@ -2498,7 +2514,7 @@ function editHorse(id){
   </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveHorse(id){
-  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,standard_wash:document.getElementById('eh-std-wash').checked,standard_feed:document.getElementById('eh-std-feed').checked,standard_cleaning:document.getElementById('eh-std-cleaning').checked,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
 function editBreeding(id){
   const r=breeding.find(x=>x.id===id);if(!r)return;
@@ -4507,7 +4523,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260813-4250', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260814-4250', {scope:'./'})
       .then(reg => {
 
         reg.update();
