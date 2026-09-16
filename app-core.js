@@ -4305,7 +4305,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.2',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4398,7 +4398,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260809-4241', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260810-4242', {scope:'./'})
       .then(reg => {
 
         reg.update();
@@ -4415,7 +4415,7 @@ function showUpdateBanner(){
   if(document.getElementById('updateBanner'))return;
   const b=document.createElement('div');
   b.id='updateBanner';
-  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#1E7D4E;color:#fff;padding:12px 16px;text-align:center;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2)';
+  b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1E7D4E;color:#fff;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;box-shadow:0 -4px 14px rgba(0,0,0,.2)';
   b.innerHTML='A new version is ready. <button style="margin-left:10px;background:#fff;color:#1E7D4E;border:none;border-radius:7px;padding:6px 12px;font-weight:700" onclick="location.reload()">Update now</button>';
   document.body.appendChild(b);
 }

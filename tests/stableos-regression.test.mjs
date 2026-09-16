@@ -1270,14 +1270,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.24.1 cache key',()=>{
+test('all app assets use the v4.24.2 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260808-4240'));
-  assert.ok((html.match(/20260809-4241/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260809-4241/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260809-4241/);
-  assert.equal(read('VERSION.txt').trim(),'4.24.1');
+  assert.ok(!html.includes('20260809-4241'));
+  assert.ok((html.match(/20260810-4242/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260810-4242/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260810-4242/);
+  assert.equal(read('VERSION.txt').trim(),'4.24.2');
 });
 
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
@@ -1298,4 +1298,12 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   assert.match(printFn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
   assert.match(printFn,/@page\{size:A4;margin:12mm\}/);
   assert.match(printFn,/window\.print\(\)/);
+});
+
+test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'showUpdateBanner','showInstallBanner');
+  assert.match(fn,/position:fixed;bottom:0;left:0;right:0/);
+  assert.doesNotMatch(fn,/position:fixed;top:0/);
+  assert.match(fn,/env\(safe-area-inset-bottom,0px\)/);
 });
