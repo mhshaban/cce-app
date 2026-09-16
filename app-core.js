@@ -1784,9 +1784,30 @@ function liveryContractCard(titleEn,titleAr,rowsHtml){
     ${rowsHtml}
   </div>`;
 }
+function liveryIsAC(h){
+  const type=String(h.livery_type||'').trim();
+  if(type)return /ac/i.test(type);
+  return /^[AB]/i.test(String(h.stable_no||'').trim());
+}
+function liveryPricingRows(h){
+  if(liveryIsAC(h))return [
+    liveryContractField('Livery Type','نوع الإيواء','AC Livery'),
+    liveryContractField('Winter Fee (Oct&#8211;Apr)','الرسوم الشتوية',BD(h.livery_bd),true),
+    liveryContractField('Summer Fee (May&#8211;Sep, incl. A/C)','الرسوم الصيفية (شامل التكييف)',BD(h.ac_livery_bd),true),
+    liveryContractField('Included','الخدمات المشمولة','Feed (2 meals) + daily wash + cleaning, + A/C in summer'),
+    liveryContractField('Payment Terms','شروط الدفع',esc(h.payment||'Due on the 1st of each month')),
+    liveryContractField('Contract Start','تاريخ بدء العقد',h.start_date?fmt(h.start_date):'—'),
+  ].join('');
+  return [
+    liveryContractField('Livery Type','نوع الإيواء','Fan Livery'),
+    liveryContractField('Monthly Fee (year-round)','الرسوم الشهرية (طوال العام)',BD(h.livery_bd),true),
+    liveryContractField('Included','الخدمات المشمولة','Feed (2 meals) + daily wash + cleaning'),
+    liveryContractField('Payment Terms','شروط الدفع',esc(h.payment||'Due on the 1st of each month')),
+    liveryContractField('Contract Start','تاريخ بدء العقد',h.start_date?fmt(h.start_date):'—'),
+  ].join('');
+}
 function liveryContractHtml(h,logoUrl){
   const today=fmt(new Date().toISOString().slice(0,10));
-  const monthly=moneyNum(h.livery_bd)+moneyNum(h.ac_livery_bd);
   const ownerRows=[
     liveryContractField('Owner Name','اسم المالك',esc(h.owner||'—'),true),
     liveryContractField('CPR','الرقم الشخصي',esc(h.cpr||'—')),
@@ -1801,14 +1822,7 @@ function liveryContractHtml(h,logoUrl){
     liveryContractField('Birth Date','تاريخ الميلاد',h.birth_date?fmt(h.birth_date):'—'),
     liveryContractField('Passport / Microchip','الجواز / الشريحة',esc(h.passport||'—')+' / '+esc(h.microchip||'—')),
   ].join('');
-  const termsRows=[
-    liveryContractField('Livery Type','نوع الإيواء',esc(h.livery_type||'Standard')),
-    liveryContractField('Monthly Livery Fee','رسوم الإيواء الشهرية',BD(h.livery_bd),true),
-    moneyNum(h.ac_livery_bd)>0?liveryContractField('A/C Livery Fee','رسوم الإيواء المكيف',BD(h.ac_livery_bd)):'',
-    liveryContractField('Total Monthly','الإجمالي الشهري',BD(monthly),true),
-    liveryContractField('Payment Terms','شروط الدفع',esc(h.payment||'Due on the 1st of each month')),
-    liveryContractField('Contract Start','تاريخ بدء العقد',h.start_date?fmt(h.start_date):'—'),
-  ].join('');
+  const termsRows=liveryPricingRows(h);
   return `<div style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;color:#1A2744;max-width:190mm;margin:auto">
     <div style="background:#1A2744;color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:14px">
       <img src="${logoUrl}" alt="Country Club Equestrian" style="width:46px;height:46px;object-fit:contain;background:#fff;border-radius:10px;padding:3px;flex-shrink:0">
@@ -1828,21 +1842,49 @@ function liveryContractHtml(h,logoUrl){
       </div>
       ${liveryContractCard('Livery Terms','شروط الإيواء',termsRows)}
       <div style="background:#F5EDD8;border-radius:10px;padding:10px 12px;margin-top:12px">
-        <div style="font-size:11px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:8px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
+        <div style="font-size:11px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:6px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div dir="ltr" style="font-size:10px;line-height:1.65;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:14px">
-            1. The monthly livery fee is due in advance on the 1st of every calendar month.<br>
-            2. Country Club Equestrian will provide daily feeding, stabling, and routine care as agreed.<br>
-            3. The owner is responsible for veterinary, farrier, and other special expenses unless otherwise agreed.<br>
-            4. Either party may terminate this agreement with 30 days written notice.<br>
-            5. The club is not liable for injury, illness, or death of the horse except in cases of proven negligence.
+          <div dir="ltr" style="font-size:8.5px;line-height:1.55;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:14px">
+            <div style="font-weight:800;color:#1A2744;margin-bottom:2px">First: Stable Services</div>
+            &bull; Suitable, safe housing (A/C or non-A/C) as agreed.<br>
+            &bull; Feed &amp; water provided regularly; dietary changes are at the owner's expense.<br>
+            &bull; Stable kept clean; horses washed once daily, more if needed.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">Second: Lessee Obligations</div>
+            &bull; Maintain cleanliness &amp; safety of the facilities.<br>
+            &bull; Follow all internal rules and regulations.<br>
+            &bull; Use equipment responsibly and return it to its place.<br>
+            &bull; No action regarding the horse without the stable manager's prior approval.<br>
+            &bull; Treat all staff and visitors with respect.<br>
+            &bull; Report any incident or issue concerning the horse immediately.<br>
+            &bull; If the horse or its owner causes any damage to the stable facilities, the owner shall bear the full cost of repairs.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">Third: Financial Obligations</div>
+            &bull; Rent is paid in advance and is non-refundable.<br>
+            &bull; If dues accumulate for more than 3 months, the club may take necessary measures, including selling the horse.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">Fourth: Scheduling &amp; Rules</div>
+            &bull; Gatherings by non-horse-owners inside the stable are prohibited.<br>
+            &bull; Schedules and timings set by management must be followed.<br>
+            &bull; Exceptional cases require prior coordination and approval from the manager.
           </div>
-          <div dir="rtl" style="font-size:10px;line-height:1.65;text-align:right;color:#444">
-            ١. رسوم الإيواء الشهرية مستحقة الدفع مقدماً في اليوم الأول من كل شهر ميلادي.<br>
-            ٢. يلتزم النادي بتوفير التغذية اليومية والإسطبل والرعاية الروتينية المتفق عليها.<br>
-            ٣. يتحمل المالك مصاريف الطبيب البيطري والحداد والمصاريف الخاصة الأخرى ما لم يُتفق على غير ذلك.<br>
-            ٤. يجوز لأي من الطرفين إنهاء هذا العقد بإشعار خطي مدته 30 يوماً.<br>
-            ٥. لا يتحمل النادي مسؤولية إصابة أو مرض أو نفوق الحصان إلا في حالات الإهمال الثابت.
+          <div dir="rtl" style="font-size:8.5px;line-height:1.55;text-align:right;color:#444">
+            <div style="font-weight:800;color:#1A2744;margin-bottom:2px">أولاً: توفير الإيواء والخدمات</div>
+            &bull; يلتزم النادي بتوفير مكان مناسب وآمن لإيواء الخيل (مكيف أو غير مكيف) وفقاً للاتفاق.<br>
+            &bull; يلتزم النادي بتوفير الغذاء والماء بانتظام. أي إضافة أو تعديل في النظام الغذائي يتحمله المالك.<br>
+            &bull; يلتزم النادي بالحفاظ على نظافة الإسطبل وتجهيزه، ويتم تسبيح الخيل مرة يومياً وعند الضرورة أكثر.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">ثانياً: التزامات المستأجر</div>
+            &bull; الالتزام بالمحافظة على نظافة وسلامة المرافق داخل الإسطبل.<br>
+            &bull; الالتزام بجميع القوانين واللوائح الداخلية.<br>
+            &bull; استخدام المعدات بمسؤولية وإعادتها لأماكنها المخصصة.<br>
+            &bull; عدم اتخاذ أي إجراء يخص الخيل دون موافقة مسبقة من مدير الإسطبل.<br>
+            &bull; احترام جميع العاملين والزوار والتعامل معهم بلطف.<br>
+            &bull; الإبلاغ الفوري عن أي حادث أو مشكلة تتعلق بالخيل.<br>
+            &bull; في حال تسبب الخيل أو صاحبه بأي تلف أو أضرار في مرافق الإسطبل، يتحمل مالك الخيل كامل تكاليف الإصلاح.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">ثالثاً: الالتزامات المالية</div>
+            &bull; يلتزم المستأجر بسداد الإيجار مقدماً وهو غير قابل للاسترداد.<br>
+            &bull; في حال تراكم المستحقات لأكثر من 3 أشهر، يحق للنادي اتخاذ الإجراءات اللازمة بما فيها بيع الخيل.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">رابعاً: المواعيد والتنظيم</div>
+            &bull; يُمنع تنظيم أي تجمعات داخل الإسطبل من قِبل غير مالكي الخيول.<br>
+            &bull; يجب الالتزام بالمواعيد والجداول الزمنية المحددة من الإدارة.<br>
+            &bull; في الحالات الاستثنائية يجب التنسيق المسبق مع المدير والحصول على موافقته.
           </div>
         </div>
       </div>
@@ -4145,7 +4187,7 @@ async function submitLivery(){
 
   // Build services list
   const services=[];
-  services.push(selectedLiveryType==='full'?'Full Livery (80 BD/mo)':'AC Livery (150 BD/mo)');
+  services.push(selectedLiveryType==='full'?'Full Livery (90 BD/mo)':'AC Livery (150 BD/mo)');
   if(document.getElementById('lv-shower').checked) services.push('Extra Care - Shower (3 BD)');
   if(document.getElementById('lv-vip-shower').checked) services.push('VIP Shower (10 BD)');
   if(document.getElementById('lv-cleaning').checked) services.push('Extra Care - Cleaning (3 BD)');
@@ -4316,7 +4358,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.4',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4409,7 +4451,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260811-4243', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260812-4244', {scope:'./'})
       .then(reg => {
 
         reg.update();

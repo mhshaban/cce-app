@@ -1270,14 +1270,46 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.24.3 cache key',()=>{
+test('all app assets use the v4.24.4 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260809-4241'));
-  assert.ok((html.match(/20260811-4243/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260811-4243/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260811-4243/);
-  assert.equal(read('VERSION.txt').trim(),'4.24.3');
+  assert.ok(!html.includes('20260811-4243'));
+  assert.ok((html.match(/20260812-4244/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260812-4244/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260812-4244/);
+  assert.equal(read('VERSION.txt').trim(),'4.24.4');
+});
+
+test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause',()=>{
+  const html=read('index.html');
+  assert.ok(!html.includes('80 BD'));
+  assert.match(html,/Full Livery<\/div>\s*<div style="font-size:18px;font-weight:700;color:var\(--amber\);margin-top:4px">90 BD\/mo/);
+  assert.match(html,/publicStartsFrom">يبدأ من<\/span><strong>90 BD/);
+  assert.match(html,/publicLiveryPrice1">إيواء كامل · شهريًا<\/span><strong>90 BD/);
+  assert.match(html,/في حال تسبب الخيل أو صاحبه بأي تلف أو أضرار في مرافق الإسطبل، يتحمل مالك الخيل كامل تكاليف الإصلاح\./);
+  const core=read('app-core.js');
+  assert.match(functionBlock(core,'submitLivery','resetLivery'),/Full Livery \(90 BD\/mo\)/);
+});
+
+test('liveryIsAC() classifies AC vs Fan livery from livery_type, falling back to the stable_no letter prefix',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'liveryIsAC','liveryPricingRows');
+  assert.match(fn,/\/ac\/i\.test\(type\)/);
+  assert.match(fn,/\^\[AB\]\/i\.test\(String\(h\.stable_no\|\|''\)\.trim\(\)\)/);
+});
+
+test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fee for Fan stables, never a summed total',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'liveryPricingRows','liveryContractHtml');
+  assert.match(fn,/liveryIsAC\(h\)/);
+  assert.match(fn,/Winter Fee/);
+  assert.match(fn,/Summer Fee/);
+  assert.match(fn,/Fan Livery/);
+  assert.doesNotMatch(fn,/moneyNum\(h\.livery_bd\)\+moneyNum\(h\.ac_livery_bd\)/);
+  assert.doesNotMatch(fn,/Total Monthly/);
+  ['h.livery_bd','h.ac_livery_bd','h.payment','h.start_date'].forEach(field=>{
+    assert.ok(fn.includes(field),`liveryPricingRows should reference ${field}`);
+  });
 });
 
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
@@ -1285,18 +1317,20 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   const cardBlock=functionBlock(core,'renderHorses','addHorse');
   assert.match(cardBlock,/title="Print Livery Contract" onclick="printLiveryContract\(\$\{hid\}\)"/);
   const contractHtml=functionBlock(core,'liveryContractHtml','printLiveryContract');
-  ['h.owner','h.cpr','h.address','h.contact','h.horse_name','h.stable_no','h.breed','h.color','h.sex','h.livery_type','h.livery_bd','h.ac_livery_bd','h.payment','h.start_date'].forEach(field=>{
+  ['h.owner','h.cpr','h.address','h.contact','h.horse_name','h.stable_no','h.breed','h.color','h.sex'].forEach(field=>{
     assert.ok(contractHtml.includes(field),`liveryContractHtml should reference ${field}`);
   });
+  assert.match(contractHtml,/liveryPricingRows\(h\)/);
   assert.match(contractHtml,/عقد إيواء/);
   assert.match(contractHtml,/Terms &amp; Conditions/);
   assert.match(contractHtml,/font-family:'Cairo'/);
   assert.match(contractHtml,/\$\{logoUrl\}/);
   assert.doesNotMatch(contractHtml,/Club Representative/);
   assert.match(contractHtml,/Country Club Equestrian \/ نادي الريف للفروسية/);
-  assert.match(contractHtml,/dir="ltr"[^>]*>[\s\S]*?1\. The monthly livery fee/);
-  assert.match(contractHtml,/dir="rtl"[^>]*>[\s\S]*?١\. رسوم الإيواء الشهرية/);
-  assert.doesNotMatch(contractHtml,/every calendar month\.\s*\/\s*رسوم/);
+  assert.match(contractHtml,/dir="ltr"[^>]*>[\s\S]*?First: Stable Services/);
+  assert.match(contractHtml,/dir="rtl"[^>]*>[\s\S]*?أولاً: توفير الإيواء والخدمات/);
+  assert.match(contractHtml,/If the horse or its owner causes any damage to the stable facilities, the owner shall bear the full cost of repairs\./);
+  assert.match(contractHtml,/في حال تسبب الخيل أو صاحبه بأي تلف أو أضرار في مرافق الإسطبل، يتحمل مالك الخيل كامل تكاليف الإصلاح\./);
   const printFn=functionBlock(core,'printLiveryContract','buildAlerts');
   assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
   assert.match(printFn,/new URL\('icons\/logo-transparent\.png',document\.baseURI\)\.href/);
