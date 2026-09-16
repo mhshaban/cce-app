@@ -271,6 +271,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260805_dashboard_financial_summary_permission_v4230.sql',
     'supabase/migrations/20260806_staff_portal_field_fix_v4233.sql',
     'supabase/migrations/20260807_staff_care_board_remove_feeding_v4234.sql',
+    'supabase/migrations/20260813_horse_livery_addons_v4250.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -315,6 +316,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4233.sql',
     'supabase/verification/preflight_v4234.sql',
     'supabase/verification/verify_v4234.sql',
+    'supabase/verification/preflight_v4250.sql',
+    'supabase/verification/verify_v4250.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -342,7 +345,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4220_compatibility.sql',
     'supabase/rollback/rollback_v4230_compatibility.sql',
     'supabase/rollback/rollback_v4233_compatibility.sql',
-    'supabase/rollback/rollback_v4234_compatibility.sql'
+    'supabase/rollback/rollback_v4234_compatibility.sql',
+    'supabase/rollback/rollback_v4250_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1270,25 +1274,38 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.24.4 cache key',()=>{
+test('all app assets use the v4.25.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260811-4243'));
-  assert.ok((html.match(/20260812-4244/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260812-4244/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260812-4244/);
-  assert.equal(read('VERSION.txt').trim(),'4.24.4');
+  assert.ok(!html.includes('20260813-4250'));
+  assert.ok((html.match(/20260814-4250/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260814-4250/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260814-4250/);
+  assert.equal(read('VERSION.txt').trim(),'4.25.0');
 });
 
-test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause',()=>{
+test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('80 BD'));
   assert.match(html,/Full Livery<\/div>\s*<div style="font-size:18px;font-weight:700;color:var\(--amber\);margin-top:4px">90 BD\/mo/);
   assert.match(html,/publicStartsFrom">يبدأ من<\/span><strong>90 BD/);
   assert.match(html,/publicLiveryPrice1">إيواء كامل · شهريًا<\/span><strong>90 BD/);
   assert.match(html,/في حال تسبب الخيل أو صاحبه بأي تلف أو أضرار في مرافق الإسطبل، يتحمل مالك الخيل كامل تكاليف الإصلاح\./);
+  assert.match(html,/If the horse or its owner causes any damage to the stable facilities, the horse owner shall bear the full cost of repairs\./);
   const core=read('app-core.js');
   assert.match(functionBlock(core,'submitLivery','resetLivery'),/Full Livery \(90 BD\/mo\)/);
+});
+
+test('Edit Horse modal captures Standard Package, Extra Care Add-ons, Feed Selection and Notes per horse, and saveHorse() persists all of them',()=>{
+  const core=read('app-core.js');
+  const editFn=functionBlock(core,'editHorse','saveHorse');
+  ['eh-std-wash','eh-std-feed','eh-std-cleaning','eh-extra-shower','eh-extra-vip-shower','eh-extra-cleaning','eh-extra-outdoor','eh-extra-training','eh-feed-teben','eh-feed-hay','eh-feed-wood','eh-livery-notes'].forEach(id=>{
+    assert.ok(editFn.includes(id),`editHorse should render #${id}`);
+  });
+  const saveFn=functionBlock(core,'saveHorse','editBreeding');
+  ['standard_wash','standard_feed','standard_cleaning','extra_shower','extra_vip_shower','extra_cleaning','extra_outdoor_leading','extra_training','feed_teben','feed_hay','feed_wood_shavings','livery_notes'].forEach(field=>{
+    assert.ok(saveFn.includes(field),`saveHorse should persist ${field}`);
+  });
 });
 
 test('liveryIsAC() classifies AC vs Fan livery from livery_type, falling back to the stable_no letter prefix',()=>{
@@ -1298,7 +1315,27 @@ test('liveryIsAC() classifies AC vs Fan livery from livery_type, falling back to
   assert.match(fn,/\^\[AB\]\/i\.test\(String\(h\.stable_no\|\|''\)\.trim\(\)\)/);
 });
 
-test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fee for Fan stables, never a summed total',()=>{
+test('liveryFixedAddonsTotal() sums only the flat recurring add-ons (shower, VIP shower, cleaning, training), not per-day/per-bundle items',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'liveryFixedAddonsTotal','liverySelectionSummary');
+  assert.match(fn,/h\.extra_shower\?LIVERY_ADDON_PRICES\.extra_shower\.price:0/);
+  assert.match(fn,/h\.extra_vip_shower\?LIVERY_ADDON_PRICES\.extra_vip_shower\.price:0/);
+  assert.match(fn,/h\.extra_cleaning\?LIVERY_ADDON_PRICES\.extra_cleaning\.price:0/);
+  assert.match(fn,/h\.extra_training\?LIVERY_ADDON_PRICES\.extra_training\.price:0/);
+  assert.doesNotMatch(fn,/extra_outdoor_leading/);
+  assert.doesNotMatch(fn,/feed_/);
+});
+
+test('liveryStandardSummary() lists only the standard-package components the customer kept (wash/feed/cleaning), or says none were kept',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'liveryStandardSummary','liveryPricingRows');
+  assert.match(fn,/h\.standard_wash!==false/);
+  assert.match(fn,/h\.standard_feed!==false/);
+  assert.match(fn,/h\.standard_cleaning!==false/);
+  assert.match(fn,/None \(customer opted out of the standard package\)/);
+});
+
+test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fee for Fan stables, never summing winter+summer, and folds in selected fixed add-ons',()=>{
   const core=read('app-core.js');
   const fn=functionBlock(core,'liveryPricingRows','liveryContractHtml');
   assert.match(fn,/liveryIsAC\(h\)/);
@@ -1306,8 +1343,16 @@ test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fe
   assert.match(fn,/Summer Fee/);
   assert.match(fn,/Fan Livery/);
   assert.doesNotMatch(fn,/moneyNum\(h\.livery_bd\)\+moneyNum\(h\.ac_livery_bd\)/);
-  assert.doesNotMatch(fn,/Total Monthly/);
-  ['h.livery_bd','h.ac_livery_bd','h.payment','h.start_date'].forEach(field=>{
+  assert.match(fn,/Total Winter Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
+  assert.match(fn,/Total Summer Monthly.*BD\(moneyNum\(h\.ac_livery_bd\)\+addonsTotal\)/);
+  assert.match(fn,/Total Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
+  assert.match(fn,/Standard Package Included/);
+  assert.match(fn,/liveryStandardSummary\(h,'A\/C in summer'\)/);
+  assert.match(fn,/liveryStandardSummary\(h\)\)/);
+  assert.match(fn,/Extra Care Add-ons/);
+  assert.match(fn,/Feed Selection/);
+  assert.doesNotMatch(fn,/year-round|طوال العام/);
+  ['h.livery_bd','h.ac_livery_bd','h.payment','h.start_date','h.livery_notes'].forEach(field=>{
     assert.ok(fn.includes(field),`liveryPricingRows should reference ${field}`);
   });
 });
