@@ -1270,12 +1270,27 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.23.6 cache key',()=>{
+test('all app assets use the v4.24.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260807-4235'));
-  assert.ok((html.match(/20260807-4236/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260807-4236/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260807-4236/);
-  assert.equal(read('VERSION.txt').trim(),'4.23.6');
+  assert.ok(!html.includes('20260807-4236'));
+  assert.ok((html.match(/20260808-4240/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260808-4240/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260808-4240/);
+  assert.equal(read('VERSION.txt').trim(),'4.24.0');
+});
+
+test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
+  const core=read('app-core.js');
+  const cardBlock=functionBlock(core,'renderHorses','addHorse');
+  assert.match(cardBlock,/title="Print Livery Contract" onclick="printLiveryContract\(\$\{hid\}\)"/);
+  const contractHtml=functionBlock(core,'liveryContractHtml','printLiveryContract');
+  ['h.owner','h.cpr','h.address','h.contact','h.horse_name','h.stable_no','h.breed','h.color','h.sex','h.livery_type','h.livery_bd','h.ac_livery_bd','h.payment','h.start_date'].forEach(field=>{
+    assert.ok(contractHtml.includes(field),`liveryContractHtml should reference ${field}`);
+  });
+  assert.match(contractHtml,/عقد إيواء/);
+  assert.match(contractHtml,/Terms &amp; Conditions/);
+  const printFn=functionBlock(core,'printLiveryContract','buildAlerts');
+  assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
+  assert.match(printFn,/window\.print\(\)/);
 });
