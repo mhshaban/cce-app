@@ -1748,7 +1748,7 @@ function renderHorses(){
       h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#F6F2E8;color:#C8923A;padding:8px 10px;font-size:15px" title="Print Livery Contract" onclick="printLiveryContract(${hid})">&#128196;</button><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
@@ -1770,6 +1770,62 @@ async function toggleHorse(id,cur){
   const ns=opts[(idx+1)%opts.length];
   if(!confirm('Change status to "'+ns+'"?'))return;
   await sbPatch('horses',id,{status:ns});await loadAll();
+}
+function liveryContractNo(h){return 'CCE-LIV-'+String(h.id||'').padStart(5,'0');}
+function liveryContractHtml(h){
+  const today=fmt(new Date().toISOString().slice(0,10));
+  const monthly=moneyNum(h.livery_bd)+moneyNum(h.ac_livery_bd);
+  return `<div style="font-family:Arial,sans-serif;color:#1A2744;max-width:800px;margin:auto;padding:28px;border:1px solid #ddd;border-radius:14px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:2px solid #C8923A;padding-bottom:12px;margin-bottom:18px">
+      <div><h2 style="margin:0">Country Club Equestrian</h2><div style="color:#777">Livery / Boarding Contract &middot; عقد إيواء</div></div>
+      <div style="text-align:right"><strong>${liveryContractNo(h)}</strong><br><span style="color:#777">${today}</span></div>
+    </div>
+    <h3 style="margin:0 0 8px">Horse Owner / بيانات المالك</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;width:35%">Owner Name / اسم المالك</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${esc(h.owner||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">CPR / الرقم الشخصي</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.cpr||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Address / العنوان</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.address||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Contact / رقم الاتصال</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.contact||'—')}</td></tr>
+    </tbody></table>
+    <h3 style="margin:0 0 8px">Horse Details / بيانات الحصان</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;width:35%">Horse Name / اسم الحصان</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${esc(h.horse_name||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Stable No / رقم الإسطبل</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.stable_no||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Breed / السلالة</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.breed||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Color / اللون</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.color||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Sex / الجنس</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.sex||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Birth Date / تاريخ الميلاد</td><td style="padding:8px;border-bottom:1px solid #eee">${h.birth_date?fmt(h.birth_date):'—'}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Passport / جواز الحصان</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.passport||'—')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Microchip / الشريحة</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.microchip||'—')}</td></tr>
+    </tbody></table>
+    <h3 style="margin:0 0 8px">Livery Terms / شروط الإيواء</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tbody>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;width:35%">Livery Type / نوع الإيواء</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.livery_type||'Standard')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Monthly Livery Fee / رسوم الإيواء الشهرية</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${BD(h.livery_bd)}</td></tr>
+      ${moneyNum(h.ac_livery_bd)>0?`<tr><td style="padding:8px;border-bottom:1px solid #eee">A/C Livery Fee / رسوم الإيواء المكيف</td><td style="padding:8px;border-bottom:1px solid #eee">${BD(h.ac_livery_bd)}</td></tr>`:''}
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Total Monthly / الإجمالي الشهري</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${BD(monthly)}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Payment Terms / شروط الدفع</td><td style="padding:8px;border-bottom:1px solid #eee">${esc(h.payment||'Due on the 1st of each month')}</td></tr>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee">Contract Start / تاريخ بدء العقد</td><td style="padding:8px;border-bottom:1px solid #eee">${h.start_date?fmt(h.start_date):'—'}</td></tr>
+    </tbody></table>
+    <div style="font-size:12.5px;color:#444;line-height:1.8;background:#F6F2E8;border-radius:10px;padding:14px;margin-bottom:24px">
+      <strong>Terms &amp; Conditions / الشروط والأحكام</strong><br>
+      1. The monthly livery fee is due in advance on the 1st of every calendar month. / رسوم الإيواء الشهرية مستحقة الدفع مقدماً في اليوم الأول من كل شهر ميلادي.<br>
+      2. Country Club Equestrian will provide daily feeding, stabling, and routine care as agreed. / يلتزم النادي بتوفير التغذية اليومية والإسطبل والرعاية الروتينية المتفق عليها.<br>
+      3. The owner is responsible for veterinary, farrier, and other special expenses unless otherwise agreed. / يتحمل المالك مصاريف الطبيب البيطري والحداد والمصاريف الخاصة الأخرى ما لم يُتفق على غير ذلك.<br>
+      4. Either party may terminate this agreement with 30 days written notice. / يجوز لأي من الطرفين إنهاء هذا العقد بإشعار خطي مدته 30 يوماً.<br>
+      5. The club is not liable for injury, illness, or death of the horse except in cases of proven negligence. / لا يتحمل النادي مسؤولية إصابة أو مرض أو نفوق الحصان إلا في حالات الإهمال الثابت.
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:24px;margin-top:32px">
+      <div style="flex:1;text-align:center"><div style="border-top:1px solid #999;margin-top:48px;padding-top:6px">Horse Owner Signature / توقيع المالك</div></div>
+      <div style="flex:1;text-align:center"><div style="border-top:1px solid #999;margin-top:48px;padding-top:6px">Club Representative / توقيع ممثل النادي</div></div>
+    </div>
+  </div>`;
+}
+function printLiveryContract(id){
+  const h=horses.find(x=>String(x.id)===String(id));if(!h)return;
+  const w=window.open('','_blank');
+  w.document.write('<html><head><title>'+liveryContractNo(h)+'</title></head><body>'+liveryContractHtml(h)+'<script>window.onload=function(){window.print()}<\/script></body></html>');
+  w.document.close();
 }
 function buildAlerts(){
   const bell=document.getElementById('alertBell');
@@ -4222,7 +4278,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.23.6',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4315,7 +4371,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260807-4236', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260808-4240', {scope:'./'})
       .then(reg => {
 
         reg.update();
