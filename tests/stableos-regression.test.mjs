@@ -1270,14 +1270,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.24.0 cache key',()=>{
+test('all app assets use the v4.24.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260807-4236'));
-  assert.ok((html.match(/20260808-4240/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260808-4240/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260808-4240/);
-  assert.equal(read('VERSION.txt').trim(),'4.24.0');
+  assert.ok(!html.includes('20260808-4240'));
+  assert.ok((html.match(/20260809-4241/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260809-4241/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260809-4241/);
+  assert.equal(read('VERSION.txt').trim(),'4.24.1');
 });
 
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
@@ -1290,7 +1290,12 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   });
   assert.match(contractHtml,/عقد إيواء/);
   assert.match(contractHtml,/Terms &amp; Conditions/);
+  assert.match(contractHtml,/font-family:'Cairo'/);
+  assert.match(contractHtml,/\$\{logoUrl\}/);
   const printFn=functionBlock(core,'printLiveryContract','buildAlerts');
   assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
+  assert.match(printFn,/new URL\('icons\/logo-transparent\.png',document\.baseURI\)\.href/);
+  assert.match(printFn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
+  assert.match(printFn,/@page\{size:A4;margin:12mm\}/);
   assert.match(printFn,/window\.print\(\)/);
 });
