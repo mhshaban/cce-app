@@ -1827,17 +1827,28 @@ function liveryContractHtml(h,logoUrl){
         ${liveryContractCard('Horse Details','بيانات الحصان',horseRows)}
       </div>
       ${liveryContractCard('Livery Terms','شروط الإيواء',termsRows)}
-      <div style="font-size:10.5px;color:#444;line-height:1.65;background:#F5EDD8;border-radius:10px;padding:10px 12px;margin-top:12px">
-        <strong style="color:#1A2744">Terms &amp; Conditions / الشروط والأحكام</strong><br>
-        1. The monthly livery fee is due in advance on the 1st of every calendar month. / رسوم الإيواء الشهرية مستحقة الدفع مقدماً في اليوم الأول من كل شهر ميلادي.<br>
-        2. Country Club Equestrian will provide daily feeding, stabling, and routine care as agreed. / يلتزم النادي بتوفير التغذية اليومية والإسطبل والرعاية الروتينية المتفق عليها.<br>
-        3. The owner is responsible for veterinary, farrier, and other special expenses unless otherwise agreed. / يتحمل المالك مصاريف الطبيب البيطري والحداد والمصاريف الخاصة الأخرى ما لم يُتفق على غير ذلك.<br>
-        4. Either party may terminate this agreement with 30 days written notice. / يجوز لأي من الطرفين إنهاء هذا العقد بإشعار خطي مدته 30 يوماً.<br>
-        5. The club is not liable for injury, illness, or death of the horse except in cases of proven negligence. / لا يتحمل النادي مسؤولية إصابة أو مرض أو نفوق الحصان إلا في حالات الإهمال الثابت.
+      <div style="background:#F5EDD8;border-radius:10px;padding:10px 12px;margin-top:12px">
+        <div style="font-size:11px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:8px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div dir="ltr" style="font-size:10px;line-height:1.65;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:14px">
+            1. The monthly livery fee is due in advance on the 1st of every calendar month.<br>
+            2. Country Club Equestrian will provide daily feeding, stabling, and routine care as agreed.<br>
+            3. The owner is responsible for veterinary, farrier, and other special expenses unless otherwise agreed.<br>
+            4. Either party may terminate this agreement with 30 days written notice.<br>
+            5. The club is not liable for injury, illness, or death of the horse except in cases of proven negligence.
+          </div>
+          <div dir="rtl" style="font-size:10px;line-height:1.65;text-align:right;color:#444">
+            ١. رسوم الإيواء الشهرية مستحقة الدفع مقدماً في اليوم الأول من كل شهر ميلادي.<br>
+            ٢. يلتزم النادي بتوفير التغذية اليومية والإسطبل والرعاية الروتينية المتفق عليها.<br>
+            ٣. يتحمل المالك مصاريف الطبيب البيطري والحداد والمصاريف الخاصة الأخرى ما لم يُتفق على غير ذلك.<br>
+            ٤. يجوز لأي من الطرفين إنهاء هذا العقد بإشعار خطي مدته 30 يوماً.<br>
+            ٥. لا يتحمل النادي مسؤولية إصابة أو مرض أو نفوق الحصان إلا في حالات الإهمال الثابت.
+          </div>
+        </div>
       </div>
       <div style="display:flex;justify-content:space-between;gap:24px;margin-top:22px">
         <div style="flex:1;text-align:center;font-size:11px"><div style="border-top:1px solid #7A8399;margin-top:30px;padding-top:5px">Horse Owner Signature / توقيع المالك</div></div>
-        <div style="flex:1;text-align:center;font-size:11px"><div style="border-top:1px solid #7A8399;margin-top:30px;padding-top:5px">Club Representative / توقيع ممثل النادي</div></div>
+        <div style="flex:1;text-align:center;font-size:11px"><div style="border-top:1px solid #7A8399;margin-top:30px;padding-top:5px">Country Club Equestrian / نادي الريف للفروسية</div></div>
       </div>
     </div>
   </div>`;
@@ -4305,7 +4316,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.24.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4398,7 +4409,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260809-4241', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260811-4243', {scope:'./'})
       .then(reg => {
 
         reg.update();
@@ -4415,7 +4426,7 @@ function showUpdateBanner(){
   if(document.getElementById('updateBanner'))return;
   const b=document.createElement('div');
   b.id='updateBanner';
-  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#1E7D4E;color:#fff;padding:12px 16px;text-align:center;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2)';
+  b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1E7D4E;color:#fff;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;box-shadow:0 -4px 14px rgba(0,0,0,.2)';
   b.innerHTML='A new version is ready. <button style="margin-left:10px;background:#fff;color:#1E7D4E;border:none;border-radius:7px;padding:6px 12px;font-weight:700" onclick="location.reload()">Update now</button>';
   document.body.appendChild(b);
 }

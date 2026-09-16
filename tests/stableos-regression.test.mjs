@@ -1270,14 +1270,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.24.1 cache key',()=>{
+test('all app assets use the v4.24.3 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260808-4240'));
-  assert.ok((html.match(/20260809-4241/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260809-4241/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260809-4241/);
-  assert.equal(read('VERSION.txt').trim(),'4.24.1');
+  assert.ok(!html.includes('20260809-4241'));
+  assert.ok((html.match(/20260811-4243/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260811-4243/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260811-4243/);
+  assert.equal(read('VERSION.txt').trim(),'4.24.3');
 });
 
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
@@ -1292,10 +1292,23 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   assert.match(contractHtml,/Terms &amp; Conditions/);
   assert.match(contractHtml,/font-family:'Cairo'/);
   assert.match(contractHtml,/\$\{logoUrl\}/);
+  assert.doesNotMatch(contractHtml,/Club Representative/);
+  assert.match(contractHtml,/Country Club Equestrian \/ نادي الريف للفروسية/);
+  assert.match(contractHtml,/dir="ltr"[^>]*>[\s\S]*?1\. The monthly livery fee/);
+  assert.match(contractHtml,/dir="rtl"[^>]*>[\s\S]*?١\. رسوم الإيواء الشهرية/);
+  assert.doesNotMatch(contractHtml,/every calendar month\.\s*\/\s*رسوم/);
   const printFn=functionBlock(core,'printLiveryContract','buildAlerts');
   assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
   assert.match(printFn,/new URL\('icons\/logo-transparent\.png',document\.baseURI\)\.href/);
   assert.match(printFn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
   assert.match(printFn,/@page\{size:A4;margin:12mm\}/);
   assert.match(printFn,/window\.print\(\)/);
+});
+
+test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'showUpdateBanner','showInstallBanner');
+  assert.match(fn,/position:fixed;bottom:0;left:0;right:0/);
+  assert.doesNotMatch(fn,/position:fixed;top:0/);
+  assert.match(fn,/env\(safe-area-inset-bottom,0px\)/);
 });
