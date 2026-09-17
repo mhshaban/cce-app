@@ -1274,14 +1274,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.25.0 cache key',()=>{
+test('all app assets use the v4.25.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260813-4250'));
-  assert.ok((html.match(/20260814-4250/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260814-4250/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260814-4250/);
-  assert.equal(read('VERSION.txt').trim(),'4.25.0');
+  assert.ok(!html.includes('20260814-4250'));
+  assert.ok((html.match(/20260815-4251/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260815-4251/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260815-4251/);
+  assert.equal(read('VERSION.txt').trim(),'4.25.1');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1335,16 +1335,14 @@ test('liveryStandardSummary() lists only the standard-package components the cus
   assert.match(fn,/None \(customer opted out of the standard package\)/);
 });
 
-test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fee for Fan stables, never summing winter+summer, and folds in selected fixed add-ons',()=>{
+test('liveryPricingRows() shows a combined seasonal fee row for AC stables (same row-count as Fan, so both fit one A4 page) and one flat fee for Fan stables, folding in selected fixed add-ons',()=>{
   const core=read('app-core.js');
   const fn=functionBlock(core,'liveryPricingRows','liveryContractHtml');
   assert.match(fn,/liveryIsAC\(h\)/);
-  assert.match(fn,/Winter Fee/);
-  assert.match(fn,/Summer Fee/);
+  assert.match(fn,/Seasonal Fee \(Winter \/ Summer/);
   assert.match(fn,/Fan Livery/);
   assert.doesNotMatch(fn,/moneyNum\(h\.livery_bd\)\+moneyNum\(h\.ac_livery_bd\)/);
-  assert.match(fn,/Total Winter Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
-  assert.match(fn,/Total Summer Monthly.*BD\(moneyNum\(h\.ac_livery_bd\)\+addonsTotal\)/);
+  assert.match(fn,/Total Monthly \(Winter \/ Summer\).*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)\+' \/ '\+BD\(moneyNum\(h\.ac_livery_bd\)\+addonsTotal\)/);
   assert.match(fn,/Total Monthly.*BD\(moneyNum\(h\.livery_bd\)\+addonsTotal\)/);
   assert.match(fn,/Standard Package Included/);
   assert.match(fn,/liveryStandardSummary\(h,'A\/C in summer'\)/);
@@ -1355,6 +1353,9 @@ test('liveryPricingRows() shows two seasonal fees for AC stables and one flat fe
   ['h.livery_bd','h.ac_livery_bd','h.payment','h.start_date','h.livery_notes'].forEach(field=>{
     assert.ok(fn.includes(field),`liveryPricingRows should reference ${field}`);
   });
+  const acBranchRows=fn.slice(fn.indexOf('return [',fn.indexOf('liveryIsAC(h)')),fn.indexOf('].join'));
+  const fanBranchRows=fn.slice(fn.lastIndexOf('return ['));
+  assert.equal((acBranchRows.match(/liveryContractField\(/g)||[]).length,(fanBranchRows.match(/liveryContractField\(/g)||[]).length);
 });
 
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
@@ -1380,7 +1381,7 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
   assert.match(printFn,/new URL\('icons\/logo-transparent\.png',document\.baseURI\)\.href/);
   assert.match(printFn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
-  assert.match(printFn,/@page\{size:A4;margin:12mm\}/);
+  assert.match(printFn,/@page\{size:A4;margin:9mm\}/);
   assert.match(printFn,/window\.print\(\)/);
 });
 
