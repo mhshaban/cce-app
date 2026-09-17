@@ -1773,14 +1773,14 @@ async function toggleHorse(id,cur){
 }
 function liveryContractNo(h){return 'CCE-LIV-'+String(h.id||'').padStart(5,'0');}
 function liveryContractField(labelEn,labelAr,value,strong){
-  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #E3D9C6;font-size:11.5px;line-height:1.4">
+  return `<div style="display:flex;justify-content:space-between;gap:10px;padding:3.5px 0;border-bottom:1px solid #E3D9C6;font-size:11px;line-height:1.35">
     <span style="color:#7A8399;flex-shrink:0">${labelEn} <span style="opacity:.75">/ ${labelAr}</span></span>
     <span style="text-align:right;${strong?'font-weight:800;color:#1A2744':'font-weight:600;color:#1A2744'}">${value}</span>
   </div>`;
 }
 function liveryContractCard(titleEn,titleAr,rowsHtml){
-  return `<div style="background:#fff;border:1px solid #E3D9C6;border-radius:12px;padding:12px 14px">
-    <div style="font-size:12.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:6px">${titleEn} <span style="color:#7A8399;font-weight:600">/ ${titleAr}</span></div>
+  return `<div style="background:#fff;border:1px solid #E3D9C6;border-radius:12px;padding:10px 12px">
+    <div style="font-size:12px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${titleEn} <span style="color:#7A8399;font-weight:600">/ ${titleAr}</span></div>
     ${rowsHtml}
   </div>`;
 }
@@ -1830,12 +1830,10 @@ function liveryPricingRows(h){
   const addonsTotal=liveryFixedAddonsTotal(h);
   if(liveryIsAC(h))return [
     liveryContractField('Livery Type','نوع الإيواء','AC Livery'),
-    liveryContractField('Winter Fee (Oct&#8211;Apr)','الرسوم الشتوية',BD(h.livery_bd)),
-    liveryContractField('Summer Fee (May&#8211;Sep, incl. A/C)','الرسوم الصيفية (شامل التكييف)',BD(h.ac_livery_bd)),
+    liveryContractField('Seasonal Fee (Winter / Summer, Oct&#8211;Apr / May&#8211;Sep)','الرسوم الموسمية (شتوي / صيفي)',BD(h.livery_bd)+' / '+BD(h.ac_livery_bd)+' <span style="font-weight:400;color:#7A8399">(A/C in summer)</span>'),
     liveryContractField('Standard Package Included','الباقة العادية المشمولة',esc(liveryStandardSummary(h,'A/C in summer'))),
     addonsRow,feedRow,
-    liveryContractField('Total Winter Monthly','الإجمالي الشتوي الشهري',BD(moneyNum(h.livery_bd)+addonsTotal),true),
-    liveryContractField('Total Summer Monthly','الإجمالي الصيفي الشهري',BD(moneyNum(h.ac_livery_bd)+addonsTotal),true),
+    liveryContractField('Total Monthly (Winter / Summer)','الإجمالي الشهري (شتوي / صيفي)',BD(moneyNum(h.livery_bd)+addonsTotal)+' / '+BD(moneyNum(h.ac_livery_bd)+addonsTotal),true),
     liveryContractField('Payment Terms','شروط الدفع',esc(h.payment||'Due on the 1st of each month')),
     liveryContractField('Contract Start','تاريخ بدء العقد',h.start_date?fmt(h.start_date):'—'),
     notesRow,
@@ -1869,27 +1867,27 @@ function liveryContractHtml(h,logoUrl){
   ].join('');
   const termsRows=liveryPricingRows(h);
   return `<div style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;color:#1A2744;max-width:190mm;margin:auto">
-    <div style="background:#1A2744;color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:14px">
-      <img src="${logoUrl}" alt="Country Club Equestrian" style="width:46px;height:46px;object-fit:contain;background:#fff;border-radius:10px;padding:3px;flex-shrink:0">
+    <div style="background:#1A2744;color:#fff;padding:10px 16px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px">
+      <img src="${logoUrl}" alt="Country Club Equestrian" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;flex-shrink:0">
       <div style="flex:1;min-width:0">
-        <div style="font-size:17px;font-weight:800">Country Club Equestrian</div>
-        <div style="font-size:11.5px;color:#E3D9C6">نادي الريف للفروسية &middot; Livery / Boarding Contract &middot; عقد إيواء</div>
+        <div style="font-size:15px;font-weight:800">Country Club Equestrian</div>
+        <div style="font-size:10.5px;color:#E3D9C6">نادي الريف للفروسية &middot; Livery / Boarding Contract &middot; عقد إيواء</div>
       </div>
-      <div style="text-align:right;font-size:11px;color:#E3D9C6;flex-shrink:0">
-        <div style="font-weight:800;color:#fff;font-size:13px">${liveryContractNo(h)}</div>
+      <div style="text-align:right;font-size:10px;color:#E3D9C6;flex-shrink:0">
+        <div style="font-weight:800;color:#fff;font-size:12px">${liveryContractNo(h)}</div>
         <div>${today}</div>
       </div>
     </div>
-    <div style="border:1px solid #E3D9C6;border-top:none;border-radius:0 0 14px 14px;padding:16px 18px;background:#FDFAF4">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div style="border:1px solid #E3D9C6;border-top:none;border-radius:0 0 14px 14px;padding:12px 16px;background:#FDFAF4">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         ${liveryContractCard('Horse Owner','بيانات المالك',ownerRows)}
         ${liveryContractCard('Horse Details','بيانات الحصان',horseRows)}
       </div>
       ${liveryContractCard('Livery Terms','شروط الإيواء',termsRows)}
-      <div style="background:#F5EDD8;border-radius:10px;padding:10px 12px;margin-top:12px">
-        <div style="font-size:11px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:6px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div dir="ltr" style="font-size:8.5px;line-height:1.55;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:14px">
+      <div style="background:#F5EDD8;border-radius:10px;padding:8px 10px;margin-top:8px">
+        <div style="font-size:10.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div dir="ltr" style="font-size:8px;line-height:1.45;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:12px">
             <div style="font-weight:800;color:#1A2744;margin-bottom:2px">First: Stable Services</div>
             &bull; Suitable, safe housing (A/C or non-A/C) as agreed.<br>
             &bull; Feed &amp; water provided regularly; dietary changes are at the owner's expense.<br>
@@ -1910,7 +1908,7 @@ function liveryContractHtml(h,logoUrl){
             &bull; Schedules and timings set by management must be followed.<br>
             &bull; Exceptional cases require prior coordination and approval from the manager.
           </div>
-          <div dir="rtl" style="font-size:8.5px;line-height:1.55;text-align:right;color:#444">
+          <div dir="rtl" style="font-size:8px;line-height:1.45;text-align:right;color:#444">
             <div style="font-weight:800;color:#1A2744;margin-bottom:2px">أولاً: توفير الإيواء والخدمات</div>
             &bull; يلتزم النادي بتوفير مكان مناسب وآمن لإيواء الخيل (مكيف أو غير مكيف) وفقاً للاتفاق.<br>
             &bull; يلتزم النادي بتوفير الغذاء والماء بانتظام. أي إضافة أو تعديل في النظام الغذائي يتحمله المالك.<br>
@@ -1933,9 +1931,9 @@ function liveryContractHtml(h,logoUrl){
           </div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;gap:24px;margin-top:22px">
-        <div style="flex:1;text-align:center;font-size:11px"><div style="border-top:1px solid #7A8399;margin-top:30px;padding-top:5px">Horse Owner Signature / توقيع المالك</div></div>
-        <div style="flex:1;text-align:center;font-size:11px"><div style="border-top:1px solid #7A8399;margin-top:30px;padding-top:5px">Country Club Equestrian / نادي الريف للفروسية</div></div>
+      <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
+        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">Horse Owner Signature / توقيع المالك</div></div>
+        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">Country Club Equestrian / نادي الريف للفروسية</div></div>
       </div>
     </div>
   </div>`;
@@ -1947,7 +1945,7 @@ function printLiveryContract(id){
   const doc='<!doctype html><html><head><meta charset="utf-8"><title>'+liveryContractNo(h)+'</title>'
     +'<link rel="preconnect" href="https://fonts.googleapis.com">'
     +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">'
-    +'<style>@page{size:A4;margin:12mm}body{margin:0;padding:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{padding:0}}</style>'
+    +'<style>@page{size:A4;margin:9mm}body{margin:0;padding:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{padding:0}}</style>'
     +'</head><body>'+liveryContractHtml(h,logoUrl)+'<script>window.onload=function(){window.print()}<\/script></body></html>';
   w.document.write(doc);
   w.document.close();
@@ -4430,7 +4428,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.25.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.25.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4523,7 +4521,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260814-4250', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260815-4251', {scope:'./'})
       .then(reg => {
 
         reg.update();
