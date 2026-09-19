@@ -275,6 +275,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260817_livery_full_price_correction_v4261.sql',
     'supabase/migrations/20260818_lease_booking_type_v4270.sql',
     'supabase/migrations/20260819_breeding_agreement_v4280.sql',
+    'supabase/migrations/20260821_breeding_boarding_total_v4290.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -327,6 +328,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4270.sql',
     'supabase/verification/preflight_v4280.sql',
     'supabase/verification/verify_v4280.sql',
+    'supabase/verification/preflight_v4290.sql',
+    'supabase/verification/verify_v4290.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -358,7 +361,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4250_compatibility.sql',
     'supabase/rollback/rollback_v4261_compatibility.sql',
     'supabase/rollback/rollback_v4270_compatibility.sql',
-    'supabase/rollback/rollback_v4280_compatibility.sql'
+    'supabase/rollback/rollback_v4280_compatibility.sql',
+    'supabase/rollback/rollback_v4290_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1286,14 +1290,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.28.1 cache key',()=>{
+test('all app assets use the v4.29.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260819-4280'));
-  assert.ok((html.match(/20260820-4281/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260820-4281/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260820-4281/);
-  assert.equal(read('VERSION.txt').trim(),'4.28.1');
+  assert.ok(!html.includes('20260820-4281'));
+  assert.ok((html.match(/20260821-4290/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260821-4290/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260821-4290/);
+  assert.equal(read('VERSION.txt').trim(),'4.29.0');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1542,24 +1546,38 @@ test('contractDocumentHtml() supports a full RTL Arabic-only mode: outer dir, ri
 test('Edit Breeding modal captures stallion, owner ID/email, package price/boarding plan and agreement date, and saveBreeding() persists them',()=>{
   const core=read('app-core.js');
   const editFn=functionBlock(core,'editBreeding','saveBreeding');
-  ['eb-mare-breed','eb-owner-id','eb-owner-email','eb-stallion','eb-stallion-breed','eb-count','eb-price','eb-boarding','eb-agreement-date'].forEach(id=>{
+  ['eb-mare-breed','eb-owner-id','eb-owner-email','eb-stallion','eb-stallion-breed','eb-count','eb-price','eb-boarding','eb-boarding-days','eb-agreement-date'].forEach(id=>{
     assert.ok(editFn.includes(id),`editBreeding should render #${id}`);
   });
   const saveFn=functionBlock(core,'saveBreeding','openTrainingPaymentModal');
-  ['mare_breed','owner_id','owner_email','stallion_name','stallion_breed','package_price_bd','boarding_plan','agreement_date'].forEach(field=>{
+  ['mare_breed','owner_id','owner_email','stallion_name','stallion_breed','package_price_bd','boarding_plan','boarding_days','agreement_date'].forEach(field=>{
     assert.ok(saveFn.includes(field),`saveBreeding should persist ${field}`);
   });
 });
 
-test('breedingContractHtml() builds an RTL Arabic-only "اتفاقية تنسيل" agreement from the breeding record, printBreedingContract() is gated on stallion_name being set',()=>{
+test('breedingBoardingRate() maps the boarding plan text to its daily rate (3 with feed, 2 without, 0 for none)',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'breedingBoardingRate','breedingContractHtml');
+  assert.match(fn,/With Feed/);
+  assert.match(fn,/Without Feed/);
+  assert.match(fn,/return 3/);
+  assert.match(fn,/return 2/);
+  assert.match(fn,/return 0/);
+});
+
+test('breedingContractHtml() builds an RTL Arabic-only "اتفاقية تنسيل" agreement from the breeding record with a computed boarding cost and grand total, printBreedingContract() is gated on stallion_name being set',()=>{
   const core=read('app-core.js');
   const contractFn=functionBlock(core,'breedingContractHtml','printBreedingContract');
-  ['r.owner','r.owner_id','r.mobile','r.owner_email','r.mare_name','r.mare_breed','r.stallion_name','r.stallion_breed','r.package_price_bd','r.boarding_plan','r.agreement_date'].forEach(field=>{
+  ['r.owner','r.owner_id','r.mobile','r.owner_email','r.mare_name','r.mare_breed','r.stallion_name','r.stallion_breed','r.package_price_bd','r.boarding_plan','r.boarding_days','r.agreement_date'].forEach(field=>{
     assert.ok(contractFn.includes(field),`breedingContractHtml should reference ${field}`);
   });
   assert.match(contractFn,/dir:'rtl'/);
   assert.match(contractFn,/اتفاقية تنسيل/);
   assert.match(contractFn,/يجب ألا تتجاوز الفترة الفاصلة بين الدورة الواحدة والدورة التي تليها 21 يوماً/);
+  assert.match(contractFn,/const boardingCost=boardingRate>0&&boardingDays>0\?boardingRate\*boardingDays:0/);
+  assert.match(contractFn,/const total=price\+boardingCost/);
+  assert.match(contractFn,/الإجمالي','',BD\(total\),true/);
+  assert.match(contractFn,/تكلفة الإيواء/);
   const priceFn=functionBlock(core,'breedingPackagePrice','breedingCycleRows');
   assert.match(priceFn,/count===1\?100:count===2\?150:count===3\?200:0/);
   const breedList=functionBlock(core,'renderBreeding','addBreeding');
