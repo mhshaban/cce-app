@@ -274,6 +274,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260813_horse_livery_addons_v4250.sql',
     'supabase/migrations/20260817_livery_full_price_correction_v4261.sql',
     'supabase/migrations/20260818_lease_booking_type_v4270.sql',
+    'supabase/migrations/20260819_breeding_agreement_v4280.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -324,6 +325,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4261.sql',
     'supabase/verification/preflight_v4270.sql',
     'supabase/verification/verify_v4270.sql',
+    'supabase/verification/preflight_v4280.sql',
+    'supabase/verification/verify_v4280.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -354,7 +357,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4234_compatibility.sql',
     'supabase/rollback/rollback_v4250_compatibility.sql',
     'supabase/rollback/rollback_v4261_compatibility.sql',
-    'supabase/rollback/rollback_v4270_compatibility.sql'
+    'supabase/rollback/rollback_v4270_compatibility.sql',
+    'supabase/rollback/rollback_v4280_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1282,14 +1286,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.27.0 cache key',()=>{
+test('all app assets use the v4.28.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260817-4261'));
-  assert.ok((html.match(/20260818-4270/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260818-4270/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260818-4270/);
-  assert.equal(read('VERSION.txt').trim(),'4.27.0');
+  assert.ok(!html.includes('20260818-4270'));
+  assert.ok((html.match(/20260819-4280/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260819-4280/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260819-4280/);
+  assert.equal(read('VERSION.txt').trim(),'4.28.0');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1522,6 +1526,44 @@ test('renderBookings() recognizes the lease request type with its own badge and 
   const fn=functionBlock(core,'renderBookings','updateBookingStatus');
   assert.match(fn,/requestType==='lease'/);
   assert.match(fn,/Lease<\/span>/);
+});
+
+test('contractDocumentHtml() supports a full RTL Arabic-only mode: outer dir, right-aligned text, and mirrored card/terms accent bars',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'contractDocumentHtml','openContractPrintWindow');
+  assert.match(fn,/const dir=opts\.dir\|\|'ltr'/);
+  assert.match(fn,/dir="\$\{dir\}"/);
+  assert.match(fn,/text-align:\$\{align\}/);
+  assert.match(fn,/border-\$\{accentSide\}:3px solid #C8923A/);
+  const cardFn=functionBlock(core,'liveryContractCard','liveryIsAC');
+  assert.match(cardFn,/const accentSide=dir==='rtl'\?'right':'left'/);
+});
+
+test('Edit Breeding modal captures stallion, owner ID/email, package price/boarding plan and agreement date, and saveBreeding() persists them',()=>{
+  const core=read('app-core.js');
+  const editFn=functionBlock(core,'editBreeding','saveBreeding');
+  ['eb-mare-breed','eb-owner-id','eb-owner-email','eb-stallion','eb-stallion-breed','eb-count','eb-price','eb-boarding','eb-agreement-date'].forEach(id=>{
+    assert.ok(editFn.includes(id),`editBreeding should render #${id}`);
+  });
+  const saveFn=functionBlock(core,'saveBreeding','openTrainingPaymentModal');
+  ['mare_breed','owner_id','owner_email','stallion_name','stallion_breed','package_price_bd','boarding_plan','agreement_date'].forEach(field=>{
+    assert.ok(saveFn.includes(field),`saveBreeding should persist ${field}`);
+  });
+});
+
+test('breedingContractHtml() builds an RTL Arabic-only "اتفاقية تنسيل" agreement from the breeding record, printBreedingContract() is gated on stallion_name being set',()=>{
+  const core=read('app-core.js');
+  const contractFn=functionBlock(core,'breedingContractHtml','printBreedingContract');
+  ['r.owner','r.owner_id','r.mobile','r.owner_email','r.mare_name','r.mare_breed','r.stallion_name','r.stallion_breed','r.package_price_bd','r.boarding_plan','r.agreement_date'].forEach(field=>{
+    assert.ok(contractFn.includes(field),`breedingContractHtml should reference ${field}`);
+  });
+  assert.match(contractFn,/dir:'rtl'/);
+  assert.match(contractFn,/اتفاقية تنسيل/);
+  assert.match(contractFn,/يجب ألا تتجاوز الفترة الفاصلة بين الدورة الواحدة والدورة التي تليها 21 يوماً/);
+  const priceFn=functionBlock(core,'breedingPackagePrice','breedingCycleRows');
+  assert.match(priceFn,/count===1\?100:count===2\?150:count===3\?200:0/);
+  const breedList=functionBlock(core,'renderBreeding','addBreeding');
+  assert.match(breedList,/r\.stallion_name\?'<button[^']*title="Print Breeding Agreement" onclick="printBreedingContract\('\+r\.id\+'\)"/);
 });
 
 test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{
