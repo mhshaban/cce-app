@@ -273,6 +273,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260807_staff_care_board_remove_feeding_v4234.sql',
     'supabase/migrations/20260813_horse_livery_addons_v4250.sql',
     'supabase/migrations/20260817_livery_full_price_correction_v4261.sql',
+    'supabase/migrations/20260818_lease_booking_type_v4270.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -321,6 +322,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4250.sql',
     'supabase/verification/preflight_v4261.sql',
     'supabase/verification/verify_v4261.sql',
+    'supabase/verification/preflight_v4270.sql',
+    'supabase/verification/verify_v4270.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -350,7 +353,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4233_compatibility.sql',
     'supabase/rollback/rollback_v4234_compatibility.sql',
     'supabase/rollback/rollback_v4250_compatibility.sql',
-    'supabase/rollback/rollback_v4261_compatibility.sql'
+    'supabase/rollback/rollback_v4261_compatibility.sql',
+    'supabase/rollback/rollback_v4270_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1278,14 +1282,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.26.1 cache key',()=>{
+test('all app assets use the v4.27.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260816-4260'));
-  assert.ok((html.match(/20260817-4261/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260817-4261/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260817-4261/);
-  assert.equal(read('VERSION.txt').trim(),'4.26.1');
+  assert.ok(!html.includes('20260817-4261'));
+  assert.ok((html.match(/20260818-4270/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260818-4270/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260818-4270/);
+  assert.equal(read('VERSION.txt').trim(),'4.27.0');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1441,6 +1445,83 @@ test('renderBookings() shows a Print Contract button for training/ride requests,
   assert.match(fn,/onclick="printTrainingContract\('\+request\.id\+'\)"/);
   assert.match(fn,/canViewSensitive&&requestType==='ride'/);
   assert.match(fn,/onclick="printRideContract\('\+request\.id\+'\)"/);
+});
+
+test('the public homepage has a fourth "Horse Lease" card linking to a dedicated page-lease booking form',()=>{
+  const html=read('index.html');
+  assert.match(html,/id="page-lease"/);
+  assert.match(html,/publicLeaseTitle/);
+  assert.match(html,/onclick="navigate\('lease'\)"/);
+  assert.match(html,/id="le-name"/);
+  assert.match(html,/id="le-personal-id"/);
+  assert.match(html,/id="le-horse"/);
+  assert.match(html,/id="le-terms"/);
+  assert.match(html,/onclick="submitLease\(\)"/);
+  assert.match(html,/onclick="resetLease\(\)"/);
+  assert.match(html,/LESSOR'S Remedies on Breach/);
+  assert.match(html,/immediately if the LESSOR and\/or stable manager determines that the horse's health is put at risk/);
+  assert.doesNotMatch(html,/deems that the voided immediately/);
+  const core=read('app-core.js');
+  assert.match(core,/page_lease:'Horse Lease'/);
+  assert.match(core,/page_lease:'إيجار طويل الأمد'/);
+});
+
+test('submitLease() sends a request_type=lease booking with no date/price fields required, and resetLease() clears the form',()=>{
+  const core=read('app-core.js');
+  const submitFn=functionBlock(core,'submitLease','resetLease');
+  assert.match(submitFn,/p_request_type:'lease',p_service_code:'lease_request'/);
+  assert.match(submitFn,/p_personal_id:personalId/);
+  assert.match(submitFn,/p_horse_name:horse\|\|null/);
+  const resetFn=functionBlock(core,'resetLease','monthKeyFromDate');
+  assert.match(resetFn,/le-name.*le-phone.*le-personal-id.*le-address.*le-horse.*le-notes/);
+});
+
+test('leaseContractHtml() builds an English-only single-column Horse Lease Agreement with the corrected breach clause, printLeaseContract() is gated on lease_active',()=>{
+  const core=read('app-core.js');
+  const contractFn=functionBlock(core,'leaseContractHtml','printLeaseContract');
+  ['h.lease_customer_name','h.lease_cpr','h.lease_address','h.lease_mobile','h.lease_monthly_price','h.lease_farrier_share','h.lease_farrier_weeks','h.lease_farrier_name','h.lease_trainer_name','h.lease_start_date'].forEach(field=>{
+    assert.ok(contractFn.includes(field),`leaseContractHtml should reference ${field}`);
+  });
+  assert.match(contractFn,/termsArHtml:''/);
+  assert.match(contractFn,/subtitleAr:''/);
+  assert.match(contractFn,/Horse Lease Agreement/);
+  assert.match(contractFn,/LESSOR'S Remedies on Breach/);
+  assert.match(contractFn,/immediately if the LESSOR and\/or stable manager determines that the horse's health is put at risk/);
+  assert.doesNotMatch(contractFn,/deems that the voided immediately/);
+  const cardBlock=functionBlock(core,'renderHorses','addHorse');
+  assert.match(cardBlock,/h\.lease_active\?'<button[^']*title="Print Lease Contract" onclick="printLeaseContract\('\+hid\+'\)"/);
+});
+
+test('contractDocumentHtml() renders a single-column English-only terms block when termsArHtml is empty, and omits the "/ Arabic" suffix from field labels and card titles when none is given',()=>{
+  const core=read('app-core.js');
+  const docFn=functionBlock(core,'contractDocumentHtml','openContractPrintWindow');
+  assert.match(docFn,/opts\.termsArHtml\s*\?/);
+  assert.match(docFn,/grid-template-columns:1fr 1fr/);
+  const fieldFn=functionBlock(core,'liveryContractField','liveryContractCard');
+  assert.match(fieldFn,/labelAr\?/);
+  const cardFn=functionBlock(core,'liveryContractCard','liveryIsAC');
+  assert.match(cardFn,/titleAr\?/);
+});
+
+test('Edit Horse modal captures the Long-Term Lease fields and saveHorse() persists them',()=>{
+  const core=read('app-core.js');
+  const editFn=functionBlock(core,'editHorse','saveHorse');
+  ['eh-lease-active','eh-lease-customer','eh-lease-cpr','eh-lease-address','eh-lease-mobile','eh-lease-price','eh-lease-farrier-share','eh-lease-farrier-weeks','eh-lease-farrier-name','eh-lease-trainer','eh-lease-start'].forEach(id=>{
+    assert.ok(editFn.includes(id),`editHorse should render #${id}`);
+  });
+  const saveFn=functionBlock(core,'saveHorse','editBreeding');
+  ['lease_active','lease_customer_name','lease_cpr','lease_address','lease_mobile','lease_monthly_price','lease_farrier_share','lease_farrier_weeks','lease_farrier_name','lease_trainer_name','lease_start_date'].forEach(field=>{
+    assert.ok(saveFn.includes(field),`saveHorse should persist ${field}`);
+  });
+});
+
+test('renderBookings() recognizes the lease request type with its own badge and filter option',()=>{
+  const html=read('index.html');
+  assert.match(html,/<option value="lease">Lease<\/option>/);
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'renderBookings','updateBookingStatus');
+  assert.match(fn,/requestType==='lease'/);
+  assert.match(fn,/Lease<\/span>/);
 });
 
 test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{

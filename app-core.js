@@ -12,7 +12,7 @@ const APP_MODE=(window.CCE_PORTAL_MODE||new URLSearchParams(location.search).get
 const CCE_I18N={
   en:{
     backHome:'← Home',refresh:'🔄 Refresh',backup:'💾 Backup',logout:'🔓 Logout',alerts:'🔔 Alerts',
-    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_staff:'Staff Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
+    page_home:'Bahrain · Country Club Equestrian',page_booking:'Book a Horse Ride',page_training:'Training Packages',page_livery:'Livery Booking',page_lease:'Horse Lease',page_owner:'Owner Portal',page_instructor:'Instructor Portal',page_staff:'Staff Portal',page_admin:'Member Login',page_dashboard:'Dashboard',
     dash_dashboard:'Dashboard',dash_income:'Income',dash_expenses:'Expenses',dash_overdue:'Overdue',dash_horses:'Horses',dash_breeding:'Breeding',dash_bookings:'Bookings',dash_notifications:'Notifications',dash_schedule:'Schedule',dash_instructors:'Instructors',
     homeTrainingTitle:'Horse Riding Training',homeTrainingSub:'Private and group sessions for beginners and advanced riders',registerNow:'🎯 Register Now',
     homeRidesTitle:'Hack Rides',homeRidesSub:'Enjoyable rides on our beautiful horses',bookNow:'🐴 Book Now',
@@ -39,6 +39,10 @@ const CCE_I18N={
     publicLiveryDescription:'Monthly boarding and daily horse care with full or air-conditioned livery and optional care services.',
     publicLiveryPoint1:'Full Livery or AC Livery',publicLiveryPoint2:'Daily feeding, cleaning, and care',publicLiveryPoint3:'Optional shower and training services',
     publicRequestLivery:'Request livery',publicLiveryPrice1:'Full Livery · monthly',publicLiveryPrice2:'AC Livery · monthly',publicLiveryPrice3:'Shower / Cleaning',publicLiveryPrice4:'VIP Shower',
+    publicLeaseTitle:'Horse Lease',publicLeaseTag:'Long-term dedicated horse lease',
+    publicLeaseDescription:'Lease one of our horses long-term with a dedicated monthly agreement covering stabling, farrier, and training arrangements.',
+    publicLeasePoint1:'A dedicated horse for your exclusive use',publicLeasePoint2:'Custom monthly pricing, agreed with our team',publicLeasePoint3:'Farrier and training arranged separately',
+    publicBookLease:'Request a lease',publicLeasePricingBadge:'Custom pricing',publicLeasePricingNote:'Pricing is agreed individually for each lease — contact us to discuss.',
     publicWhyChoose:'Why choose Country Club Equestrian?',
     publicBenefit1Title:'Safety first',publicBenefit1Text:'An organized experience suited to the rider’s level',
     publicBenefit2Title:'Specialized training',publicBenefit2Text:'Options for beginners and advanced riders',
@@ -50,7 +54,7 @@ const CCE_I18N={
   },
   ar:{
     backHome:'← الرئيسية',refresh:'🔄 تحديث',backup:'💾 نسخة احتياطية',logout:'🔓 تسجيل الخروج',alerts:'🔔 التنبيهات',
-    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_staff:'بوابة الطاقم',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
+    page_home:'البحرين · نادي الريف للفروسية',page_booking:'حجز جولة ركوب الخيل',page_training:'باقات التدريب',page_livery:'حجز إيواء الخيل',page_lease:'إيجار طويل الأمد',page_owner:'بوابة المالك',page_instructor:'بوابة المدرب',page_staff:'بوابة الطاقم',page_admin:'دخول الأعضاء',page_dashboard:'لوحة التحكم',
     dash_dashboard:'لوحة التحكم',dash_income:'الإيرادات',dash_expenses:'المصروفات',dash_overdue:'المتأخرات',dash_horses:'الخيل',dash_breeding:'التناسل',dash_bookings:'الحجوزات',dash_notifications:'التنبيهات',dash_schedule:'الجدول',dash_instructors:'المدربون',
     homeTrainingTitle:'تدريب ركوب الخيل',homeTrainingSub:'للمبتدئين والمحترفين — حصص فردية وجماعية',registerNow:'🎯 التسجيل الآن',
     homeRidesTitle:'جولات ركوب الخيل',homeRidesSub:'جولات ممتعة على أجمل الخيول',bookNow:'🐴 احجز الآن',
@@ -77,6 +81,10 @@ const CCE_I18N={
     publicLiveryDescription:'إيواء شهري ورعاية يومية للخيل مع خيارات الإسطبل الكامل أو المكيف وخدمات عناية إضافية.',
     publicLiveryPoint1:'إيواء كامل أو إيواء مكيف',publicLiveryPoint2:'تغذية وتنظيف وعناية يومية',publicLiveryPoint3:'خدمات استحمام وتدريب إضافية',
     publicRequestLivery:'اطلب خدمة إيواء',publicLiveryPrice1:'إيواء كامل · شهريًا',publicLiveryPrice2:'إيواء مكيف · شهريًا',publicLiveryPrice3:'استحمام أو تنظيف',publicLiveryPrice4:'استحمام VIP',
+    publicLeaseTitle:'إيجار طويل الأمد',publicLeaseTag:'إيجار حصري طويل الأمد لخيل',
+    publicLeaseDescription:'استأجر أحد خيول النادي لفترة طويلة باتفاقية شهرية مخصصة تغطي الإيواء وترتيب الحدادة والتدريب.',
+    publicLeasePoint1:'حصان مخصص لاستخدامك الحصري',publicLeasePoint2:'سعر شهري مخصص يُتفق عليه مع فريقنا',publicLeasePoint3:'ترتيب الحدادة والتدريب بشكل منفصل',
+    publicBookLease:'اطلب إيجار',publicLeasePricingBadge:'سعر مخصص',publicLeasePricingNote:'يُتفق على السعر بشكل فردي لكل عقد إيجار — تواصل معنا للمناقشة.',
     publicWhyChoose:'لماذا تختار نادي الريف؟',
     publicBenefit1Title:'السلامة أولًا',publicBenefit1Text:'تجربة منظمة تناسب مستوى الراكب',
     publicBenefit2Title:'تدريب متخصص',publicBenefit2Text:'خيارات تدريب للمبتدئ والمتقدم',
@@ -1748,7 +1756,7 @@ function renderHorses(){
       h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#F6F2E8;color:#C8923A;padding:8px 10px;font-size:15px" title="Print Livery Contract" onclick="printLiveryContract(${hid})">&#128196;</button><button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#F6F2E8;color:#C8923A;padding:8px 10px;font-size:15px" title="Print Livery Contract" onclick="printLiveryContract(${hid})">&#128196;</button>${h.lease_active?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy);padding:8px 10px;font-size:15px" title="Print Lease Contract" onclick="printLeaseContract('+hid+')">&#128220;</button>':''}<button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
@@ -1774,13 +1782,14 @@ async function toggleHorse(id,cur){
 function liveryContractNo(h){return 'CCE-LIV-'+String(h.id||'').padStart(5,'0');}
 function liveryContractField(labelEn,labelAr,value,strong){
   return `<div style="display:flex;justify-content:space-between;gap:10px;padding:3.5px 0;border-bottom:1px solid #E3D9C6;font-size:11px;line-height:1.35">
-    <span style="color:#7A8399;flex-shrink:0">${labelEn} <span style="opacity:.75">/ ${labelAr}</span></span>
+    <span style="color:#7A8399;flex-shrink:0">${labelEn}${labelAr?' <span style="opacity:.75">/ '+labelAr+'</span>':''}</span>
     <span style="text-align:right;${strong?'font-weight:800;color:#1A2744':'font-weight:600;color:#1A2744'}">${value}</span>
   </div>`;
 }
 function liveryContractCard(titleEn,titleAr,rowsHtml){
+  const title=titleAr?`${titleEn} <span style="color:#7A8399;font-weight:600">/ ${titleAr}</span>`:titleEn;
   return `<div style="background:#fff;border:1px solid #E3D9C6;border-radius:12px;padding:10px 12px">
-    <div style="font-size:12px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${titleEn} <span style="color:#7A8399;font-weight:600">/ ${titleAr}</span></div>
+    <div style="font-size:12px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${title}</div>
     ${rowsHtml}
   </div>`;
 }
@@ -1850,12 +1859,20 @@ function liveryPricingRows(h){
   ].join('');
 }
 function contractDocumentHtml(opts){
+  const subtitle=opts.subtitleAr?`${opts.subtitleAr} &middot; ${opts.subtitleEn}`:opts.subtitleEn;
+  const termsTitle=opts.termsTitleAr?`${opts.termsTitleEn} <span style="color:#7A8399;font-weight:600">/ ${opts.termsTitleAr}</span>`:opts.termsTitleEn;
+  const termsBody=opts.termsArHtml
+    ?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div dir="ltr" style="font-size:8px;line-height:1.45;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:12px">${opts.termsEnHtml}</div>
+          <div dir="rtl" style="font-size:8px;line-height:1.45;text-align:right;color:#444">${opts.termsArHtml}</div>
+        </div>`
+    :`<div style="font-size:8px;line-height:1.45;text-align:left;color:#444">${opts.termsEnHtml}</div>`;
   return `<div style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;color:#1A2744;max-width:190mm;margin:auto">
     <div style="background:#1A2744;color:#fff;padding:10px 16px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px">
       <img src="${opts.logoUrl}" alt="Country Club Equestrian" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:15px;font-weight:800">Country Club Equestrian</div>
-        <div style="font-size:10.5px;color:#E3D9C6">${opts.subtitleAr} &middot; ${opts.subtitleEn}</div>
+        <div style="font-size:10.5px;color:#E3D9C6">${subtitle}</div>
       </div>
       <div style="text-align:right;font-size:10px;color:#E3D9C6;flex-shrink:0">
         <div style="font-weight:800;color:#fff;font-size:12px">${opts.contractNo}</div>
@@ -1865,11 +1882,8 @@ function contractDocumentHtml(opts){
     <div style="border:1px solid #E3D9C6;border-top:none;border-radius:0 0 14px 14px;padding:12px 16px;background:#FDFAF4">
       ${opts.cardsHtml}
       <div style="background:#F5EDD8;border-radius:10px;padding:8px 10px;margin-top:8px">
-        <div style="font-size:10.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${opts.termsTitleEn} <span style="color:#7A8399;font-weight:600">/ ${opts.termsTitleAr}</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div dir="ltr" style="font-size:8px;line-height:1.45;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:12px">${opts.termsEnHtml}</div>
-          <div dir="rtl" style="font-size:8px;line-height:1.45;text-align:right;color:#444">${opts.termsArHtml}</div>
-        </div>
+        <div style="font-size:10.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${termsTitle}</div>
+        ${termsBody}
       </div>
       <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
         <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">${opts.sigLeft}</div></div>
@@ -2080,6 +2094,67 @@ async function printRideContract(bookingRequestId){
     const logoUrl=new URL('icons/logo-transparent.png',document.baseURI).href;
     openContractPrintWindow(rideContractNo(request),rideContractHtml(request,safety,logoUrl));
   }catch(error){showError('Print contract',error);}
+}
+function leaseContractNo(h){return 'CCE-LSE-'+String(h.id||'').padStart(5,'0');}
+function leaseHorseAge(h){
+  if(!h.birth_date)return '—';
+  const years=Math.floor((Date.now()-new Date(h.birth_date).getTime())/(365.25*86400000));
+  return years+' yrs';
+}
+function leaseContractHtml(h,logoUrl){
+  const today=fmt(new Date().toISOString().slice(0,10));
+  const lesseeRows=[
+    liveryContractField('Lessee Name','',esc(h.lease_customer_name||'—'),true),
+    liveryContractField('CPR No.','',esc(h.lease_cpr||'—')),
+    liveryContractField('Address','',esc(h.lease_address||'—')),
+    liveryContractField('Mobile','',esc(h.lease_mobile||'—')),
+  ].join('');
+  const horseRows=[
+    liveryContractField('Horse Name','',esc(h.horse_name||'—'),true),
+    liveryContractField('Breed','',esc(h.breed||'—')),
+    liveryContractField('Color','',esc(h.color||'—')),
+    liveryContractField('Age','',leaseHorseAge(h)),
+    liveryContractField('Microchip','',esc(h.microchip||'—')),
+    liveryContractField('Passport','',esc(h.passport||'—')),
+  ].join('');
+  const termsRows=[
+    liveryContractField('Monthly Stabling Price','',BD(h.lease_monthly_price),true),
+    liveryContractField('Farrier Share','',esc(h.lease_farrier_share||'Full amount')),
+    liveryContractField('Farrier Frequency','',h.lease_farrier_weeks?('Every '+h.lease_farrier_weeks+' weeks'):'—'),
+    liveryContractField('Farrier','',esc(h.lease_farrier_name||'—')),
+    liveryContractField('Trainer (training billed separately)','',esc(h.lease_trainer_name||'—')),
+    liveryContractField('Lease Start Date','',h.lease_start_date?fmt(h.lease_start_date):'—'),
+  ].join('');
+  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        ${liveryContractCard('Lessee Information','',lesseeRows)}
+        ${liveryContractCard('Horse Information','',horseRows)}
+      </div>
+      ${liveryContractCard('Lease Term &amp; Price','',termsRows)}`;
+  const termsEnHtml=`<div style="font-weight:800;color:#1A2744;margin-bottom:2px">A. Lease Term and Price</div>
+            &bull; LESSOR leases to LESSEE the horse on a month-to-month basis. LESSOR shall be paid by LESSEE as follows: (i) on the 1st of each month, for stabling, paid directly to LESSOR; (ii) the farrier share stated above (as needed, at the stated frequency), currently using the farrier named above — this may be subject to change at any time at LESSOR'S discretion; (iii) all training costs are to be discussed with the Trainer named above and are payable separate and apart from board, directly to the Trainer.<br>
+            &bull; LESSEE shall NOT have the right to sub-lease the horse. Only LESSEE is granted access to ride the horse. No other riders are allowed to ride the horse unless authorized by LESSOR, which will require that rider sign a waiver of liability form.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">B. Care of the Horse</div>
+            &bull; LESSEE agrees to keep the horse in good health, giving due consideration to hoof care, and to humanely treat and care for the horse. If any injury to the horse occurs under LESSEE'S care or supervision, LESSEE is responsible for any and all veterinary expenses. Shots and checkups are the exclusive responsibility of LESSOR.<br>
+            &bull; LESSEE further agrees to keep the horse at the current stable location; the horse shall not spend the night away from it. LESSEE agrees to follow LESSOR'S advice on how to care for and train the horse, and to follow all of the stable's posted rules and regulations.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">C. Limitation of Liability</div>
+            &bull; LESSEE agrees that LESSOR is not responsible for acts, occurrences, or elements of nature that can scare a horse, cause it to fall, or react in an unsafe way (e.g. thunder, lightning, rain, wind, wild or domestic animals, insects, reptiles, or irregular footing subject to constant change). Neither LESSOR, the stable, nor its employees and associates are liable for accidents, injuries, or thefts to animals and personal property kept at the stable.<br>
+            &bull; LESSEE understands that horseback riding carries certain risks, and will use best judgment to take safety first, including always wearing a safety helmet. By signing, LESSEE releases LESSOR of all liability in connection with any injury sustained from LESSEE'S activities on the horse, and acknowledges that horseback riding is inherently risky, releasing LESSOR, the stable, and any associated person from ANY liability for injury, damage, or loss to LESSEE or LESSEE'S equipment.<br>
+            &bull; <strong>Warning:</strong> there are inherent risks of injury voluntarily accepted in connection with riding and other activities (including but not limited to grooming, longeing, feeding, bathing, and hoof care) with the horse. LESSEE, as part of this Agreement, agrees to sign the Waiver of Liability attached to this Agreement.
+            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">D. LESSOR'S Remedies on Breach</div>
+            &bull; This lease is subject to LESSEE'S performance of the covenants and conditions set forth herein. If LESSEE defaults in performance of any such covenants or conditions and the breach continues for more than 30 days, LESSOR may, at his option, declare the lease forfeit.<br>
+            &bull; This lease agreement may be voided with 30 days' written notice from either party for any reason, or immediately if the LESSOR and/or stable manager determines that the horse's health is put at risk by acts or omissions of LESSEE. If less than 30 days' notice is given by LESSEE, payments for the next 30 days remain due. If proper notice is given, monies paid in advance will be refunded, except for a partial month's stabling (e.g. if voided mid-March, a refund is given for April or later, but not for the remainder of March).`;
+  return contractDocumentHtml({
+    logoUrl,contractNo:leaseContractNo(h),dateStr:today,
+    subtitleAr:'',subtitleEn:'Horse Lease Agreement',
+    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'',termsEnHtml,termsArHtml:'',
+    sigLeft:'Lessee Signature',
+    sigRight:'Country Club Equestrian (Lessor)',
+  });
+}
+function printLeaseContract(id){
+  const h=horses.find(x=>String(x.id)===String(id));if(!h)return;
+  const logoUrl=new URL('icons/logo-transparent.png',document.baseURI).href;
+  openContractPrintWindow(leaseContractNo(h),leaseContractHtml(h,logoUrl));
 }
 function buildAlerts(){
   const bell=document.getElementById('alertBell');
@@ -2362,7 +2437,9 @@ function renderBookings(){
         ?'<span class="badge badge-navy">&#127919; Training</span>'
         :requestType==='livery'
           ?'<span class="badge badge-green">&#127968; Livery</span>'
-          :'<span class="badge badge-amber">&#128052; Hack Ride</span>';
+          :requestType==='lease'
+            ?'<span class="badge" style="background:#EEF3FF;color:var(--navy)">&#128220; Lease</span>'
+            :'<span class="badge badge-amber">&#128052; Hack Ride</span>';
       const pkgMatch=notes.match(/Package:\s*([^|]+)/);
       const pkg=request?.service_name||(pkgMatch?pkgMatch[1].trim():'');
       const customer=request?.customer_name||r?.customer_name||'—';
@@ -2647,10 +2724,23 @@ function editHorse(id){
       </div>
     </div>
     <div class="form-group" style="grid-column:1/-1"><label>Livery Notes</label><textarea id="eh-livery-notes" style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:14px;background:var(--cream);font-family:inherit;resize:vertical">${escAttr(h.livery_notes||'')}</textarea></div>
+    <div class="form-group" style="grid-column:1/-1">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="eh-lease-active" ${h.lease_active?'checked':''}> Long-Term Lease Active</label>
+    </div>
+    <div class="form-group"><label>Lessee Name</label><input type="text" id="eh-lease-customer" value="${escAttr(h.lease_customer_name||'')}"></div>
+    <div class="form-group"><label>Lessee CPR</label><input type="text" id="eh-lease-cpr" value="${escAttr(h.lease_cpr||'')}"></div>
+    <div class="form-group"><label>Lessee Address</label><input type="text" id="eh-lease-address" value="${escAttr(h.lease_address||'')}"></div>
+    <div class="form-group"><label>Lessee Mobile</label><input type="text" id="eh-lease-mobile" value="${escAttr(h.lease_mobile||'')}"></div>
+    <div class="form-group"><label>Monthly Stabling Price (BD)</label><input type="number" step="0.001" id="eh-lease-price" value="${h.lease_monthly_price||0}"></div>
+    <div class="form-group"><label>Farrier Share</label><input type="text" id="eh-lease-farrier-share" placeholder="e.g. Full amount or 50%" value="${escAttr(h.lease_farrier_share||'')}"></div>
+    <div class="form-group"><label>Farrier Frequency (weeks)</label><input type="number" step="1" id="eh-lease-farrier-weeks" value="${h.lease_farrier_weeks||''}"></div>
+    <div class="form-group"><label>Farrier Name</label><input type="text" id="eh-lease-farrier-name" value="${escAttr(h.lease_farrier_name||'')}"></div>
+    <div class="form-group"><label>Trainer Name</label><input type="text" id="eh-lease-trainer" value="${escAttr(h.lease_trainer_name||'')}"></div>
+    <div class="form-group"><label>Lease Start Date</label><input type="date" id="eh-lease-start" value="${h.lease_start_date||''}"></div>
   </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveHorse(id){
-  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,standard_wash:document.getElementById('eh-std-wash').checked,standard_feed:document.getElementById('eh-std-feed').checked,standard_cleaning:document.getElementById('eh-std-cleaning').checked,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,standard_wash:document.getElementById('eh-std-wash').checked,standard_feed:document.getElementById('eh-std-feed').checked,standard_cleaning:document.getElementById('eh-std-cleaning').checked,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null,lease_active:document.getElementById('eh-lease-active').checked,lease_customer_name:document.getElementById('eh-lease-customer').value||null,lease_cpr:document.getElementById('eh-lease-cpr').value||null,lease_address:document.getElementById('eh-lease-address').value||null,lease_mobile:document.getElementById('eh-lease-mobile').value||null,lease_monthly_price:parseFloat(document.getElementById('eh-lease-price').value)||0,lease_farrier_share:document.getElementById('eh-lease-farrier-share').value||null,lease_farrier_weeks:parseInt(document.getElementById('eh-lease-farrier-weeks').value)||null,lease_farrier_name:document.getElementById('eh-lease-farrier-name').value||null,lease_trainer_name:document.getElementById('eh-lease-trainer').value||null,lease_start_date:document.getElementById('eh-lease-start').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
 function editBreeding(id){
   const r=breeding.find(x=>x.id===id);if(!r)return;
@@ -4450,6 +4540,39 @@ function resetLivery(){
   const btn=document.getElementById('liveryBtn');btn.disabled=false;btn.textContent=t('sendLivery');
 }
 
+async function submitLease(){
+  const name=document.getElementById('le-name').value.trim();
+  const phone=document.getElementById('le-phone').value.trim();
+  const personalId=document.getElementById('le-personal-id').value.trim();
+  const address=document.getElementById('le-address').value.trim();
+  const horse=document.getElementById('le-horse').value.trim();
+  const notes=document.getElementById('le-notes').value.trim();
+  if(!name||!phone||!personalId){alert('⚠️ يرجى كتابة الاسم ورقم الهاتف والرقم الشخصي.');return;}
+  if(!validBahrainPhone(phone)){alert('⚠️ رقم الهاتف يجب أن يتكون من 8 أرقام.');return;}
+  if(!document.getElementById('le-terms').checked){alert('⚠️ Please read and agree to the Horse Lease Agreement to proceed.\nيرجى قراءة والموافقة على اتفاقية الإيجار للمتابعة.');return;}
+  const btn=document.getElementById('leaseBtn');btn.disabled=true;btn.textContent='⏳ Submitting...';
+  try{
+    await publicSubmitBooking({
+      p_request_type:'lease',p_service_code:'lease_request',p_customer_name:name,p_phone:phone,
+      p_requested_date:null,p_start_time:null,p_rider_level:null,p_session_slots:[],
+      p_horse_name:horse||null,p_personal_id:personalId,p_emergency_contact:null,
+      p_birth_date:null,p_health_notes:null,p_services:[],
+      p_metadata:{address:address||null,notes:notes||null},
+      p_terms_accepted:true,p_terms_version:PUBLIC_BOOKING_TERMS_VERSION,p_honeypot:null
+    });
+    document.getElementById('leaseForm').style.display='none';
+    document.getElementById('leaseSuccess').style.display='block';
+  }catch(e){showError('Error',e);btn.disabled=false;btn.textContent='📩 Send Lease Request';}
+}
+
+function resetLease(){
+  document.getElementById('leaseForm').style.display='block';
+  document.getElementById('leaseSuccess').style.display='none';
+  ['le-name','le-phone','le-personal-id','le-address','le-horse','le-notes'].forEach(id=>document.getElementById(id).value='');
+  const lt=document.getElementById('le-terms');if(lt)lt.checked=false;
+  const btn=document.getElementById('leaseBtn');btn.disabled=false;btn.textContent='📩 Send Lease Request';
+}
+
 
 
 // ══════════════════════════════════════════════════════════
@@ -4566,7 +4689,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.26.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.27.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4659,7 +4782,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260817-4261', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260818-4270', {scope:'./'})
       .then(reg => {
 
         reg.update();

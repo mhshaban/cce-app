@@ -2536,6 +2536,85 @@ test('v4.26.1 corrects the Full Livery backend price to 90 BD (v4.24.4 only upda
   }
 });
 
+test('v4.27.0 adds a lease booking type: public request needs no date/price, creates no income row, requires a personal ID, and rollback/reapply cleanly toggle support for it',async()=>{
+  const db=await buildDatabase();
+  try{
+    const service=await db.query(`select request_type,price_bd,active from public.public_booking_services where code='lease_request'`);
+    assert.deepEqual(service.rows[0],{request_type:'lease',price_bd:'0.000',active:true});
+
+    const before=await db.query(`select count(*)::int as n from public.income`);
+
+    await assert.rejects(
+      db.query(`select public.cce_public_submit_booking(
+        p_request_type=>'lease',p_service_code=>'lease_request',p_customer_name=>'No ID Lessee',
+        p_phone=>'39009911',p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result`),
+      /Personal ID is required/
+    );
+
+    const submitted=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'lease',p_service_code=>'lease_request',p_customer_name=>'Lease Applicant',
+        p_phone=>'39009912',p_personal_id=>'CPR-LEASE-1',p_horse_name=>'Any available',
+        p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    assert.equal(submitted.rows[0].result.request_type,'lease');
+    assert.equal(submitted.rows[0].result.amount_bd,0);
+    assert.equal(submitted.rows[0].result.income_id,null);
+    assert.equal(submitted.rows[0].result.payment_due_at,null);
+
+    const after=await db.query(`select count(*)::int as n from public.income`);
+    assert.equal(after.rows[0].n,before.rows[0].n);
+
+    const bookingRow=await db.query(`select request_type,horse_name,payment_due_at from public.booking_requests where customer_name='Lease Applicant'`);
+    assert.equal(bookingRow.rows[0].request_type,'lease');
+    assert.equal(bookingRow.rows[0].horse_name,'Any available');
+    assert.equal(bookingRow.rows[0].payment_due_at,null);
+
+    const leaseColumns=await db.query(`
+      select column_name, is_nullable, column_default
+      from information_schema.columns
+      where table_schema='public' and table_name='horses'
+        and column_name in (
+          'lease_active','lease_customer_name','lease_cpr','lease_address','lease_mobile',
+          'lease_monthly_price','lease_farrier_share','lease_farrier_weeks','lease_farrier_name',
+          'lease_trainer_name','lease_start_date'
+        )
+    `);
+    assert.equal(leaseColumns.rows.length,11);
+
+    await db.exec(read('supabase/rollback/rollback_v4270_compatibility.sql'));
+    const rolledBackColumns=await db.query(`
+      select count(*)::int as n from information_schema.columns
+      where table_schema='public' and table_name='horses' and column_name='lease_active'
+    `);
+    assert.equal(rolledBackColumns.rows[0].n,0);
+    // The service row is deactivated, not deleted — a booking_requests row
+    // already references it via foreign key (service_code).
+    const rolledBackService=await db.query(`select active from public.public_booking_services where code='lease_request'`);
+    assert.equal(rolledBackService.rows[0].active,false);
+    await assert.rejects(
+      db.query(`select public.cce_public_submit_booking(
+        p_request_type=>'lease',p_service_code=>'lease_request',p_customer_name=>'Should Fail',
+        p_phone=>'39009913',p_personal_id=>'CPR-LEASE-2',p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result`),
+      /Unsupported booking request type|Unknown or inactive booking service/
+    );
+
+    await db.exec(read('supabase/migrations/20260818_lease_booking_type_v4270.sql'));
+    const reapplied=await db.query(`
+      select public.cce_public_submit_booking(
+        p_request_type=>'lease',p_service_code=>'lease_request',p_customer_name=>'Lease Applicant Two',
+        p_phone=>'39009914',p_personal_id=>'CPR-LEASE-3',p_terms_accepted=>true,p_terms_version=>'2026-07-v1'
+      ) as result
+    `);
+    assert.equal(reapplied.rows[0].result.request_type,'lease');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

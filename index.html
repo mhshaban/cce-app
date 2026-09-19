@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20260817-4261"></script>
+<script src="app-bootstrap.js?v=20260818-4270"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20260817-4261" rel="stylesheet"/>
-<link href="member-portal.css?v=20260817-4261" rel="stylesheet"/>
-<link href="show-office.css?v=20260817-4261" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20260817-4261" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20260817-4261" rel="stylesheet"/>
+<link href="app-core.css?v=20260818-4270" rel="stylesheet"/>
+<link href="member-portal.css?v=20260818-4270" rel="stylesheet"/>
+<link href="show-office.css?v=20260818-4270" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20260818-4270" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20260818-4270" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -169,6 +169,24 @@
 <div class="public-service-detail-row"><span data-i18n="publicLiveryPrice4">استحمام VIP</span><strong>10 BD</strong></div>
 </div>
 </details>
+</div>
+</article>
+<article class="public-service-card">
+<div class="public-service-top">
+<div class="public-service-icon">📋</div>
+<div class="public-service-price"><strong data-i18n="publicLeasePricingBadge">Custom pricing</strong></div>
+</div>
+<h3 data-i18n="publicLeaseTitle">إيجار طويل الأمد</h3>
+<div class="public-service-en" data-i18n="publicLeaseTag">إيجار حصري طويل الأمد لخيل</div>
+<p class="public-service-description" data-i18n="publicLeaseDescription">استأجر أحد خيول النادي لفترة طويلة باتفاقية شهرية مخصصة تغطي الإيواء وترتيب الحدادة والتدريب.</p>
+<ul class="public-service-points">
+<li data-i18n="publicLeasePoint1">حصان مخصص لاستخدامك الحصري</li>
+<li data-i18n="publicLeasePoint2">سعر شهري مخصص يُتفق عليه مع فريقنا</li>
+<li data-i18n="publicLeasePoint3">ترتيب الحدادة والتدريب بشكل منفصل</li>
+</ul>
+<div class="public-service-actions">
+<button class="public-service-cta" data-i18n="publicBookLease" onclick="navigate('lease')" type="button">اطلب إيجار</button>
+<div style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center" data-i18n="publicLeasePricingNote">يُتفق على السعر بشكل فردي لكل عقد إيجار — تواصل معنا للمناقشة.</div>
 </div>
 </article>
 </div>
@@ -716,6 +734,90 @@
 </div>
 </div>
 </div>
+<!-- ════════════════════════════ LEASE PAGE ════════════════════════════ -->
+<div class="app-page" id="page-lease">
+<div class="header service-header">
+<button class="home-btn" onclick="navigate('home')">Home</button>
+<div class="header-brand">
+<div><div class="header-title">Country Club Equestrian</div><div class="header-sub">Horse Lease</div></div>
+<img alt="CCE" src="icons/logo-transparent.png"/>
+</div>
+</div>
+<div class="hero service-hero" style="padding:30px 20px">
+<div class="hero-icon">📋</div>
+<div class="hero-title">Book a Lease</div>
+<div class="hero-sub" style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif">طلب إيجار خيل طويل الأمد</div>
+</div>
+<div class="container" style="max-width:600px;margin:0 auto;padding:20px 16px">
+<div id="leaseForm">
+<div aria-label="Lease Steps" class="steps">
+<div class="step active"><strong>1</strong>Your Info — بيانات المستأجر</div>
+<div class="step"><strong>2</strong>Preferred Horse — الحصان المفضل</div>
+<div class="step"><strong>3</strong>Terms — الموافقة على الشروط</div>
+<div class="step"><strong>4</strong>Confirmation — التأكيد</div>
+</div>
+<div class="card">
+<div class="card-title">📋 Your Information</div>
+<div class="form-group"><label>Full Name — الاسم الكامل *</label><input id="le-name" maxlength="120" placeholder="اكتب الاسم الكامل" type="text"/></div>
+<div class="form-group"><label>Phone Number — رقم الهاتف *</label><input id="le-phone" maxlength="16" placeholder="مثال: 39001234" type="tel"/></div>
+<div class="form-group"><label>Personal ID / CPR *</label><input id="le-personal-id" maxlength="40" placeholder="أدخل الرقم الشخصي" type="text"/></div>
+<div class="form-group"><label>Address — العنوان</label><input id="le-address" maxlength="200" placeholder="العنوان" type="text"/></div>
+</div>
+<div class="card">
+<div class="card-title">🐴 Preferred Horse</div>
+<div class="form-group"><label>Preferred Horse (optional) — الحصان المفضل (اختياري)</label><input id="le-horse" maxlength="120" placeholder="اكتب اسم الحصان أو اتركه فارغًا" type="text"/></div>
+<div class="form-group"><label>Notes — ملاحظات</label><textarea id="le-notes" maxlength="500" placeholder="أي ملاحظات إضافية..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;background:#FDFAF4;font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;min-height:70px;resize:vertical;outline:none"></textarea></div>
+</div>
+<div class="note-box">
+<div class="note-title">ℹ️ ملاحظة هامة — Important Note</div>
+<div class="note-text" style="font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif">
+<div style="direction:rtl;text-align:right;margin-bottom:12px">
+<strong style="color:var(--navy)">هذا طلب اهتمام أولي فقط، وليس تأكيدًا نهائيًا.</strong><br/>
+            سيتواصل معك فريق النادي لتحديد السعر الشهري وترتيب الحدادة والمدرب قبل توقيع عقد الإيجار النهائي. لا يوجد أي مبلغ مطلوب دفعه الآن.
+          </div>
+<div style="border-top:1px dashed var(--amber);margin:10px 0"></div>
+<div style="text-align:left">
+<strong style="color:var(--navy)">This is an initial interest request, not a final confirmation.</strong><br/>
+            Our team will contact you to finalize the monthly price, farrier arrangement, and trainer before signing the final lease agreement. No payment is required now.
+          </div>
+</div>
+</div>
+<!-- Lease Terms & Conditions -->
+<div class="card" style="border:1px solid var(--amber)">
+<div class="card-title">📜 Horse Lease Agreement</div>
+<div style="max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:#333;padding:4px 2px;text-align:left">
+<div style="font-weight:700;color:var(--navy);margin-bottom:6px">A. Lease Term and Price</div>
+          LESSOR leases to LESSEE the horse on a month-to-month basis. LESSOR shall be paid by LESSEE as follows: (i) on the 1st of each month, for stabling, paid directly to LESSOR; (ii) the agreed farrier share, at the agreed frequency, using the farrier agreed with LESSOR — this may be subject to change at any time at LESSOR'S discretion; (iii) all training costs are to be discussed with the Trainer and are payable separate and apart from board, directly to the Trainer. The exact monthly price, farrier arrangement, and trainer will be confirmed by the club before the lease begins.<br/><br/>
+          LESSEE shall NOT have the right to sub-lease the horse. Only LESSEE is granted access to ride the horse. No other riders are allowed to ride the horse unless authorized by LESSOR, which will require that rider sign a waiver of liability form.
+<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">B. Care of the Horse</div>
+          LESSEE agrees to keep the horse in good health, giving due consideration to hoof care, and to humanely treat and care for the horse. If any injury to the horse occurs under LESSEE'S care or supervision, LESSEE is responsible for any and all veterinary expenses. Shots and checkups are the exclusive responsibility of LESSOR.<br/><br/>
+          LESSEE further agrees to keep the horse at the current stable location; the horse shall not spend the night away from it. LESSEE agrees to follow LESSOR'S advice on how to care for and train the horse, and to follow all of the stable's posted rules and regulations.
+<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">C. Limitation of Liability</div>
+          LESSEE agrees that LESSOR is not responsible for acts, occurrences, or elements of nature that can scare a horse, cause it to fall, or react in an unsafe way. Neither LESSOR, the stable, nor its employees and associates are liable for accidents, injuries, or thefts to animals and personal property kept at the stable.<br/><br/>
+          LESSEE understands that horseback riding carries certain risks, and will use best judgment to take safety first, including always wearing a safety helmet. By signing, LESSEE releases LESSOR of all liability in connection with any injury sustained from LESSEE'S activities on the horse.<br/><br/>
+          <strong style="color:#c0392b">Warning: there are inherent risks of injury voluntarily accepted in connection with riding and other activities (grooming, longeing, feeding, bathing, hoof care) with the horse. LESSEE, as part of this Agreement, agrees to sign the Waiver of Liability attached to the final Agreement.</strong>
+<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">D. LESSOR'S Remedies on Breach</div>
+          This lease is subject to LESSEE'S performance of the covenants and conditions set forth herein. If LESSEE defaults in performance of any such covenants or conditions and the breach continues for more than 30 days, LESSOR may, at his option, declare the lease forfeit.<br/><br/>
+          This lease agreement may be voided with 30 days' written notice from either party for any reason, or immediately if the LESSOR and/or stable manager determines that the horse's health is put at risk by acts or omissions of LESSEE. If less than 30 days' notice is given by LESSEE, payments for the next 30 days remain due. If proper notice is given, monies paid in advance will be refunded, except for a partial month's stabling.
+        </div>
+<label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;cursor:pointer;padding:12px;background:var(--sand);border-radius:10px">
+<input id="le-terms" style="width:20px;height:20px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--amber)" type="checkbox"/>
+<span style="font-size:13px;font-weight:600;color:var(--navy)">
+            I have read and agree to the Horse Lease Agreement above.<br/>
+<span style="font-family:'Cairo','Segoe UI', Roboto, Arial, sans-serif;font-weight:400;color:var(--muted)">لقد قرأت وأوافق على اتفاقية إيجار الخيل المذكورة أعلاه</span>
+</span>
+</label>
+</div>
+<button class="btn" id="leaseBtn" onclick="submitLease()">📩 Send Lease Request</button>
+</div>
+<div class="success-box" id="leaseSuccess" style="display:none">
+<div class="success-icon">✅</div>
+<div class="success-title">Lease request sent successfully!</div>
+<div class="success-text" id="leaseSuccessText">Thank you! Our team will contact you within 1–2 business days to finalize the lease terms.<br/><br/>شكراً لك! سيتواصل معك فريق النادي خلال يوم أو يومي عمل لإتمام تفاصيل عقد الإيجار.</div>
+<button class="btn" onclick="resetLease()" style="margin-top:16px">🔙 رجوع</button>
+</div>
+</div>
+</div>
 <!-- ════════════════════════════ OWNER PAGE ════════════════════════════ -->
 <div class="app-page" id="page-owner">
 <div class="login-wrap" id="ownerLoginWrap">
@@ -1245,7 +1347,7 @@
 <div class="section" id="page-bookings">
 <div class="search-bar">
 <input id="bookSearch" oninput="renderBookings()" placeholder="🔍 Search name or horse..." type="text"/>
-<select id="bookTypeFilter" onchange="renderBookings()"><option value="">All Types</option><option value="ride">Hack Rides</option><option value="training">Training Packages</option><option value="livery">Livery</option></select>
+<select id="bookTypeFilter" onchange="renderBookings()"><option value="">All Types</option><option value="ride">Hack Rides</option><option value="training">Training Packages</option><option value="livery">Livery</option><option value="lease">Lease</option></select>
 <select id="bookStFilter" onchange="renderBookings()"><option value="">All Status</option><optgroup label="Booking"><option>Requested</option><option>Confirmed</option><option>Scheduled</option><option>Completed</option><option>Cancelled</option><option>Rejected</option></optgroup><optgroup label="Payment"><option>Pending</option><option>Partial</option><option>Paid</option></optgroup></select>
 </div>
 <div class="card">
@@ -1277,32 +1379,32 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20260817-4261"></script>
-<script src="src/core/config.js?v=20260817-4261"></script>
-<script src="src/core/store.js?v=20260817-4261"></script>
-<script src="src/services/supabase-runtime.js?v=20260817-4261"></script>
-<script src="src/services/backup-runtime.js?v=20260817-4261"></script>
-<script src="src/modules/show-office/competition-service.js?v=20260817-4261"></script>
-<script src="src/modules/show-office/class-service.js?v=20260817-4261"></script>
-<script src="src/modules/show-office/entry-service.js?v=20260817-4261"></script>
-<script src="src/modules/show-office/judging-service.js?v=20260817-4261"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20260817-4261"></script>
-<script src="src/modules/horses/horse-service.js?v=20260817-4261"></script>
-<script src="src/modules/health/health-service.js?v=20260817-4261"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20260817-4261"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20260817-4261"></script>
-<script src="app-core.js?v=20260817-4261"></script>
-<script src="app-branding.js?v=20260817-4261"></script>
-<script src="show-office.js?v=20260817-4261"></script>
-<script src="judge-panel.js?v=20260817-4261"></script>
-<script src="live-results.js?v=20260817-4261"></script>
-<script src="horse-health.js?v=20260817-4261"></script>
-<script src="member-portal.js?v=20260817-4261"></script>
-<script src="src/components/header/header-system.js?v=20260817-4261"></script>
+<script src="src/core/events.js?v=20260818-4270"></script>
+<script src="src/core/config.js?v=20260818-4270"></script>
+<script src="src/core/store.js?v=20260818-4270"></script>
+<script src="src/services/supabase-runtime.js?v=20260818-4270"></script>
+<script src="src/services/backup-runtime.js?v=20260818-4270"></script>
+<script src="src/modules/show-office/competition-service.js?v=20260818-4270"></script>
+<script src="src/modules/show-office/class-service.js?v=20260818-4270"></script>
+<script src="src/modules/show-office/entry-service.js?v=20260818-4270"></script>
+<script src="src/modules/show-office/judging-service.js?v=20260818-4270"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20260818-4270"></script>
+<script src="src/modules/horses/horse-service.js?v=20260818-4270"></script>
+<script src="src/modules/health/health-service.js?v=20260818-4270"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20260818-4270"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20260818-4270"></script>
+<script src="app-core.js?v=20260818-4270"></script>
+<script src="app-branding.js?v=20260818-4270"></script>
+<script src="show-office.js?v=20260818-4270"></script>
+<script src="judge-panel.js?v=20260818-4270"></script>
+<script src="live-results.js?v=20260818-4270"></script>
+<script src="horse-health.js?v=20260818-4270"></script>
+<script src="member-portal.js?v=20260818-4270"></script>
+<script src="src/components/header/header-system.js?v=20260818-4270"></script>
 </body>
 </html>
