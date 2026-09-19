@@ -191,7 +191,7 @@ function navigate(page) {
 
   // Hide global header on pages that have their own internal header (avoid duplicates)
   const globalHeader=document.getElementById('globalHeader');
-  if(globalHeader) globalHeader.style.display=(page==='livery'||page==='home'||page==='booking'||page==='training')?'none':'';
+  if(globalHeader) globalHeader.style.display=(page==='livery'||page==='home'||page==='booking'||page==='training'||page==='lease')?'none':'';
 
   if(page==='home') return;
   if(page!=='home') backBtn.classList.remove('hidden');
@@ -4769,7 +4769,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.28.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.28.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4862,7 +4862,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260819-4280', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260820-4281', {scope:'./'})
       .then(reg => {
 
         reg.update();
