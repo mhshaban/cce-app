@@ -1274,14 +1274,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.25.1 cache key',()=>{
+test('all app assets use the v4.26.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260814-4250'));
-  assert.ok((html.match(/20260815-4251/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260815-4251/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260815-4251/);
-  assert.equal(read('VERSION.txt').trim(),'4.25.1');
+  assert.ok(!html.includes('20260815-4251'));
+  assert.ok((html.match(/20260816-4260/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260816-4260/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260816-4260/);
+  assert.equal(read('VERSION.txt').trim(),'4.26.0');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1358,6 +1358,27 @@ test('liveryPricingRows() shows a combined seasonal fee row for AC stables (same
   assert.equal((acBranchRows.match(/liveryContractField\(/g)||[]).length,(fanBranchRows.match(/liveryContractField\(/g)||[]).length);
 });
 
+test('contractDocumentHtml() is the shared bilingual contract shell: Cairo font, LTR/RTL terms columns, single A4-friendly width',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'contractDocumentHtml','openContractPrintWindow');
+  assert.match(fn,/font-family:'Cairo'/);
+  assert.match(fn,/\$\{opts\.logoUrl\}/);
+  assert.match(fn,/\$\{opts\.contractNo\}/);
+  assert.match(fn,/dir="ltr"[\s\S]*?\$\{opts\.termsEnHtml\}/);
+  assert.match(fn,/dir="rtl"[\s\S]*?\$\{opts\.termsArHtml\}/);
+  assert.match(fn,/\$\{opts\.sigLeft\}/);
+  assert.match(fn,/\$\{opts\.sigRight\}/);
+  assert.match(fn,/max-width:190mm/);
+});
+
+test('openContractPrintWindow() opens a Cairo-fonted, single-A4-page print window for any contract type',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'openContractPrintWindow','liveryContractHtml');
+  assert.match(fn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
+  assert.match(fn,/@page\{size:A4;margin:9mm\}/);
+  assert.match(fn,/window\.print\(\)/);
+});
+
 test('Horses page has a Print Livery Contract button that builds a bilingual boarding contract from existing horse fields',()=>{
   const core=read('app-core.js');
   const cardBlock=functionBlock(core,'renderHorses','addHorse');
@@ -1368,21 +1389,54 @@ test('Horses page has a Print Livery Contract button that builds a bilingual boa
   });
   assert.match(contractHtml,/liveryPricingRows\(h\)/);
   assert.match(contractHtml,/عقد إيواء/);
-  assert.match(contractHtml,/Terms &amp; Conditions/);
-  assert.match(contractHtml,/font-family:'Cairo'/);
-  assert.match(contractHtml,/\$\{logoUrl\}/);
+  assert.match(contractHtml,/termsTitleEn:'Terms &amp; Conditions'/);
+  assert.match(contractHtml,/logoUrl,contractNo:liveryContractNo\(h\)/);
   assert.doesNotMatch(contractHtml,/Club Representative/);
   assert.match(contractHtml,/Country Club Equestrian \/ نادي الريف للفروسية/);
-  assert.match(contractHtml,/dir="ltr"[^>]*>[\s\S]*?First: Stable Services/);
-  assert.match(contractHtml,/dir="rtl"[^>]*>[\s\S]*?أولاً: توفير الإيواء والخدمات/);
+  assert.match(contractHtml,/First: Stable Services/);
+  assert.match(contractHtml,/أولاً: توفير الإيواء والخدمات/);
   assert.match(contractHtml,/If the horse or its owner causes any damage to the stable facilities, the owner shall bear the full cost of repairs\./);
   assert.match(contractHtml,/في حال تسبب الخيل أو صاحبه بأي تلف أو أضرار في مرافق الإسطبل، يتحمل مالك الخيل كامل تكاليف الإصلاح\./);
-  const printFn=functionBlock(core,'printLiveryContract','buildAlerts');
+  const printFn=functionBlock(core,'printLiveryContract','trainingContractNo');
   assert.match(printFn,/horses\.find\(x=>String\(x\.id\)===String\(id\)\)/);
   assert.match(printFn,/new URL\('icons\/logo-transparent\.png',document\.baseURI\)\.href/);
-  assert.match(printFn,/fonts\.googleapis\.com\/css2\?family=Cairo/);
-  assert.match(printFn,/@page\{size:A4;margin:9mm\}/);
-  assert.match(printFn,/window\.print\(\)/);
+  assert.match(printFn,/openContractPrintWindow\(liveryContractNo\(h\),liveryContractHtml\(h,logoUrl\)\)/);
+});
+
+test('printTrainingContract()/printRideContract() are gated by bookings.sensitive.view, fetch protected details via cce_booking_private_details, and build one-A4-page bilingual contracts',()=>{
+  const core=read('app-core.js');
+  const trainingHtml=functionBlock(core,'trainingContractHtml','printTrainingContract');
+  ['safety?.personal_id','safety?.emergency_contact','safety?.health_notes','request.service_name','request.session_slots','request.amount_bd'].forEach(field=>{
+    assert.ok(trainingHtml.includes(field),`trainingContractHtml should reference ${field}`);
+  });
+  assert.match(trainingHtml,/Training Agreement/);
+  assert.match(trainingHtml,/١٢\. يجب إبلاغ المدرب عن أي حالة مرضية للمتدرب قبل الحصة التدريبية/);
+  assert.match(trainingHtml,/logoUrl,contractNo:trainingContractNo\(request\)/);
+  const printTrainingFn=functionBlock(core,'printTrainingContract','rideContractNo');
+  assert.match(printTrainingFn,/canUser\('bookings\.sensitive\.view'\)/);
+  assert.match(printTrainingFn,/sbRpc\('cce_booking_private_details',\{p_booking_request_id:bookingRequestId\}\)/);
+  assert.match(printTrainingFn,/openContractPrintWindow\(trainingContractNo\(request\),trainingContractHtml\(request,safety,logoUrl\)\)/);
+
+  const rideHtml=functionBlock(core,'rideContractHtml','printRideContract');
+  ['safety?.personal_id','request.service_name','request.rider_level','request.amount_bd'].forEach(field=>{
+    assert.ok(rideHtml.includes(field),`rideContractHtml should reference ${field}`);
+  });
+  assert.match(rideHtml,/Horse Renting Agreement/);
+  assert.match(rideHtml,/veterinary treatment costs/);
+  assert.match(rideHtml,/يتحمل المستأجر المسؤولية الكاملة/);
+  const printRideFn=functionBlock(core,'printRideContract','buildAlerts');
+  assert.match(printRideFn,/canUser\('bookings\.sensitive\.view'\)/);
+  assert.match(printRideFn,/sbRpc\('cce_booking_private_details',\{p_booking_request_id:bookingRequestId\}\)/);
+  assert.match(printRideFn,/openContractPrintWindow\(rideContractNo\(request\),rideContractHtml\(request,safety,logoUrl\)\)/);
+});
+
+test('renderBookings() shows a Print Contract button for training/ride requests, gated by bookings.sensitive.view',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'renderBookings','updateBookingStatus');
+  assert.match(fn,/canViewSensitive&&requestType==='training'/);
+  assert.match(fn,/onclick="printTrainingContract\('\+request\.id\+'\)"/);
+  assert.match(fn,/canViewSensitive&&requestType==='ride'/);
+  assert.match(fn,/onclick="printRideContract\('\+request\.id\+'\)"/);
 });
 
 test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{

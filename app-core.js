@@ -1849,6 +1849,45 @@ function liveryPricingRows(h){
     notesRow,
   ].join('');
 }
+function contractDocumentHtml(opts){
+  return `<div style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;color:#1A2744;max-width:190mm;margin:auto">
+    <div style="background:#1A2744;color:#fff;padding:10px 16px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px">
+      <img src="${opts.logoUrl}" alt="Country Club Equestrian" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:800">Country Club Equestrian</div>
+        <div style="font-size:10.5px;color:#E3D9C6">${opts.subtitleAr} &middot; ${opts.subtitleEn}</div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:#E3D9C6;flex-shrink:0">
+        <div style="font-weight:800;color:#fff;font-size:12px">${opts.contractNo}</div>
+        <div>${opts.dateStr}</div>
+      </div>
+    </div>
+    <div style="border:1px solid #E3D9C6;border-top:none;border-radius:0 0 14px 14px;padding:12px 16px;background:#FDFAF4">
+      ${opts.cardsHtml}
+      <div style="background:#F5EDD8;border-radius:10px;padding:8px 10px;margin-top:8px">
+        <div style="font-size:10.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">${opts.termsTitleEn} <span style="color:#7A8399;font-weight:600">/ ${opts.termsTitleAr}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div dir="ltr" style="font-size:8px;line-height:1.45;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:12px">${opts.termsEnHtml}</div>
+          <div dir="rtl" style="font-size:8px;line-height:1.45;text-align:right;color:#444">${opts.termsArHtml}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
+        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">${opts.sigLeft}</div></div>
+        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">${opts.sigRight}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+function openContractPrintWindow(title,bodyHtml){
+  const w=window.open('','_blank');
+  const doc='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'
+    +'<link rel="preconnect" href="https://fonts.googleapis.com">'
+    +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">'
+    +'<style>@page{size:A4;margin:9mm}body{margin:0;padding:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{padding:0}}</style>'
+    +'</head><body>'+bodyHtml+'<script>window.onload=function(){window.print()}<\/script></body></html>';
+  w.document.write(doc);
+  w.document.close();
+}
 function liveryContractHtml(h,logoUrl){
   const today=fmt(new Date().toISOString().slice(0,10));
   const ownerRows=[
@@ -1866,29 +1905,12 @@ function liveryContractHtml(h,logoUrl){
     liveryContractField('Passport / Microchip','الجواز / الشريحة',esc(h.passport||'—')+' / '+esc(h.microchip||'—')),
   ].join('');
   const termsRows=liveryPricingRows(h);
-  return `<div style="font-family:'Cairo','Segoe UI',Roboto,Arial,sans-serif;color:#1A2744;max-width:190mm;margin:auto">
-    <div style="background:#1A2744;color:#fff;padding:10px 16px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px">
-      <img src="${logoUrl}" alt="Country Club Equestrian" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;flex-shrink:0">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:800">Country Club Equestrian</div>
-        <div style="font-size:10.5px;color:#E3D9C6">نادي الريف للفروسية &middot; Livery / Boarding Contract &middot; عقد إيواء</div>
-      </div>
-      <div style="text-align:right;font-size:10px;color:#E3D9C6;flex-shrink:0">
-        <div style="font-weight:800;color:#fff;font-size:12px">${liveryContractNo(h)}</div>
-        <div>${today}</div>
-      </div>
-    </div>
-    <div style="border:1px solid #E3D9C6;border-top:none;border-radius:0 0 14px 14px;padding:12px 16px;background:#FDFAF4">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         ${liveryContractCard('Horse Owner','بيانات المالك',ownerRows)}
         ${liveryContractCard('Horse Details','بيانات الحصان',horseRows)}
       </div>
-      ${liveryContractCard('Livery Terms','شروط الإيواء',termsRows)}
-      <div style="background:#F5EDD8;border-radius:10px;padding:8px 10px;margin-top:8px">
-        <div style="font-size:10.5px;font-weight:800;color:#1A2744;border-left:3px solid #C8923A;padding-left:8px;margin-bottom:4px">Terms &amp; Conditions <span style="color:#7A8399;font-weight:600">/ الشروط والأحكام</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div dir="ltr" style="font-size:8px;line-height:1.45;text-align:left;color:#444;border-right:1px solid #E3D9C6;padding-right:12px">
-            <div style="font-weight:800;color:#1A2744;margin-bottom:2px">First: Stable Services</div>
+      ${liveryContractCard('Livery Terms','شروط الإيواء',termsRows)}`;
+  const termsEnHtml=`<div style="font-weight:800;color:#1A2744;margin-bottom:2px">First: Stable Services</div>
             &bull; Suitable, safe housing (A/C or non-A/C) as agreed.<br>
             &bull; Feed &amp; water provided regularly; dietary changes are at the owner's expense.<br>
             &bull; Stable kept clean; horses washed once daily, more if needed.
@@ -1906,10 +1928,8 @@ function liveryContractHtml(h,logoUrl){
             <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">Fourth: Scheduling &amp; Rules</div>
             &bull; Gatherings by non-horse-owners inside the stable are prohibited.<br>
             &bull; Schedules and timings set by management must be followed.<br>
-            &bull; Exceptional cases require prior coordination and approval from the manager.
-          </div>
-          <div dir="rtl" style="font-size:8px;line-height:1.45;text-align:right;color:#444">
-            <div style="font-weight:800;color:#1A2744;margin-bottom:2px">أولاً: توفير الإيواء والخدمات</div>
+            &bull; Exceptional cases require prior coordination and approval from the manager.`;
+  const termsArHtml=`<div style="font-weight:800;color:#1A2744;margin-bottom:2px">أولاً: توفير الإيواء والخدمات</div>
             &bull; يلتزم النادي بتوفير مكان مناسب وآمن لإيواء الخيل (مكيف أو غير مكيف) وفقاً للاتفاق.<br>
             &bull; يلتزم النادي بتوفير الغذاء والماء بانتظام. أي إضافة أو تعديل في النظام الغذائي يتحمله المالك.<br>
             &bull; يلتزم النادي بالحفاظ على نظافة الإسطبل وتجهيزه، ويتم تسبيح الخيل مرة يومياً وعند الضرورة أكثر.
@@ -1927,28 +1947,139 @@ function liveryContractHtml(h,logoUrl){
             <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">رابعاً: المواعيد والتنظيم</div>
             &bull; يُمنع تنظيم أي تجمعات داخل الإسطبل من قِبل غير مالكي الخيول.<br>
             &bull; يجب الالتزام بالمواعيد والجداول الزمنية المحددة من الإدارة.<br>
-            &bull; في الحالات الاستثنائية يجب التنسيق المسبق مع المدير والحصول على موافقته.
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:24px;margin-top:14px">
-        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">Horse Owner Signature / توقيع المالك</div></div>
-        <div style="flex:1;text-align:center;font-size:10.5px"><div style="border-top:1px solid #7A8399;margin-top:20px;padding-top:4px">Country Club Equestrian / نادي الريف للفروسية</div></div>
-      </div>
-    </div>
-  </div>`;
+            &bull; في الحالات الاستثنائية يجب التنسيق المسبق مع المدير والحصول على موافقته.`;
+  return contractDocumentHtml({
+    logoUrl,contractNo:liveryContractNo(h),dateStr:today,
+    subtitleAr:'نادي الريف للفروسية &middot; عقد إيواء',subtitleEn:'Livery / Boarding Contract',
+    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'الشروط والأحكام',termsEnHtml,termsArHtml,
+    sigLeft:'Horse Owner Signature / توقيع المالك',
+    sigRight:'Country Club Equestrian / نادي الريف للفروسية',
+  });
 }
 function printLiveryContract(id){
   const h=horses.find(x=>String(x.id)===String(id));if(!h)return;
   const logoUrl=new URL('icons/logo-transparent.png',document.baseURI).href;
-  const w=window.open('','_blank');
-  const doc='<!doctype html><html><head><meta charset="utf-8"><title>'+liveryContractNo(h)+'</title>'
-    +'<link rel="preconnect" href="https://fonts.googleapis.com">'
-    +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">'
-    +'<style>@page{size:A4;margin:9mm}body{margin:0;padding:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{padding:0}}</style>'
-    +'</head><body>'+liveryContractHtml(h,logoUrl)+'<script>window.onload=function(){window.print()}<\/script></body></html>';
-  w.document.write(doc);
-  w.document.close();
+  openContractPrintWindow(liveryContractNo(h),liveryContractHtml(h,logoUrl));
+}
+function trainingContractNo(request){return 'CCE-TRN-'+String(request.id||'').padStart(5,'0');}
+function trainingContractHtml(request,safety,logoUrl){
+  const today=fmt(new Date().toISOString().slice(0,10));
+  const slots=Array.isArray(request.session_slots)?request.session_slots:[];
+  const scheduleText=slots.length?slots.map((s,i)=>(i+1)+') '+fmt(s.date)+' @ '+String(s.time||'').slice(0,5)).join(', '):'—';
+  const traineeRows=[
+    liveryContractField('Full Name','الاسم الكامل',esc(safety?.customer_name||request.customer_name||'—'),true),
+    liveryContractField('Personal ID','الرقم الشخصي',esc(safety?.personal_id||'—')),
+    liveryContractField('Phone','رقم الهاتف',esc(safety?.phone||request.phone||'—')),
+    liveryContractField('Date of Birth','تاريخ الميلاد',safety?.birth_date?fmt(safety.birth_date):'—'),
+    liveryContractField('Emergency Contact','رقم الطوارئ',esc(safety?.emergency_contact||'—')),
+    liveryContractField('Health Condition','الحالة الصحية',esc(safety?.health_notes||'None provided / لا يوجد')),
+  ].join('');
+  const packageRows=[
+    liveryContractField('Package','الباقة',esc(request.service_name||'—'),true),
+    liveryContractField('Number of Sessions','عدد الحصص',String(slots.length||1)),
+    liveryContractField('Session Schedule','جدول الحصص',esc(scheduleText)),
+    liveryContractField('Price','السعر',BD(request.amount_bd),true),
+    liveryContractField('Payment Terms','شروط الدفع','Paid in advance via bank transfer / يُدفع مقدماً عبر التحويل البنكي'),
+    liveryContractField('Contract Date','تاريخ العقد',today),
+  ].join('');
+  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        ${liveryContractCard('Trainee Information','بيانات المتدرب',traineeRows)}
+        ${liveryContractCard('Package Details','تفاصيل الباقة',packageRows)}
+      </div>`;
+  const termsEnHtml=`1. The trainee must bring and wear appropriate clothing (a protective helmet and shoes with a small heel to avoid slipping).<br>
+            2. Both parties must adhere to the agreed-upon timing.<br>
+            3. The trainee must behave politely and respectfully towards the trainer and all staff.<br>
+            4. Companions of the trainee must not interfere with the trainer's work during the session.<br>
+            5. The trainee is not allowed to ride the horse without the trainer's permission.<br>
+            6. The trainee must handle the horse and its equipment with care.<br>
+            7. Shouting and running are not allowed in the club's premises.<br>
+            8. The trainee will bear full responsibility for any intentional damage caused.<br>
+            9. In case of any emergency, the trainee must inform the trainer immediately.<br>
+            10. Non-compliance will result in disciplinary actions, up to expulsion in case of repeated violations.<br>
+            11. The club is not responsible for any injury to the trainee.<br>
+            12. The trainer must be informed of any medical condition of the trainee before the training session.`;
+  const termsArHtml=`١. يلتزم المتدرب بجلب وارتداء الملابس المناسبة (خوذة واقية وحذاء مع كعب صغير لتجنب الانزلاق).<br>
+            ٢. يلتزم الطرفان بالتوقيت المتفق عليه.<br>
+            ٣. يلتزم المتدرب بالتصرف بطريقة لبقة وسلوك محترم مع المدرب وجميع الموظفين.<br>
+            ٤. التزام المرافقين للمتدرب بعدم التدخل بعمل المدرب خلال حصة التدريب.<br>
+            ٥. لا يُسمح للمتدرب بركوب الخيل دون إذن من المدرب.<br>
+            ٦. يجب على المتدرب التعامل مع الخيل ومعداته بعناية.<br>
+            ٧. لا يسمح بالصراخ والجري في مرافق النادي.<br>
+            ٨. سيتحمل المتدرب كامل المسؤولية عن أي ضرر متعمد قد يتسبب به.<br>
+            ٩. في حال حدوث أي طارئ يجب على المتدرب إخبار المدرب على الفور.<br>
+            ١٠. سيؤدي عدم الامتثال للسياسة المذكورة أعلاه إلى اتخاذ إجراءات تأديبية تصل إلى الطرد في حال تكرار المخالفات.<br>
+            ١١. النادي لا يتحمل إصابة المتدرب.<br>
+            ١٢. يجب إبلاغ المدرب عن أي حالة مرضية للمتدرب قبل الحصة التدريبية.`;
+  return contractDocumentHtml({
+    logoUrl,contractNo:trainingContractNo(request),dateStr:today,
+    subtitleAr:'نادي الريف للفروسية &middot; عقد تدريب',subtitleEn:'Training Agreement',
+    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'الشروط والأحكام',termsEnHtml,termsArHtml,
+    sigLeft:'Trainee Signature / توقيع المتدرب',
+    sigRight:'Country Club Equestrian / نادي الريف للفروسية',
+  });
+}
+async function printTrainingContract(bookingRequestId){
+  if(typeof window.canUser==='function'&&!window.canUser('bookings.sensitive.view')){alert('You do not have permission to view protected booking details.');return;}
+  const request=(booking_requests||[]).find(b=>String(b.id)===String(bookingRequestId));
+  if(!request)return;
+  try{
+    const safety=await sbRpc('cce_booking_private_details',{p_booking_request_id:bookingRequestId});
+    const logoUrl=new URL('icons/logo-transparent.png',document.baseURI).href;
+    openContractPrintWindow(trainingContractNo(request),trainingContractHtml(request,safety,logoUrl));
+  }catch(error){showError('Print contract',error);}
+}
+function rideContractNo(request){return 'CCE-RIDE-'+String(request.id||'').padStart(5,'0');}
+function rideContractHtml(request,safety,logoUrl){
+  const today=fmt(new Date().toISOString().slice(0,10));
+  const riderRows=[
+    liveryContractField('Full Name','الاسم الكامل',esc(safety?.customer_name||request.customer_name||'—'),true),
+    liveryContractField('Personal ID','الرقم الشخصي',esc(safety?.personal_id||'—')),
+    liveryContractField('Phone','رقم الهاتف',esc(safety?.phone||request.phone||'—')),
+    liveryContractField('Date of Birth','تاريخ الميلاد',safety?.birth_date?fmt(safety.birth_date):'—'),
+    liveryContractField('Emergency Contact','رقم الطوارئ',esc(safety?.emergency_contact||'—')),
+    liveryContractField('Health Condition','الحالة الصحية',esc(safety?.health_notes||'None provided / لا يوجد')),
+  ].join('');
+  const rideRows=[
+    liveryContractField('Ride Service','الخدمة',esc(request.service_name||'—'),true),
+    liveryContractField('Riding Level','مستوى الفروسية',esc(request.rider_level||'—')),
+    liveryContractField('Date','التاريخ',request.requested_date?fmt(request.requested_date):'—'),
+    liveryContractField('Time','الوقت',esc(String(request.start_time||'').slice(0,5)||'—')),
+    liveryContractField('Price','السعر',BD(request.amount_bd),true),
+    liveryContractField('Contract Date','تاريخ العقد',today),
+  ].join('');
+  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        ${liveryContractCard('Rider Information','بيانات الفارس',riderRows)}
+        ${liveryContractCard('Ride Details','تفاصيل الجولة',rideRows)}
+      </div>`;
+  const termsEnHtml=`1. The renter must wear appropriate clothing (protective helmet and shoes with a small heel).<br>
+            2. The renter is responsible for the horse's safety throughout the rental (avoiding speed and movements causing injury).<br>
+            3. The renter must follow the code of conduct to ensure safety of themselves and others.<br>
+            4. <strong style="color:#C0392B">The renter is liable for veterinary treatment costs if the horse is injured due to non-compliance with the stated terms and conditions.</strong><br>
+            5. The club is not responsible for any injury to the renter.<br>
+            6. Non-compliance means the renter bears full responsibility.`;
+  const termsArHtml=`١. يلتزم المستأجر بارتداء الملابس المناسبة (خوذة واقية وحذاء مع كعب صغير لتجنب الانزلاق).<br>
+            ٢. يلتزم المستأجر بسلامة الخيل طوال فترة الاستئجار (تجنب السرعة والحركات التي تتسبب في إصابة الخيل أو الفارس).<br>
+            ٣. يلتزم المستأجر بالالتزام بقواعد السلوك لضمان سلامته وسلامة الآخرين.<br>
+            ٤. <strong style="color:#C0392B">يلتزم المستأجر بدفع تكاليف علاج الخيل في حال التسبب بإصابته نتيجة عدم الالتزام بالشروط المذكورة.</strong><br>
+            ٥. النادي لا يتحمل إصابة المستأجر.<br>
+            ٦. في حال عدم الالتزام بالشروط المذكورة يتحمل المستأجر المسؤولية الكاملة.`;
+  return contractDocumentHtml({
+    logoUrl,contractNo:rideContractNo(request),dateStr:today,
+    subtitleAr:'نادي الريف للفروسية &middot; اتفاقية تأجير ركوب الخيل',subtitleEn:'Horse Renting Agreement',
+    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'الشروط والأحكام',termsEnHtml,termsArHtml,
+    sigLeft:'Renter Signature / توقيع المستأجر',
+    sigRight:'Country Club Equestrian / نادي الريف للفروسية',
+  });
+}
+async function printRideContract(bookingRequestId){
+  if(typeof window.canUser==='function'&&!window.canUser('bookings.sensitive.view')){alert('You do not have permission to view protected booking details.');return;}
+  const request=(booking_requests||[]).find(b=>String(b.id)===String(bookingRequestId));
+  if(!request)return;
+  try{
+    const safety=await sbRpc('cce_booking_private_details',{p_booking_request_id:bookingRequestId});
+    const logoUrl=new URL('icons/logo-transparent.png',document.baseURI).href;
+    openContractPrintWindow(rideContractNo(request),rideContractHtml(request,safety,logoUrl));
+  }catch(error){showError('Print contract',error);}
 }
 function buildAlerts(){
   const bell=document.getElementById('alertBell');
@@ -2241,9 +2372,15 @@ function renderBookings(){
       const bookingStatus=request?.status||'Legacy';
       const statusClass=['Completed','Confirmed','Scheduled'].includes(bookingStatus)?'badge-green':
         ['Cancelled','Rejected'].includes(bookingStatus)?'badge-red':'badge-amber';
-      const safetyButton=request&&typeof window.canUser==='function'&&window.canUser('bookings.sensitive.view')
+      const canViewSensitive=request&&typeof window.canUser==='function'&&window.canUser('bookings.sensitive.view');
+      const safetyButton=canViewSensitive
         ?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy)" title="Protected rider details" onclick="viewBookingSafety('+request.id+')">&#128737;&#65039;</button>'
         :'';
+      const printContractButton=canViewSensitive&&requestType==='training'
+        ?'<button class="action-btn" style="background:#F6F2E8;color:#C8923A" title="Print Training Contract" onclick="printTrainingContract('+request.id+')">&#128196;</button>'
+        :canViewSensitive&&requestType==='ride'
+          ?'<button class="action-btn" style="background:#F6F2E8;color:#C8923A" title="Print Ride Contract" onclick="printRideContract('+request.id+')">&#128196;</button>'
+          :'';
       const canUpdate=request&&typeof window.canUser==='function'&&window.canUser('bookings.update');
       const canDeleteBooking=request&&typeof window.canUser==='function'&&window.canUser('bookings.delete');
       const canScheduleTraining=requestType==='training'&&request&&canUpdate&&
@@ -2263,6 +2400,7 @@ function renderBookings(){
         '<td>'+statusControl+(r?'<div style="margin-top:4px"><span class="badge '+(isPaidRow(r)?'badge-green':'badge-red')+'">Payment: '+esc(r.status||'Pending')+'</span></div>':'')+'</td>'+
         '<td style="white-space:nowrap">'+
           safetyButton+
+          printContractButton+
           (canScheduleTraining?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" title="Assign instructor and create package sessions" onclick="openScheduleTrainingBooking('+request.id+')">&#128197;</button>':'')+
           (r?'<button class="action-btn" style="background:#E8EAF0;color:var(--navy)" onclick="editIncome('+r.id+')">&#9999;&#65039;</button>':'')+
           (r?'<button class="action-btn" style="background:#E8F5EE;color:var(--green)" onclick="printReceipt('+r.id+')">&#129534;</button>':'')+
@@ -4428,7 +4566,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.25.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.26.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4521,7 +4659,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260815-4251', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260816-4260', {scope:'./'})
       .then(reg => {
 
         reg.update();
