@@ -1,5 +1,5 @@
 // Country Club Equestrian unified portal service worker
-// Version: cce-stableos-20260815-4251
+// Version: cce-stableos-20260818-4270
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 // Network pass-through is intentional. Authentication and current club data
