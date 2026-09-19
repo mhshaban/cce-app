@@ -2615,6 +2615,49 @@ test('v4.27.0 adds a lease booking type: public request needs no date/price, cre
   }
 });
 
+test('v4.28.0 adds stallion/owner-ID/pricing/boarding/agreement-date fields to breeding, package_price_bd defaults to 0, rollback drops them and reapply restores them',async()=>{
+  const db=await buildDatabase();
+  try{
+    const columns=await db.query(`
+      select column_name, is_nullable, column_default
+      from information_schema.columns
+      where table_schema='public' and table_name='breeding'
+        and column_name in (
+          'stallion_name','stallion_breed','mare_breed','owner_id','owner_email',
+          'package_price_bd','boarding_plan','agreement_date'
+        )
+      order by column_name
+    `);
+    assert.equal(columns.rows.length,8);
+    const priceColumn=columns.rows.find(row=>row.column_name==='package_price_bd');
+    assert.equal(priceColumn.is_nullable,'NO');
+    assert.match(priceColumn.column_default,/0/);
+
+    await db.exec(`insert into public.breeding(mare_name,owner,mobile,count,stallion_name,stallion_breed,mare_breed,owner_id,owner_email,package_price_bd,boarding_plan,agreement_date,day1,day2,day3)
+      values('Test Mare','Test Owner','39001234',1,'Blacklow','Appaloosa','Arabian','CPR-999','owner@example.com',100,'With Feed (3 BD/day)','2026-08-19','2026-09-01','2026-09-02','2026-09-03')`);
+    const inserted=await db.query(`select stallion_name,mare_breed,owner_id,package_price_bd,boarding_plan from public.breeding where mare_name='Test Mare'`);
+    assert.deepEqual(inserted.rows[0],{
+      stallion_name:'Blacklow',mare_breed:'Arabian',owner_id:'CPR-999',package_price_bd:'100',boarding_plan:'With Feed (3 BD/day)'
+    });
+
+    await db.exec(read('supabase/rollback/rollback_v4280_compatibility.sql'));
+    const afterRollback=await db.query(`
+      select count(*)::int as n from information_schema.columns
+      where table_schema='public' and table_name='breeding' and column_name in ('stallion_name','package_price_bd')
+    `);
+    assert.equal(afterRollback.rows[0].n,0);
+
+    await db.exec(read('supabase/migrations/20260819_breeding_agreement_v4280.sql'));
+    const afterReapply=await db.query(`
+      select count(*)::int as n from information_schema.columns
+      where table_schema='public' and table_name='breeding' and column_name in ('stallion_name','package_price_bd')
+    `);
+    assert.equal(afterReapply.rows[0].n,2);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
