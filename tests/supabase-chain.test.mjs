@@ -2658,6 +2658,44 @@ test('v4.28.0 adds stallion/owner-ID/pricing/boarding/agreement-date fields to b
   }
 });
 
+test('v4.29.0 adds boarding_days to breeding, defaults to 0, rollback drops it and reapply restores it',async()=>{
+  const db=await buildDatabase();
+  try{
+    await db.exec(read('supabase/migrations/20260819_breeding_agreement_v4280.sql'));
+    await db.exec(read('supabase/migrations/20260821_breeding_boarding_total_v4290.sql'));
+    const columns=await db.query(`
+      select column_name, data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema='public' and table_name='breeding' and column_name='boarding_days'
+    `);
+    assert.equal(columns.rows.length,1);
+    assert.equal(columns.rows[0].data_type,'integer');
+    assert.equal(columns.rows[0].is_nullable,'NO');
+    assert.match(columns.rows[0].column_default,/0/);
+
+    await db.exec(`insert into public.breeding(mare_name,owner,mobile,count,boarding_plan,boarding_days,day1,day2,day3)
+      values('Boarding Mare','Boarding Owner','39007777',1,'With Feed (3 BD/day)',5,'2026-09-01','2026-09-02','2026-09-03')`);
+    const inserted=await db.query(`select boarding_days from public.breeding where mare_name='Boarding Mare'`);
+    assert.equal(inserted.rows[0].boarding_days,5);
+
+    await db.exec(read('supabase/rollback/rollback_v4290_compatibility.sql'));
+    const afterRollback=await db.query(`
+      select count(*)::int as n from information_schema.columns
+      where table_schema='public' and table_name='breeding' and column_name='boarding_days'
+    `);
+    assert.equal(afterRollback.rows[0].n,0);
+
+    await db.exec(read('supabase/migrations/20260821_breeding_boarding_total_v4290.sql'));
+    const afterReapply=await db.query(`
+      select count(*)::int as n from information_schema.columns
+      where table_schema='public' and table_name='breeding' and column_name='boarding_days'
+    `);
+    assert.equal(afterReapply.rows[0].n,1);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

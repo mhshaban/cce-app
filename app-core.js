@@ -2171,10 +2171,19 @@ function breedingCycleRows(r){
     return liveryContractField(labels[i],'',range);
   }).join('');
 }
+function breedingBoardingRate(plan){
+  if(/With Feed/i.test(plan||''))return 3;
+  if(/Without Feed/i.test(plan||''))return 2;
+  return 0;
+}
 function breedingContractHtml(r,logoUrl){
   const today=fmt(new Date().toISOString().slice(0,10));
   const count=Number(r.count)||1;
   const price=moneyNum(r.package_price_bd)>0?moneyNum(r.package_price_bd):breedingPackagePrice(count);
+  const boardingRate=breedingBoardingRate(r.boarding_plan);
+  const boardingDays=Number(r.boarding_days)||0;
+  const boardingCost=boardingRate>0&&boardingDays>0?boardingRate*boardingDays:0;
+  const total=price+boardingCost;
   const ownerRows=[
     liveryContractField('اسم العميل','',esc(r.owner||'—'),true),
     liveryContractField('رقم الهوية / جواز السفر','',esc(r.owner_id||'—')),
@@ -2191,6 +2200,9 @@ function breedingContractHtml(r,logoUrl){
     liveryContractField('الباقة المختارة (عدد الدورات)','',count+' — '+BD(price),true),
     breedingCycleRows(r),
     liveryContractField('خطة الإيواء','',esc(r.boarding_plan||'بدون إيواء')),
+    boardingCost>0?liveryContractField('عدد أيام الإيواء','',String(boardingDays)):'',
+    boardingCost>0?liveryContractField('تكلفة الإيواء','',BD(boardingCost)):'',
+    liveryContractField('الإجمالي','',BD(total),true),
     liveryContractField('تاريخ الاتفاقية','',r.agreement_date?fmt(r.agreement_date):today),
   ].join('');
   const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
@@ -2827,6 +2839,7 @@ function editBreeding(id){
     <div class="form-group"><label>Package (cycles)</label><select id="eb-count">${[1,2,3].map(n=>'<option value="'+n+'" '+(Number(r.count)===n?'selected':'')+'>'+n+' — '+BD(n===1?100:n===2?150:200)+'</option>').join('')}</select></div>
     <div class="form-group"><label>Package Price (BD)</label><input type="number" step="0.001" id="eb-price" value="${r.package_price_bd||0}"></div>
     <div class="form-group"><label>Boarding Plan</label><select id="eb-boarding"><option value="">None</option><option value="Without Feed (2 BD/day)" ${r.boarding_plan==='Without Feed (2 BD/day)'?'selected':''}>Without Feed (2 BD/day)</option><option value="With Feed (3 BD/day)" ${r.boarding_plan==='With Feed (3 BD/day)'?'selected':''}>With Feed (3 BD/day)</option></select></div>
+    <div class="form-group"><label>Boarding Days</label><input type="number" step="1" min="0" id="eb-boarding-days" value="${r.boarding_days||0}"></div>
     <div class="form-group"><label>Agreement Date</label><input type="date" id="eb-agreement-date" value="${r.agreement_date||''}"></div>
     <div class="form-group"><label>Day 1</label><input type="date" id="eb-d1" value="${r.day1||''}"></div>
     <div class="form-group"><label>Day 2</label><input type="date" id="eb-d2" value="${r.day2||''}"></div>
@@ -2840,7 +2853,7 @@ function editBreeding(id){
   </div><div class="btn-row"><button class="btn btn-navy" onclick="saveBreeding(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveBreeding(id){
-  try{await sbPatch('breeding',id,{mare_name:document.getElementById('eb-mare').value,mare_breed:document.getElementById('eb-mare-breed').value||null,owner:document.getElementById('eb-owner').value,owner_id:document.getElementById('eb-owner-id').value||null,mobile:document.getElementById('eb-mobile').value||null,owner_email:document.getElementById('eb-owner-email').value||null,stallion_name:document.getElementById('eb-stallion').value||null,stallion_breed:document.getElementById('eb-stallion-breed').value||null,count:parseInt(document.getElementById('eb-count').value)||1,package_price_bd:parseFloat(document.getElementById('eb-price').value)||0,boarding_plan:document.getElementById('eb-boarding').value||null,agreement_date:document.getElementById('eb-agreement-date').value||null,day1:document.getElementById('eb-d1').value||null,day2:document.getElementById('eb-d2').value||null,day3:document.getElementById('eb-d3').value||null,day4:document.getElementById('eb-d4').value||null,day5:document.getElementById('eb-d5').value||null,day6:document.getElementById('eb-d6').value||null,day7:document.getElementById('eb-d7').value||null,day8:document.getElementById('eb-d8').value||null,day9:document.getElementById('eb-d9').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  try{await sbPatch('breeding',id,{mare_name:document.getElementById('eb-mare').value,mare_breed:document.getElementById('eb-mare-breed').value||null,owner:document.getElementById('eb-owner').value,owner_id:document.getElementById('eb-owner-id').value||null,mobile:document.getElementById('eb-mobile').value||null,owner_email:document.getElementById('eb-owner-email').value||null,stallion_name:document.getElementById('eb-stallion').value||null,stallion_breed:document.getElementById('eb-stallion-breed').value||null,count:parseInt(document.getElementById('eb-count').value)||1,package_price_bd:parseFloat(document.getElementById('eb-price').value)||0,boarding_plan:document.getElementById('eb-boarding').value||null,boarding_days:parseInt(document.getElementById('eb-boarding-days').value)||0,agreement_date:document.getElementById('eb-agreement-date').value||null,day1:document.getElementById('eb-d1').value||null,day2:document.getElementById('eb-d2').value||null,day3:document.getElementById('eb-d3').value||null,day4:document.getElementById('eb-d4').value||null,day5:document.getElementById('eb-d5').value||null,day6:document.getElementById('eb-d6').value||null,day7:document.getElementById('eb-d7').value||null,day8:document.getElementById('eb-d8').value||null,day9:document.getElementById('eb-d9').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
 function openTrainingPaymentModal(id){
   const r=income.find(x=>String(x.id)===String(id));if(!r)return;
@@ -4769,7 +4782,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.28.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4862,7 +4875,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260820-4281', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20260821-4290', {scope:'./'})
       .then(reg => {
 
         reg.update();
