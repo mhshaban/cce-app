@@ -1286,14 +1286,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.28.0 cache key',()=>{
+test('all app assets use the v4.28.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260818-4270'));
-  assert.ok((html.match(/20260819-4280/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260819-4280/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260819-4280/);
-  assert.equal(read('VERSION.txt').trim(),'4.28.0');
+  assert.ok(!html.includes('20260819-4280'));
+  assert.ok((html.match(/20260820-4281/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260820-4281/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260820-4281/);
+  assert.equal(read('VERSION.txt').trim(),'4.28.1');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1564,6 +1564,12 @@ test('breedingContractHtml() builds an RTL Arabic-only "اتفاقية تنسي�
   assert.match(priceFn,/count===1\?100:count===2\?150:count===3\?200:0/);
   const breedList=functionBlock(core,'renderBreeding','addBreeding');
   assert.match(breedList,/r\.stallion_name\?'<button[^']*title="Print Breeding Agreement" onclick="printBreedingContract\('\+r\.id\+'\)"/);
+});
+
+test('navigate() hides the global header on the lease booking page, same as the other standalone service pages, to avoid a duplicate header',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'navigate','goHome');
+  assert.match(fn,/page==='livery'\|\|page==='home'\|\|page==='booking'\|\|page==='training'\|\|page==='lease'/);
 });
 
 test('the "Update now" PWA banner sits at the bottom of the screen (above the home indicator) instead of the top, so it is always reachable',()=>{
