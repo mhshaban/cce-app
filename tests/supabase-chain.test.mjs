@@ -2518,6 +2518,24 @@ test('v4.25.0 adds per-horse Standard Package/Extra Care/Feed Selection flags an
   }
 });
 
+test('v4.26.1 corrects the Full Livery backend price to 90 BD (v4.24.4 only updated the advertised price), rollback restores 80 and reapply restores 90',async()=>{
+  const db=await buildDatabase();
+  try{
+    const corrected=await db.query(`select price_bd from public.public_booking_services where code='livery_full'`);
+    assert.equal(corrected.rows[0].price_bd,'90.000');
+
+    await db.exec(read('supabase/rollback/rollback_v4261_compatibility.sql'));
+    const rolledBack=await db.query(`select price_bd from public.public_booking_services where code='livery_full'`);
+    assert.equal(rolledBack.rows[0].price_bd,'80.000');
+
+    await db.exec(read('supabase/migrations/20260817_livery_full_price_correction_v4261.sql'));
+    const reapplied=await db.query(`select price_bd from public.public_booking_services where code='livery_full'`);
+    assert.equal(reapplied.rows[0].price_bd,'90.000');
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

@@ -272,6 +272,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260806_staff_portal_field_fix_v4233.sql',
     'supabase/migrations/20260807_staff_care_board_remove_feeding_v4234.sql',
     'supabase/migrations/20260813_horse_livery_addons_v4250.sql',
+    'supabase/migrations/20260817_livery_full_price_correction_v4261.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -318,6 +319,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4234.sql',
     'supabase/verification/preflight_v4250.sql',
     'supabase/verification/verify_v4250.sql',
+    'supabase/verification/preflight_v4261.sql',
+    'supabase/verification/verify_v4261.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -346,7 +349,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4230_compatibility.sql',
     'supabase/rollback/rollback_v4233_compatibility.sql',
     'supabase/rollback/rollback_v4234_compatibility.sql',
-    'supabase/rollback/rollback_v4250_compatibility.sql'
+    'supabase/rollback/rollback_v4250_compatibility.sql',
+    'supabase/rollback/rollback_v4261_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1274,14 +1278,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.26.0 cache key',()=>{
+test('all app assets use the v4.26.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260815-4251'));
-  assert.ok((html.match(/20260816-4260/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260816-4260/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260816-4260/);
-  assert.equal(read('VERSION.txt').trim(),'4.26.0');
+  assert.ok(!html.includes('20260816-4260'));
+  assert.ok((html.match(/20260817-4261/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20260817-4261/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20260817-4261/);
+  assert.equal(read('VERSION.txt').trim(),'4.26.1');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
