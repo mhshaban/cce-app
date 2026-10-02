@@ -355,7 +355,10 @@
     if (role === 'judge' && canOpenDashPage('show-office-judge')) return 'show-office-judge';
     const order = prefersSchedule()
       ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools']
-      : ['dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','bookings','schedule','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+      // Operations (bookings/schedule) is the day-to-day workflow, so it
+      // comes before Show Office whenever Dashboard itself isn't reachable
+      // (e.g. an account restricted to operations-only access).
+      : ['dashboard','bookings','schedule','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','horses','health','breeding','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
