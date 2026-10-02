@@ -86,7 +86,7 @@ async function sbCount(t,q=''){
 }
 function tableRowsForAudit(t){return ({income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests})[t]||[];}
 async function sbPost(t,d,opts={}){
-  const data={...d};delete data.id;
+  const data={...d};if(!opts.keepId)delete data.id;
   const prefer=opts.prefer||'return=representation';
   const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:buildHeaders(prefer),body:JSON.stringify(data)});
   if(!r.ok)throw new Error(await r.text());
