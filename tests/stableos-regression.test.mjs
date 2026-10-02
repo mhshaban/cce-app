@@ -260,6 +260,15 @@ test('dashboard load and backup fetch every income/expense/horse/breeding/schedu
   }
 });
 
+test('the member-session loader (which replaces loadAll for every logged-in member) pages every table too',()=>{
+  const portal=read('member-portal.js');
+  const safeGet=functionBlock(portal,'safeGet','safeRpcRows');
+  assert.match(safeGet,/return await sbGetAll\(table, query\)/);
+  const load=portal.slice(portal.indexOf('window.loadAll = async function permissionAwareLoadAll'),portal.indexOf("if (hasPermission('dashboard.view')) safeInvoke('buildDash')"));
+  assert.match(load,/safeGet\('expenses','select=\*',needExpenses\)/);
+  assert.doesNotMatch(load,/limit=/);
+});
+
 test('Supabase exact counts use a HEAD request and reject malformed totals',async()=>{
   const runtime=read('src/services/supabase-runtime.js');
   const calls=[];
@@ -1357,14 +1366,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.29.1 cache key',()=>{
+test('all app assets use the v4.29.2 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260821-4290'));
-  assert.ok((html.match(/20261002-4291/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261002-4291/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4291/);
-  assert.equal(read('VERSION.txt').trim(),'4.29.1');
+  assert.ok(!html.includes('20261002-4291'));
+  assert.ok((html.match(/20261002-4292/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261002-4292/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4292/);
+  assert.equal(read('VERSION.txt').trim(),'4.29.2');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
