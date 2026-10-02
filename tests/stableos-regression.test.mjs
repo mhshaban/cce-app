@@ -221,6 +221,45 @@ test('Supabase reads preserve explicit ordering and add one safe default',async(
   assert.match(urls[1],/order=id\.asc/);
 });
 
+test('sbGetAll() pages past the server max-rows cap so no rows are silently dropped',async()=>{
+  const runtime=read('src/services/supabase-runtime.js');
+  const table=Array.from({length:2345},(_,i)=>({id:i+1,paid_bd:1}));
+  const urls=[];
+  const context={
+    SB_URL:'https://example.supabase.co',HDR:{},
+    fetch:async url=>{
+      urls.push(url);
+      const params=new URL(url).searchParams;
+      const offset=Number(params.get('offset')||0);
+      const limit=Math.min(Number(params.get('limit')||Infinity),1000);
+      return {ok:true,json:async()=>table.slice(offset,offset+limit)};
+    },
+    Error,String,Array,Number
+  };
+  vm.runInNewContext('async '+functionBlock(runtime,'sbGet','tableRowsForAudit'),context);
+  const rows=await context.sbGetAll('expenses','select=*&limit=50');
+  assert.equal(rows.length,2345);
+  assert.equal(rows[2344].id,2345);
+  assert.ok(urls.every(u=>(u.match(/limit=/g)||[]).length===1),'caller limit must be replaced, not duplicated');
+  assert.ok(urls.every(u=>/order=id\.asc/.test(u)));
+  urls.length=0;
+  await context.sbGetAll('schedule','select=*&order=date.asc,start_time.asc');
+  assert.match(urls[0],/order=date\.asc,start_time\.asc,id\.asc/);
+});
+
+test('dashboard load and backup fetch every income/expense/horse/breeding/schedule row instead of a fixed limit',()=>{
+  const core=read('app-core.js');
+  const load=functionBlock(core,'loadAll','showPage');
+  for(const t of ['income','expenses','horses','breeding','schedule']){
+    assert.match(load,new RegExp(`sbGetAll\\('${t}'`),`loadAll should page ${t}`);
+  }
+  assert.doesNotMatch(load,/sbGet\('(income|expenses|horses|breeding|schedule)'[^)]*limit=/);
+  const backup=functionBlock(core,'downloadBackup','logout');
+  for(const t of ['income','expenses','horses','breeding']){
+    assert.match(backup,new RegExp(`sbGetAll\\('${t}'`),`backup should page ${t}`);
+  }
+});
+
 test('Supabase exact counts use a HEAD request and reject malformed totals',async()=>{
   const runtime=read('src/services/supabase-runtime.js');
   const calls=[];
@@ -430,6 +469,16 @@ test('Income, Expenses and Overdue tables sort by date (not due_date), newest fi
   assert.match(overdue,/const byDateDesc=\(a,b\)=>String\(b\.date\)\.localeCompare\(String\(a\.date\)\)\|\|Number\(b\.id\|\|0\)-Number\(a\.id\|\|0\)/);
   assert.match(overdue,/expenses\.filter\(isOverdueRow\)\.sort\(byDateDesc\)/);
   assert.match(overdue,/income\.filter\(isOverdueRow\)\.sort\(byDateDesc\)/);
+});
+
+test('an account without Dashboard access lands on Operations (Bookings) instead of Show Office when both are reachable',()=>{
+  const portal=read('member-portal.js');
+  const fn=functionBlock(portal,'firstAllowedDashboardPage','guardedDashPage');
+  assert.match(fn,/role === 'judge' && canOpenDashPage\('show-office-judge'\)\) return 'show-office-judge'/);
+  const fallbackOrder=fn.match(/:\s*(\[[^\]]*\]);\s*\n\s*return order\.find/)[1];
+  assert.ok(fallbackOrder.indexOf("'dashboard'")<fallbackOrder.indexOf("'bookings'"),'dashboard should still be tried first');
+  assert.ok(fallbackOrder.indexOf("'bookings'")<fallbackOrder.indexOf("'show-office'"),'bookings should be tried before show-office');
+  assert.ok(fallbackOrder.indexOf("'schedule'")<fallbackOrder.indexOf("'show-office'"),'schedule should be tried before show-office');
 });
 
 test('Show Office preserves the current main UI while using one permission-aware Supabase implementation',()=>{
@@ -1281,6 +1330,24 @@ test('recent dashboard activity combines income and expenses by latest operation
   assert.match(read('index.html'),/Recent Financial Activity \(Last 10\)/);
 });
 
+test('recent dashboard activity sorts by the record date, newest first, even when an older-dated row was edited more recently',()=>{
+  const core=read('app-core.js');
+  const context={Date,Math,Number,readAuditLog:()=>[
+    {ts:'2026-10-01T18:00:00Z',table_name:'income',record_id:'1',action:'update'}
+  ]};
+  vm.runInNewContext(functionBlock(core,'recentFinancialActivityRows','recentFinancialActivityHTML'),context);
+  const rows=context.recentFinancialActivityRows(
+    [
+      {id:1,date:'2026-09-19',customer_name:'Older but recently touched'},
+      {id:2,date:'2026-10-01',customer_name:'Newer, untouched'}
+    ],
+    [],
+    10
+  );
+  assert.equal(rows[0].row.id,2);
+  assert.equal(rows[1].row.id,1);
+});
+
 test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   const core=read('app-core.js');
   const context={Intl,Date};
@@ -1290,14 +1357,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.29.0 cache key',()=>{
+test('all app assets use the v4.29.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20260820-4281'));
-  assert.ok((html.match(/20260821-4290/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20260821-4290/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20260821-4290/);
-  assert.equal(read('VERSION.txt').trim(),'4.29.0');
+  assert.ok(!html.includes('20260821-4290'));
+  assert.ok((html.match(/20261002-4291/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261002-4291/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4291/);
+  assert.equal(read('VERSION.txt').trim(),'4.29.1');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
@@ -1444,6 +1511,15 @@ test('printTrainingContract()/printRideContract() are gated by bookings.sensitiv
   assert.match(printRideFn,/canUser\('bookings\.sensitive\.view'\)/);
   assert.match(printRideFn,/sbRpc\('cce_booking_private_details',\{p_booking_request_id:bookingRequestId\}\)/);
   assert.match(printRideFn,/openContractPrintWindow\(rideContractNo\(request\),rideContractHtml\(request,safety,logoUrl\)\)/);
+});
+
+test('renderBookings() sorts the Booking Requests table by date, newest first, instead of reversing insertion order',()=>{
+  const core=read('app-core.js');
+  const fn=functionBlock(core,'renderBookings','updateBookingStatus');
+  assert.ok(!/\[\.\.\.data\]\.reverse\(\)/.test(fn),'renderBookings should no longer rely on array-order reversal for sorting');
+  assert.match(fn,/bookingDateMs=\(\{income:r,request\}\)=>/);
+  assert.match(fn,/Date\.parse\(String\(request\?\.requested_date\|\|r\?\.date\|\|''\)\+'T00:00:00'\)/);
+  assert.match(fn,/\[\.\.\.data\]\.sort\(\(a,b\)=>bookingDateMs\(b\)-bookingDateMs\(a\)\)/);
 });
 
 test('renderBookings() shows a Print Contract button for training/ride requests, gated by bookings.sensitive.view',()=>{

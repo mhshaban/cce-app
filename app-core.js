@@ -579,10 +579,10 @@ async function downloadBackup(){
     // Fetch all data
     const moduleBackupProviders=Object.entries(window.CCE?.backupProviders||{});
     const [inc,exp,hor,bre,moduleBackups]=await Promise.all([
-      sbGet('income','select=*&limit=5000'),
-      sbGet('expenses','select=*&limit=5000'),
-      sbGet('horses','select=*&limit=500'),
-      sbGet('breeding','select=*&limit=500'),
+      sbGetAll('income','select=*'),
+      sbGetAll('expenses','select=*'),
+      sbGetAll('horses','select=*'),
+      sbGetAll('breeding','select=*'),
       Promise.all(moduleBackupProviders.map(async([name,provider])=>{
         if(typeof provider!=='function')throw new Error(`Backup failed for module “${name}”: provider is not configured correctly.`);
         try{return await provider();}
@@ -742,7 +742,7 @@ async function checkAndCreateLiveryNotifications(){
   
   // Reload income so new records appear in Overdue immediately
   if(created){
-    income=await sbGet('income','select=*&limit=2000');
+    income=await sbGetAll('income','select=*');
   }
 }
 
@@ -779,25 +779,25 @@ async function loadAll(){
     if(!testRes.ok) throw new Error('Auth error '+testRes.status+' — check API key');
     setMsg('Step 2: Loading income...','Connection OK ✓');
     
-    income   = await sbGet('income',  'select=*&limit=2000');
+    income   = await sbGetAll('income',  'select=*');
     normalizeLoadedPaymentStatuses(income);
     setMsg('Step 3: Loading expenses...',income.length+' income records loaded');
     
-    expenses = await sbGet('expenses','select=*&limit=1000');
+    expenses = await sbGetAll('expenses','select=*');
     normalizeLoadedPaymentStatuses(expenses);
     // Normalize category labels for display and filters only; no DB migrations run at startup.
     expenses.forEach(r=>{r.category=normalizeActivityCategory(r.category);});
     income.forEach(r=>{r.activity=normalizeActivityCategory(r.activity);});
     setMsg('Step 4: Loading horses...',expenses.length+' expenses loaded');
     
-    horses   = await sbGet('horses',  'select=*&limit=200');
+    horses   = await sbGetAll('horses',  'select=*');
     if(window.CCE&&CCE.store)CCE.store.set('horses',horses);
     setMsg('Step 5: Loading breeding...',horses.length+' horses loaded');
     
-    breeding = await sbGet('breeding','select=*&limit=200');
+    breeding = await sbGetAll('breeding','select=*');
     setMsg('Step 6: Loading schedule...',breeding.length+' breeding records loaded');
 
-    schedule_data = await sbGet('schedule','select=*&order=date.asc,start_time.asc&limit=1000');
+    schedule_data = await sbGetAll('schedule','select=*&order=date.asc,start_time.asc');
     setMsg('Step 7: Loading instructors...',schedule_data.length+' schedule records loaded');
 
     instructors_data = await sbGet('instructors','select=*&order=name.asc');
@@ -933,11 +933,15 @@ function recentFinancialActivityRows(incRows,expRows,limit=10){
     const dateMs=Date.parse(String(r.date||'')+'T00:00:00');
     return (Number.isFinite(dateMs)?dateMs:0)+relativeOrder+tableBias;
   };
+  const dateStamp=r=>{
+    const ms=Date.parse(String(r.date||'')+'T00:00:00');
+    return Number.isFinite(ms)?ms:-Infinity;
+  };
   const rows=[
-    ...(incRows||[]).map((r,index,list)=>({kind:'Income',row:r,stamp:activityStamp('income',r,index,list.length)})),
-    ...(expRows||[]).map((r,index,list)=>({kind:'Expense',row:r,stamp:activityStamp('expenses',r,index,list.length)}))
+    ...(incRows||[]).map((r,index,list)=>({kind:'Income',row:r,dateMs:dateStamp(r),stamp:activityStamp('income',r,index,list.length)})),
+    ...(expRows||[]).map((r,index,list)=>({kind:'Expense',row:r,dateMs:dateStamp(r),stamp:activityStamp('expenses',r,index,list.length)}))
   ];
-  return rows.sort((a,b)=>b.stamp-a.stamp).slice(0,Math.max(0,limit));
+  return rows.sort((a,b)=>b.dateMs-a.dateMs||b.stamp-a.stamp).slice(0,Math.max(0,limit));
 }
 function recentFinancialActivityHTML(incRows,expRows,limit=10){
   const rows=recentFinancialActivityRows(incRows,expRows,limit);
@@ -2510,7 +2514,11 @@ function renderBookings(){
   const data=[...matched,...orphans];
   document.getElementById('bookCount').textContent=data.length;
   const pages=Math.ceil(data.length/PER)||1;bookPage=Math.min(bookPage,pages);
-  const pageData=[...data].reverse().slice((bookPage-1)*PER,bookPage*PER);
+  const bookingDateMs=({income:r,request})=>{
+    const ms=Date.parse(String(request?.requested_date||r?.date||'')+'T00:00:00');
+    return Number.isFinite(ms)?ms:-Infinity;
+  };
+  const pageData=[...data].sort((a,b)=>bookingDateMs(b)-bookingDateMs(a)).slice((bookPage-1)*PER,bookPage*PER);
   if(!pageData.length){document.getElementById('bookTable').innerHTML='<p style="color:var(--muted);padding:12px">No booking requests found</p>';document.getElementById('bookPag').innerHTML='';return;}
   document.getElementById('bookTable').innerHTML='<table><thead><tr><th>Date</th><th>Type</th><th>Customer</th><th>Horse</th><th>Time</th><th>Package / Notes</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
     pageData.map(({income:r,request})=>{
@@ -4782,7 +4790,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4875,7 +4883,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20260821-4290', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261002-4291', {scope:'./'})
       .then(reg => {
 
         reg.update();

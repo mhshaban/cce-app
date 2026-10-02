@@ -71,7 +71,7 @@ async function deleteHealthRecord(table,id,hId){if(!confirm('Delete this record?
 async function reloadHorseHealth(){
   const loaded=await CCE.health.load();
   let latestHorses=horses;
-  try{latestHorses=await sbGet('horses','select=*&limit=500');}catch(error){console.warn('[CCE] Horse summary reload skipped',error);}
+  try{latestHorses=await sbGetAll('horses','select=*');}catch(error){console.warn('[CCE] Horse summary reload skipped',error);}
   horse_health_profiles=loaded.profiles;
   horse_health_events=loaded.events;
   horses=CCE.health.mergeCompletedSummaries(latestHorses,horse_health_events);
