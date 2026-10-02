@@ -445,7 +445,7 @@
 
   async function safeGet(table, query, allowed) {
     if (!allowed) return [];
-    try { return await sbGet(table, query); }
+    try { return await sbGetAll(table, query); }
     catch (error) {
       console.warn(`[CCE] ${table} unavailable for this account`, error);
       return [];
@@ -493,11 +493,11 @@
         'show_office.judging.finalize','show_office.judging.reopen'
       ]);
       [income, expenses, horses, breeding, schedule_data, instructors_data, booking_requests] = await Promise.all([
-        safeGet('income','select=*&limit=2000',needIncome),
-        safeGet('expenses','select=*&limit=1000',needExpenses),
-        safeGet('horses','select=*&limit=500',needHorses),
-        safeGet('breeding','select=*&limit=500',needBreeding),
-        safeGet('schedule','select=*&order=date.asc,start_time.asc&limit=1500',needSchedule),
+        safeGet('income','select=*',needIncome),
+        safeGet('expenses','select=*',needExpenses),
+        safeGet('horses','select=*',needHorses),
+        safeGet('breeding','select=*',needBreeding),
+        safeGet('schedule','select=*&order=date.asc,start_time.asc',needSchedule),
         canReadInstructorTable
           ? safeGet('instructors','select=*&order=name.asc',true)
           : safeRpcRows('cce_instructor_directory',{},needInstructors),
@@ -510,8 +510,8 @@
       income.forEach(r => { if (typeof normalizeActivityCategory === 'function') r.activity = normalizeActivityCategory(r.activity); });
       if (needHealth) {
         [horse_health_profiles, horse_health_events] = await Promise.all([
-          safeGet('horse_health_profiles','select=*&limit=500',true),
-          safeGet('horse_health_events','select=*&order=event_date.desc,id.desc&limit=4000',true)
+          safeGet('horse_health_profiles','select=*',true),
+          safeGet('horse_health_events','select=*&order=event_date.desc,id.desc',true)
         ]);
         if (window.CCE?.health?.mergeCompletedSummaries) horses = CCE.health.mergeCompletedSummaries(horses, horse_health_events);
         if (typeof deriveHealthCollections === 'function') deriveHealthCollections();
