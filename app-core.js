@@ -4790,7 +4790,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.2',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4818,7 +4818,16 @@ function downloadLocalDailySnapshot(){
   const snap=localStorage.getItem('cce_daily_snapshot'); if(!snap){alert('No local snapshot found yet. Open dashboard after loading data to create one.');return;}
   downloadTextFile('CCE_Local_Daily_Snapshot_'+(localStorage.getItem('cce_daily_snapshot_date')||'latest')+'.json',snap,'application/json');
 }
+let restoreInProgress=false;
 async function restoreBackupFile(input){
+  // Two overlapping restores each append a full copy of the backup.
+  if(restoreInProgress){alert('A restore is already running. Please wait for it to finish.');if(input)input.value='';return;}
+  restoreInProgress=true;
+  if(input)input.disabled=true;
+  try{await runRestoreBackupFile(input);}
+  finally{restoreInProgress=false;if(input){input.disabled=false;input.value='';}}
+}
+async function runRestoreBackupFile(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const text=await file.text(); let data;
   try{data=JSON.parse(text);}catch(e){alert('Invalid JSON backup');return;}
@@ -4829,7 +4838,7 @@ async function restoreBackupFile(input){
     restorePlan.tables.length?restorePlan.tables.length+' legacy table(s)':'',
     restorePlan.modules.length?restorePlan.modules.length+' module(s)':''
   ].filter(Boolean).join(' and ');
-  if(!confirm('Restore will append '+scope+' to Supabase. Show Office restore is atomic; legacy tables are best-effort and may partially complete. Existing data will not be deleted and duplicate Show Office records will be skipped. Continue?'))return;
+  if(!confirm('Restore will add missing records from '+scope+' to Supabase. Records that already exist (same ID) are skipped, so nothing is duplicated and existing data is not deleted or changed. Legacy tables are best-effort and may partially complete. Continue?'))return;
   let result;
   try{result=await window.CCE.backupRestore.execute(restorePlan);}catch(error){alert('Restore failed: '+userSafeError(error));return;}
   const moduleImported=result.modules.reduce((sum,item)=>sum+Number(item.imported||0),0);
@@ -4843,7 +4852,8 @@ async function restoreBackupFile(input){
       : '';
     return `${label}: ${item.imported} imported, ${item.duplicates} duplicate${item.duplicates===1?'':'s'} skipped.${entities?' '+entities+'.':''}`;
   }).join('\n');
-  const legacyDetail=result.legacy.failed?`\nLegacy rows failed: ${result.legacy.failed}. Legacy table restore is best-effort; review the console for row errors.`:'';
+  const legacyDetail=(result.legacy.duplicates?`\nAlready existed (skipped): ${result.legacy.duplicates}.`:'')
+    +(result.legacy.failed?`\nLegacy rows failed: ${result.legacy.failed}. Legacy table restore is best-effort; review the console for row errors.`:'');
   alert('Restore completed. Imported '+imported+' rows.'+legacyDetail+(moduleDetail?'\n'+moduleDetail:''));
   await loadAll();
 }
@@ -4883,7 +4893,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261002-4292', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261002-4293', {scope:'./'})
       .then(reg => {
 
         reg.update();

@@ -72,14 +72,39 @@
 
     let legacyImported = 0;
     let legacyFailed = 0;
+    let legacyDuplicates = 0;
     for (const table of restorePlan.tables) {
       const rows = restorePlan.data[table];
+      // Restoring onto a live database must never re-append records that are
+      // already there: a row whose backup id still exists is skipped.
+      let existingIds;
+      let maxExistingId = 0;
+      try {
+        const idRows = await sbGetAll(table, 'select=id');
+        existingIds = new Set(idRows.map(row => String(row.id)));
+        maxExistingId = idRows.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0);
+      } catch (error) {
+        legacyFailed += rows.length;
+        console.warn('[CCE] restore skipped table (existing ids unreadable)', table, error?.message || error);
+        continue;
+      }
       for (const source of rows) {
+        const hasId = source && source.id !== undefined && source.id !== null && source.id !== '';
+        if (hasId && existingIds.has(String(source.id))) {
+          legacyDuplicates += 1;
+          continue;
+        }
+        // Re-using the backup id makes a repeated restore of the same file skip
+        // this row. Ids above the current max are dropped so they can't collide
+        // with ids the table's sequence will hand out later.
+        const sourceId = Number(source && source.id);
+        const keepId = hasId && Number.isInteger(sourceId) && sourceId > 0 && sourceId <= maxExistingId;
         const row = {...source};
-        delete row.id;
+        if (!keepId) delete row.id;
         try {
-          await sbPost(table, row, {skipAudit: true});
+          await sbPost(table, row, {skipAudit: true, keepId});
           legacyImported += 1;
+          if (hasId) existingIds.add(String(source.id));
         } catch (error) {
           legacyFailed += 1;
           console.warn('[CCE] restore skipped', table, error?.message || error);
@@ -91,7 +116,8 @@
       legacy: Object.freeze({
         tables: restorePlan.tables.slice(),
         imported: legacyImported,
-        failed: legacyFailed
+        failed: legacyFailed,
+        duplicates: legacyDuplicates
       }),
       modules,
       ignoredModules: restorePlan.ignoredModules.slice()

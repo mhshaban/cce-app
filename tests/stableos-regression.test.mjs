@@ -50,8 +50,10 @@ function showOfficeJudgingService(overrides={}){
   return context.window.CCE.showOffice.judgingService;
 }
 
-function backupRuntimeContext({providers={},jsonProviders={},post=async()=>[]}={}){
-  const context={Object,Array,String,Error,console:{warn(){}},sbPost:post,CCE:{restoreProviders:providers,jsonBackupProviders:jsonProviders}};
+function backupRuntimeContext({providers={},jsonProviders={},post=async()=>[],existing={},getAll}={}){
+  const context={Object,Array,String,Number,Math,Set,Error,console:{warn(){}},sbPost:post,
+    sbGetAll:getAll||(async table=>(existing[table]||[]).map(id=>({id}))),
+    CCE:{restoreProviders:providers,jsonBackupProviders:jsonProviders}};
   context.window=context;
   vm.runInNewContext(read('src/services/backup-runtime.js'),context,{filename:'backup-runtime.js'});
   return context.window.CCE;
@@ -1114,7 +1116,7 @@ test('backup restore planning supports legacy backups and optional module payloa
   assert.equal(legacyResult.legacy.imported,1);
   assert.equal(legacyResult.legacy.failed,0);
   assert.deepEqual(JSON.parse(JSON.stringify(posts)),[
-    {table:'income',row:{customer_name:'Legacy rider'},options:{skipAudit:true}}
+    {table:'income',row:{customer_name:'Legacy rider'},options:{skipAudit:true,keepId:false}}
   ]);
 
   const missingModulePlan=runtime.plan({version:'4.9.0',income:[],modules:{}});
@@ -1138,12 +1140,67 @@ test('backup restore planning supports legacy backups and optional module payloa
   assert.equal(failingLegacyResult.modules.length,0);
 });
 
+test('legacy restore skips rows whose id already exists, so running it twice (or on a live database) never duplicates',async()=>{
+  const db={expenses:[1,2,3]};
+  const posts=[];
+  const runtime=backupRestoreRuntime({
+    getAll:async table=>(db[table]||[]).map(id=>({id})),
+    post:async(table,row,options)=>{
+      posts.push({table,row,options});
+      const id=options.keepId?row.id:100+posts.length;
+      db[table].push(id);
+      return [{...row,id}];
+    }
+  });
+  const backup={expenses:[{id:1,paid_bd:5},{id:2,paid_bd:6},{id:3,paid_bd:7}]};
+  const first=await runtime.execute(runtime.plan(backup));
+  assert.equal(first.legacy.imported,0);
+  assert.equal(first.legacy.duplicates,3);
+  assert.equal(posts.length,0);
+
+  // A record deleted after the backup is restored with its original id, so a
+  // second restore of the same file recognizes and skips it.
+  db.expenses=[1,3];
+  const second=await runtime.execute(runtime.plan(backup));
+  assert.equal(second.legacy.imported,1);
+  assert.equal(second.legacy.duplicates,2);
+  assert.equal(posts[0].row.id,2);
+  assert.equal(posts[0].options.keepId,true);
+  const third=await runtime.execute(runtime.plan(backup));
+  assert.equal(third.legacy.imported,0);
+  assert.equal(third.legacy.duplicates,3);
+
+  // An id above the table's current max is dropped so it can't collide with
+  // ids the sequence hands out later; duplicate ids inside one file are skipped.
+  const high=await runtime.execute(runtime.plan({expenses:[{id:999,paid_bd:1},{id:999,paid_bd:1}]}));
+  assert.equal(high.legacy.imported,1);
+  assert.equal(high.legacy.duplicates,1);
+  assert.equal(posts.at(-1).row.id,undefined);
+  assert.equal(posts.at(-1).options.keepId,false);
+
+  const unreadable=backupRestoreRuntime({getAll:async()=>{throw new Error('permission denied');},post:async()=>{throw new Error('must not post');}});
+  const blocked=await unreadable.execute(unreadable.plan({expenses:[{id:1},{id:2}]}));
+  assert.equal(blocked.legacy.failed,2);
+  assert.equal(blocked.legacy.imported,0);
+});
+
+test('a second restore cannot start while one is running',()=>{
+  const core=read('app-core.js');
+  const guard=functionBlock(core,'restoreBackupFile','runRestoreBackupFile');
+  assert.match(guard,/if\(restoreInProgress\)\{alert\('A restore is already running/);
+  assert.match(guard,/restoreInProgress=true;/);
+  assert.match(guard,/input\.disabled=true/);
+  assert.match(guard,/finally\{restoreInProgress=false;/);
+  assert.match(core,/let restoreInProgress=false;/);
+});
+
 test('the current JSON backup format restores Show Office through the registered provider',async()=>{
   let rpcCall=null;
   const context={
     Intl,Date,Object,Array,String,Number,Error,
     console:{warn(){}},
     sbPost:async()=>[],
+    sbGetAll:async()=>[],
     sbRpc:async(fn,payload)=>{
       rpcCall={fn,payload};
       return {module:'showOffice',total:1,imported:1,duplicates:0,invalid:0,entities:{
@@ -1366,14 +1423,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.29.2 cache key',()=>{
+test('all app assets use the v4.29.3 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261002-4291'));
-  assert.ok((html.match(/20261002-4292/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261002-4292/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4292/);
-  assert.equal(read('VERSION.txt').trim(),'4.29.2');
+  assert.ok(!html.includes('20261002-4292'));
+  assert.ok((html.match(/20261002-4293/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261002-4293/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4293/);
+  assert.equal(read('VERSION.txt').trim(),'4.29.3');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
