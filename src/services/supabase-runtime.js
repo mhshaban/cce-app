@@ -54,6 +54,21 @@ async function sbGet(t,q=''){
   if(!r.ok)throw new Error(await r.text());
   return r.json();
 }
+// The server caps each response (max-rows), so a single limit=N request can
+// silently drop rows. Page until an empty page so the cap size doesn't matter.
+async function sbGetAll(t,q='',pageSize=1000){
+  let query=String(q||'').split('&').filter(p=>p&&!/^(limit|offset)=/.test(p)).join('&');
+  const orderMatch=query.match(/(^|&)order=([^&]*)/);
+  if(!orderMatch) query=[query,'order=id.asc'].filter(Boolean).join('&');
+  else if(!/(^|,)id\./.test(orderMatch[2])) query=query.replace(/(^|&)order=([^&]*)/,`$1order=$2,id.asc`);
+  const rows=[];
+  for(let offset=0;;){
+    const page=await sbGet(t,`${query}&limit=${pageSize}&offset=${offset}`);
+    if(!Array.isArray(page)||!page.length)return rows;
+    rows.push(...page);
+    offset+=page.length;
+  }
+}
 async function sbCount(t,q=''){
   const query=String(q||'').replace(/^&+|&+$/g,'');
   const suffix=['select=id',query].filter(Boolean).join('&');

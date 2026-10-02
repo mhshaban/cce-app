@@ -579,10 +579,10 @@ async function downloadBackup(){
     // Fetch all data
     const moduleBackupProviders=Object.entries(window.CCE?.backupProviders||{});
     const [inc,exp,hor,bre,moduleBackups]=await Promise.all([
-      sbGet('income','select=*&limit=5000'),
-      sbGet('expenses','select=*&limit=5000'),
-      sbGet('horses','select=*&limit=500'),
-      sbGet('breeding','select=*&limit=500'),
+      sbGetAll('income','select=*'),
+      sbGetAll('expenses','select=*'),
+      sbGetAll('horses','select=*'),
+      sbGetAll('breeding','select=*'),
       Promise.all(moduleBackupProviders.map(async([name,provider])=>{
         if(typeof provider!=='function')throw new Error(`Backup failed for module “${name}”: provider is not configured correctly.`);
         try{return await provider();}
@@ -742,7 +742,7 @@ async function checkAndCreateLiveryNotifications(){
   
   // Reload income so new records appear in Overdue immediately
   if(created){
-    income=await sbGet('income','select=*&limit=2000');
+    income=await sbGetAll('income','select=*');
   }
 }
 
@@ -779,25 +779,25 @@ async function loadAll(){
     if(!testRes.ok) throw new Error('Auth error '+testRes.status+' — check API key');
     setMsg('Step 2: Loading income...','Connection OK ✓');
     
-    income   = await sbGet('income',  'select=*&limit=2000');
+    income   = await sbGetAll('income',  'select=*');
     normalizeLoadedPaymentStatuses(income);
     setMsg('Step 3: Loading expenses...',income.length+' income records loaded');
     
-    expenses = await sbGet('expenses','select=*&limit=1000');
+    expenses = await sbGetAll('expenses','select=*');
     normalizeLoadedPaymentStatuses(expenses);
     // Normalize category labels for display and filters only; no DB migrations run at startup.
     expenses.forEach(r=>{r.category=normalizeActivityCategory(r.category);});
     income.forEach(r=>{r.activity=normalizeActivityCategory(r.activity);});
     setMsg('Step 4: Loading horses...',expenses.length+' expenses loaded');
     
-    horses   = await sbGet('horses',  'select=*&limit=200');
+    horses   = await sbGetAll('horses',  'select=*');
     if(window.CCE&&CCE.store)CCE.store.set('horses',horses);
     setMsg('Step 5: Loading breeding...',horses.length+' horses loaded');
     
-    breeding = await sbGet('breeding','select=*&limit=200');
+    breeding = await sbGetAll('breeding','select=*');
     setMsg('Step 6: Loading schedule...',breeding.length+' breeding records loaded');
 
-    schedule_data = await sbGet('schedule','select=*&order=date.asc,start_time.asc&limit=1000');
+    schedule_data = await sbGetAll('schedule','select=*&order=date.asc,start_time.asc');
     setMsg('Step 7: Loading instructors...',schedule_data.length+' schedule records loaded');
 
     instructors_data = await sbGet('instructors','select=*&order=name.asc');

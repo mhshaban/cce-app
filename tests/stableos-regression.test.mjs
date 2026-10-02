@@ -221,6 +221,45 @@ test('Supabase reads preserve explicit ordering and add one safe default',async(
   assert.match(urls[1],/order=id\.asc/);
 });
 
+test('sbGetAll() pages past the server max-rows cap so no rows are silently dropped',async()=>{
+  const runtime=read('src/services/supabase-runtime.js');
+  const table=Array.from({length:2345},(_,i)=>({id:i+1,paid_bd:1}));
+  const urls=[];
+  const context={
+    SB_URL:'https://example.supabase.co',HDR:{},
+    fetch:async url=>{
+      urls.push(url);
+      const params=new URL(url).searchParams;
+      const offset=Number(params.get('offset')||0);
+      const limit=Math.min(Number(params.get('limit')||Infinity),1000);
+      return {ok:true,json:async()=>table.slice(offset,offset+limit)};
+    },
+    Error,String,Array,Number
+  };
+  vm.runInNewContext('async '+functionBlock(runtime,'sbGet','tableRowsForAudit'),context);
+  const rows=await context.sbGetAll('expenses','select=*&limit=50');
+  assert.equal(rows.length,2345);
+  assert.equal(rows[2344].id,2345);
+  assert.ok(urls.every(u=>(u.match(/limit=/g)||[]).length===1),'caller limit must be replaced, not duplicated');
+  assert.ok(urls.every(u=>/order=id\.asc/.test(u)));
+  urls.length=0;
+  await context.sbGetAll('schedule','select=*&order=date.asc,start_time.asc');
+  assert.match(urls[0],/order=date\.asc,start_time\.asc,id\.asc/);
+});
+
+test('dashboard load and backup fetch every income/expense/horse/breeding/schedule row instead of a fixed limit',()=>{
+  const core=read('app-core.js');
+  const load=functionBlock(core,'loadAll','showPage');
+  for(const t of ['income','expenses','horses','breeding','schedule']){
+    assert.match(load,new RegExp(`sbGetAll\\('${t}'`),`loadAll should page ${t}`);
+  }
+  assert.doesNotMatch(load,/sbGet\('(income|expenses|horses|breeding|schedule)'[^)]*limit=/);
+  const backup=functionBlock(core,'downloadBackup','logout');
+  for(const t of ['income','expenses','horses','breeding']){
+    assert.match(backup,new RegExp(`sbGetAll\\('${t}'`),`backup should page ${t}`);
+  }
+});
+
 test('Supabase exact counts use a HEAD request and reject malformed totals',async()=>{
   const runtime=read('src/services/supabase-runtime.js');
   const calls=[];
