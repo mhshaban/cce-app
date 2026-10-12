@@ -360,14 +360,14 @@ function deriveHealthCollections(){
   horse_care_tasks=derived.care;
   if(window.CCE&&CCE.store)CCE.store.setMany({horses,horseHealthProfiles:horse_health_profiles,horseHealthEvents:horse_health_events});
 }
-const CCE_CATEGORIES=['Hack','Lesson','Livery','Breeding','Shuwar','Salary','Wood Shavings','Hay','Maintenance','Farrier','Medicant','Trash Container','Leading','Rent','Others'];
+const CCE_CATEGORIES=['Hack','Lesson','Livery','Breeding','Bran','Salary','Wood Shavings','Hay','Sand','Maintenance','Farrier','Medicant','Trash Container','Leading','Rent','Others'];
 let incPage=1,expPage=1,bookPage=1;
 const PER=30;
 const BD=v=>(parseFloat(v)||0).toFixed(3)+' BD';
 
 // Accounting helpers — keep dashboard/backup/charts/overdue consistent
 const moneyNum=v=>parseFloat(v)||0;
-const normalizeActivityCategory=v=>{const x=(v||'').trim();return (!x||x==='Other'||x==='Others')?'Others':x;};
+const normalizeActivityCategory=v=>{const x=(v||'').trim();if(x==='Shuwar')return 'Bran';return (!x||x==='Other'||x==='Others')?'Others':x;};
 const calcRemaining=r=>Math.max(0, moneyNum(r.amount_bd)-moneyNum(r.paid_bd));
 const rowIsFullyPaid=r=>{
   const total=moneyNum(r&&r.amount_bd);
@@ -3716,7 +3716,7 @@ let schedDate=new Date(); schedDate.setHours(0,0,0,0);
 
 const ACTIVITY_COLORS={
   'Hack':'#C8923A','Lesson':'#1E7D4E','Breeding':'#1A2744',
-  'Shuwar':'#8B4513','Livery':'#5B6A8A','Rent':'#9B6A3C','Others':'#7A8399'
+  'Bran':'#8B4513','Livery':'#5B6A8A','Rent':'#9B6A3C','Others':'#7A8399'
 };
 
 function actColor(a){return ACTIVITY_COLORS[normalizeActivityCategory(a)]||'#7A8399';}
@@ -4011,7 +4011,7 @@ function openAddSchedule(prefillDate){
   openModal('&#10133; Add Session',`
     <div class="form-grid">
       <div class="form-group"><label>Date *</label><input type="date" id="sc-date" value="${d}"></div>
-      <div class="form-group"><label>Activity *</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option>Hack</option><option>Lesson</option><option>Breeding</option><option>Shuwar</option><option>Livery</option><option>Rent</option><option>Others</option></select></div>
+      <div class="form-group"><label>Activity *</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option>Hack</option><option>Lesson</option><option>Breeding</option><option>Bran</option><option>Livery</option><option>Rent</option><option>Others</option></select></div>
       <div class="form-group"><label>Start Time *</label><input type="time" id="sc-start" value="08:00"></div>
       <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="09:00"></div>
       <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option value="${escAttr(h.horse_name)}">${esc(h.horse_name)}</option>`).join('')}</select></div>
@@ -4073,7 +4073,7 @@ async function openEditSchedule(id){
   openModal('&#9999;&#65039; Edit Session',`
     <div class="form-grid">
       <div class="form-group"><label>Date</label><input type="date" id="sc-date" value="${r.date||''}"></div>
-      <div class="form-group"><label>Activity</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option ${r.activity==='Hack'?'selected':''}>Hack</option><option ${r.activity==='Lesson'?'selected':''}>Lesson</option><option ${r.activity==='Breeding'?'selected':''}>Breeding</option><option ${r.activity==='Shuwar'?'selected':''}>Shuwar</option><option ${r.activity==='Livery'?'selected':''}>Livery</option><option ${r.activity==='Rent'?'selected':''}>Rent</option><option ${normalizeActivityCategory(r.activity)==='Others'?'selected':''}>Others</option></select></div>
+      <div class="form-group"><label>Activity</label><select id="sc-activity" onchange="syncScheduleInstructorField()"><option ${r.activity==='Hack'?'selected':''}>Hack</option><option ${r.activity==='Lesson'?'selected':''}>Lesson</option><option ${r.activity==='Breeding'?'selected':''}>Breeding</option><option ${r.activity==='Bran'?'selected':''}>Bran</option><option ${r.activity==='Livery'?'selected':''}>Livery</option><option ${r.activity==='Rent'?'selected':''}>Rent</option><option ${normalizeActivityCategory(r.activity)==='Others'?'selected':''}>Others</option></select></div>
       <div class="form-group"><label>Start Time</label><input type="time" id="sc-start" value="${r.start_time||''}"></div>
       <div class="form-group"><label>End Time</label><input type="time" id="sc-end" value="${r.end_time||''}"></div>
       <div class="form-group"><label>Horse</label><select id="sc-horse"><option value="">— Select —</option>${horses.map(h=>`<option value="${escAttr(h.horse_name)}" ${h.horse_name===r.horse_name?'selected':''}>${esc(h.horse_name)}</option>`).join('')}</select></div>
@@ -4790,7 +4790,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.29.3',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.30.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4893,7 +4893,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261002-4293', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261012-4300', {scope:'./'})
       .then(reg => {
 
         reg.update();

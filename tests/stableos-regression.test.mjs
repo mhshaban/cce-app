@@ -326,6 +326,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260818_lease_booking_type_v4270.sql',
     'supabase/migrations/20260819_breeding_agreement_v4280.sql',
     'supabase/migrations/20260821_breeding_boarding_total_v4290.sql',
+    'supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -1423,14 +1424,34 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.29.3 cache key',()=>{
+test('all app assets use the v4.30.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261002-4292'));
-  assert.ok((html.match(/20261002-4293/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261002-4293/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261002-4293/);
-  assert.equal(read('VERSION.txt').trim(),'4.29.3');
+  assert.ok(!html.includes('20261002-4293'));
+  assert.ok((html.match(/20261012-4300/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261012-4300/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261012-4300/);
+  assert.equal(read('VERSION.txt').trim(),'4.30.0');
+});
+
+test('the Shuwar category is renamed to Bran and Sand is a finance category',()=>{
+  const html=read('index.html');
+  const core=read('app-core.js');
+  assert.ok(!html.includes('Shuwar'));
+  assert.equal((core.match(/Shuwar/g)||[]).length,1,'only the legacy-name mapping may mention Shuwar');
+  const cats=core.match(/const CCE_CATEGORIES=\[([^\]]+)\]/)[1];
+  assert.match(cats,/'Bran'/);
+  assert.match(cats,/'Hay','Sand','Maintenance'/);
+  for(const id of ['inc-activity','incActFilter','exp-cat','expCatFilter']){
+    const select=html.match(new RegExp('<select id="'+id+'"[\\s\\S]*?</select>'))[0];
+    assert.match(select,/<option>Bran<\/option>/,id);
+    assert.match(select,/<option>Sand<\/option>/,id);
+  }
+  const context={};
+  vm.runInNewContext(core.match(/const normalizeActivityCategory=.*;/)[0]+'this.n=normalizeActivityCategory;',context);
+  assert.equal(context.n('Shuwar'),'Bran');
+  assert.equal(context.n('Sand'),'Sand');
+  assert.equal(context.n(''),'Others');
 });
 
 test('Full Livery price is 90 BD/mo everywhere it is advertised, and the electronic Livery booking form carries the stable-damage liability clause in both Arabic and English',()=>{
