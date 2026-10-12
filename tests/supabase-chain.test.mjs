@@ -2696,6 +2696,32 @@ test('v4.29.0 adds boarding_days to breeding, defaults to 0, rollback drops it a
   }
 });
 
+test('v4.30.0 renames Shuwar rows to Bran in income, expenses and schedule, and re-running is a no-op',async()=>{
+  const db=await buildDatabase();
+  try{
+    await db.exec(`
+      insert into public.income(date,customer_name,activity,qty,amount_bd) values('2026-10-01','A','Shuwar',1,5),('2026-10-01','B','Hay',1,5);
+      insert into public.expenses(date,category,supplier,qty,amount_bd) values('2026-10-01','Shuwar','S',1,5);
+      insert into public.schedule(date,start_time,activity) values('2026-10-01','09:00','Shuwar');
+    `);
+    const sql=read('supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql');
+    await db.exec(sql);
+    await db.exec(sql);
+    const r=await db.query(`
+      select (select count(*)::int from public.income where activity='Bran') inc,
+             (select count(*)::int from public.income where activity='Hay') hay,
+             (select count(*)::int from public.expenses where category='Bran') exp,
+             (select count(*)::int from public.schedule where activity='Bran') sch,
+             (select count(*)::int from public.income where activity='Shuwar')
+              +(select count(*)::int from public.expenses where category='Shuwar')
+              +(select count(*)::int from public.schedule where activity='Shuwar') leftover
+    `);
+    assert.deepEqual({...r.rows[0]},{inc:1,hay:1,exp:1,sch:1,leftover:0});
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';
