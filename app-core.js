@@ -1904,7 +1904,7 @@ function openContractPrintWindow(title,bodyHtml){
   const w=window.open('','_blank');
   const doc='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'
     +'<link rel="preconnect" href="https://fonts.googleapis.com">'
-    +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">'
+    +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap" rel="stylesheet">'
     +'<style>@page{size:A4;margin:9mm}body{margin:0;padding:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{padding:0}}</style>'
     +'</head><body>'+bodyHtml+'<script>window.onload=function(){window.print()}<\/script></body></html>';
   w.document.write(doc);
@@ -4798,7 +4798,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.31.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.31.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4901,7 +4901,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261017-4310', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261017-4311', {scope:'./'})
       .then(reg => {
 
         reg.update();
