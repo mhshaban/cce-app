@@ -1424,14 +1424,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.31.3 cache key',()=>{
+test('all app assets use the v4.31.4 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261017-4312'));
-  assert.ok((html.match(/20261017-4313/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261017-4313/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4313/);
-  assert.equal(read('VERSION.txt').trim(),'4.31.3');
+  assert.ok(!html.includes('20261017-4313'));
+  assert.ok((html.match(/20261017-4314/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261017-4314/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4314/);
+  assert.equal(read('VERSION.txt').trim(),'4.31.4');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -1444,6 +1444,20 @@ test('Cairo is requested as a weight range so iOS Safari renders bold from the v
     assert.match(src,/fonts\.googleapis\.com\/css2\?family=Cairo:wght@200\.\.1000&(amp;)?display=swap/);
     assert.doesNotMatch(src,/family=Cairo:wght@400;600;700;800/);
   }
+});
+
+test('in the installed Home Screen app on phones, headers stick to the top with a solid colour so iOS 26 has an opaque bar instead of drawing its edge blur',()=>{
+  const css=read('src/components/header/header-system.css');
+  const start=css.indexOf('@media (display-mode: standalone) and (max-width:700px){');
+  assert.ok(start>css.lastIndexOf('@media (max-width:700px){'),'standalone rules must come after the phone rules they override');
+  const block=css.slice(start);
+  assert.match(block,/\.cce-top-tint\{display:none!important\}/);
+  assert.match(block,/html,body\{overflow-x:clip!important\}/,'overflow-x:hidden on html/body would stop sticky from sticking');
+  for(const sel of ['.public-nav','.service-header','#globalHeader','#globalHeader.cce-workspace-header','body.member-authenticated #globalHeader.cce-workspace-header'])assert.ok(block.includes(sel),`standalone rule should cover ${sel}`);
+  for(const decl of ['position:sticky!important','top:0!important','backdrop-filter:none!important'])assert.ok(block.includes(decl),`standalone rule should set ${decl}`);
+  assert.match(block,/\.public-nav\{background-color:#13213a!important\}/);
+  assert.match(block,/\.service-header\{background-color:var\(--cce-header-navy\)!important\}/);
+  assert.match(block,/#globalHeader,body\.member-authenticated #globalHeader\.cce-workspace-header\{background-color:var\(--cce-header-navy\)!important\}/);
 });
 
 test('a real fixed navy strip at the top makes iOS 26 Safari tint the status-bar area navy, not the cream body colour',()=>{
