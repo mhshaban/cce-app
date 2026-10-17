@@ -1424,14 +1424,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.31.2 cache key',()=>{
+test('all app assets use the v4.31.3 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261017-4311'));
-  assert.ok((html.match(/20261017-4312/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261017-4312/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4312/);
-  assert.equal(read('VERSION.txt').trim(),'4.31.2');
+  assert.ok(!html.includes('20261017-4312'));
+  assert.ok((html.match(/20261017-4313/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261017-4313/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4313/);
+  assert.equal(read('VERSION.txt').trim(),'4.31.3');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -1446,12 +1446,19 @@ test('Cairo is requested as a weight range so iOS Safari renders bold from the v
   }
 });
 
-test('the root background is navy so iOS 26 Safari fades the status-bar area navy, not cream',()=>{
+test('a real fixed navy strip at the top makes iOS 26 Safari tint the status-bar area navy, not the cream body colour',()=>{
   const css=read('src/components/header/header-system.css');
-  assert.match(css,/html\{background-color:var\(--cce-header-navy\)\}/);
-  assert.doesNotMatch(css,/body::before\{/);
-  // body must keep its own cream background so pages look unchanged.
-  assert.match(read('app-core.css'),/body\{font-family:'Cairo'[^}]*background:var\(--cream\)/);
+  const html=read('index.html');
+  // Safari hit-tests the top-centre and only honours a fixed/sticky element
+  // with a solid background-color; pseudo-elements and <html> don't count.
+  assert.match(html,/<body class="page-home">\n<div aria-hidden="true" class="cce-top-tint"><\/div>/);
+  assert.match(css,/\.cce-top-tint\{display:none\}/);
+  const block=css.slice(css.indexOf('@supports (-webkit-touch-callout:none){'),css.indexOf('}\n}',css.indexOf('@supports (-webkit-touch-callout:none){')));
+  for(const decl of ['display:block','position:fixed','top:0;left:0;right:0','height:max(11px,env(safe-area-inset-top,0px))','background-color:var(--cce-header-navy)','z-index:2147483000']){
+    assert.ok(block.includes(decl),`tint strip should set ${decl}`);
+  }
+  assert.doesNotMatch(block,/pointer-events:none/,'Safari skips elements that cannot be hit-tested');
+  assert.doesNotMatch(css,/body::before\{|html\{background-color/);
 });
 
 test('the ride booking time is picked from the same fixed slots as training, not typed freely',()=>{
