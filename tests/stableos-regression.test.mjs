@@ -1424,14 +1424,37 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.31.0 cache key',()=>{
+test('all app assets use the v4.31.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261017-4301'));
-  assert.ok((html.match(/20261017-4310/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261017-4310/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4310/);
-  assert.equal(read('VERSION.txt').trim(),'4.31.0');
+  assert.ok(!html.includes('20261017-4310'));
+  assert.ok((html.match(/20261017-4311/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261017-4311/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4311/);
+  assert.equal(read('VERSION.txt').trim(),'4.31.1');
+});
+
+test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
+  // Google now serves Cairo as one variable file. Fixed weights (400;600;700;800)
+  // produce @font-face rules with single weights that Safari renders at the
+  // default instance, so every weight looked regular on iPhone.
+  const html=read('index.html');
+  const core=read('app-core.js');
+  for(const src of [html,core]){
+    assert.match(src,/fonts\.googleapis\.com\/css2\?family=Cairo:wght@200\.\.1000&(amp;)?display=swap/);
+    assert.doesNotMatch(src,/family=Cairo:wght@400;600;700;800/);
+  }
+});
+
+test('a fixed navy strip covers the status-bar safe area so iOS 26 Safari tints it navy, not cream',()=>{
+  const css=read('src/components/header/header-system.css');
+  const rule=css.slice(css.indexOf('body::before{'),css.indexOf('}',css.indexOf('body::before{')));
+  assert.match(rule,/position:fixed/);
+  assert.match(rule,/top:0;left:0;right:0/);
+  assert.match(rule,/height:var\(--cce-safe-top\)/);
+  assert.match(rule,/background:var\(--cce-header-navy\)/);
+  assert.match(rule,/pointer-events:none/);
+  assert.match(css,/--cce-safe-top:env\(safe-area-inset-top,0px\)/);
 });
 
 test('the ride booking time is picked from the same fixed slots as training, not typed freely',()=>{
