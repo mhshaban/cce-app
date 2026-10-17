@@ -1424,14 +1424,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.30.1 cache key',()=>{
+test('all app assets use the v4.31.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261012-4300'));
-  assert.ok((html.match(/20261017-4301/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261017-4301/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4301/);
-  assert.equal(read('VERSION.txt').trim(),'4.30.1');
+  assert.ok(!html.includes('20261017-4301'));
+  assert.ok((html.match(/20261017-4310/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261017-4310/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4310/);
+  assert.equal(read('VERSION.txt').trim(),'4.31.0');
 });
 
 test('the ride booking time is picked from the same fixed slots as training, not typed freely',()=>{
@@ -1646,9 +1646,8 @@ test('the public homepage has a fourth "Horse Lease" card linking to a dedicated
   assert.match(html,/id="le-terms"/);
   assert.match(html,/onclick="submitLease\(\)"/);
   assert.match(html,/onclick="resetLease\(\)"/);
-  assert.match(html,/LESSOR'S Remedies on Breach/);
-  assert.match(html,/immediately if the LESSOR and\/or stable manager determines that the horse's health is put at risk/);
-  assert.doesNotMatch(html,/deems that the voided immediately/);
+  assert.match(html,/<div id="leaseTermsPanel"/);
+  assert.doesNotMatch(html,/LESSOR'S Remedies on Breach/);
   const core=read('app-core.js');
   assert.match(core,/page_lease:'Horse Lease'/);
   assert.match(core,/page_lease:'إيجار طويل الأمد'/);
@@ -1664,18 +1663,48 @@ test('submitLease() sends a request_type=lease booking with no date/price fields
   assert.match(resetFn,/le-name.*le-phone.*le-personal-id.*le-address.*le-horse.*le-notes/);
 });
 
-test('leaseContractHtml() builds an English-only single-column Horse Lease Agreement with the corrected breach clause, printLeaseContract() is gated on lease_active',()=>{
+test('lease terms are one bilingual source (4 sections, 28 matching clauses) shown on the Book a Lease page and in the printed contract',()=>{
+  const core=read('app-core.js');
+  const dataLine=core.slice(core.indexOf('const LEASE_TERMS='),core.indexOf('\n',core.indexOf('const LEASE_TERMS=')));
+  const terms=JSON.parse(dataLine.replace(/^const LEASE_TERMS=/,'').replace(/;$/,''));
+  assert.deepEqual(terms.map(s=>s.clauses.length),[6,8,6,8]);
+  assert.deepEqual(terms.map(s=>s.en.slice(0,2)),['A.','B.','C.','D.']);
+  assert.deepEqual(terms.map(s=>s.ar.slice(0,2)),['أ.','ب.','ج.','د.']);
+  terms.forEach(section=>section.clauses.forEach(clause=>{
+    assert.ok(clause.en.title&&clause.ar.title&&clause.en.body.length&&clause.ar.body.length,`${clause.en.title} must have English and Arabic text`);
+    assert.equal(clause.en.title.split(' ')[0].slice(-1),clause.ar.title.split(' ')[0].slice(-1),`${clause.en.title} and ${clause.ar.title} must be the same clause number`);
+  }));
+  const flat=JSON.stringify(terms);
+  assert.match(flat,/B\.3 Pre-Existing Conditions/);
+  assert.match(flat,/governed by the laws of the Kingdom of Bahrain/);
+  assert.match(flat,/تخضع هذه الاتفاقية لقوانين مملكة البحرين/);
+  assert.doesNotMatch(core,/Shots and checkups are the exclusive responsibility of LESSOR/);
+  assert.doesNotMatch(core,/LESSOR'S Remedies on Breach/);
+
+  const context={LEASE_TERMS:terms,esc:v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;'),document:{getElementById:()=>null}};
+  vm.runInNewContext(functionBlock(core,'leaseTermsPanelHtml','leaseContractNo').replace(/^renderLeaseTermsPanel\(\);$/m,''),context);
+  const panelEn=context.leaseTermsPanelHtml('en'), panelAr=context.leaseTermsPanelHtml('ar');
+  assert.match(panelEn,/^<div dir="ltr" style="direction:ltr;text-align:left">/);
+  assert.match(panelAr,/^<div dir="rtl" style="direction:rtl;text-align:right">/);
+  assert.match(panelEn,/D\.8 Governing Law/);
+  assert.match(panelAr,/د\.8 القانون الواجب التطبيق/);
+  const contractTerms=context.leaseContractTermsHtml();
+  assert.equal((contractTerms.match(/page-break-inside:avoid/g)||[]).length,4+28);
+  assert.ok(contractTerms.indexOf('A.1 Lease Term')<contractTerms.indexOf('أ.1 مدة الاستئجار'));
+  assert.ok(contractTerms.indexOf('أ.1 مدة الاستئجار')<contractTerms.indexOf('A.2 Monthly Boarding Fees'),'each English clause sits beside its Arabic clause');
+});
+
+test('leaseContractHtml() is bilingual and renders the shared lease terms; printLeaseContract() is gated on lease_active',()=>{
   const core=read('app-core.js');
   const contractFn=functionBlock(core,'leaseContractHtml','printLeaseContract');
   ['h.lease_customer_name','h.lease_cpr','h.lease_address','h.lease_mobile','h.lease_monthly_price','h.lease_farrier_share','h.lease_farrier_weeks','h.lease_farrier_name','h.lease_trainer_name','h.lease_start_date'].forEach(field=>{
     assert.ok(contractFn.includes(field),`leaseContractHtml should reference ${field}`);
   });
-  assert.match(contractFn,/termsArHtml:''/);
-  assert.match(contractFn,/subtitleAr:''/);
-  assert.match(contractFn,/Horse Lease Agreement/);
-  assert.match(contractFn,/LESSOR'S Remedies on Breach/);
-  assert.match(contractFn,/immediately if the LESSOR and\/or stable manager determines that the horse's health is put at risk/);
-  assert.doesNotMatch(contractFn,/deems that the voided immediately/);
+  assert.match(contractFn,/subtitleAr:'اتفاقية تأجير خيل',subtitleEn:'Horse Lease Agreement'/);
+  assert.match(contractFn,/termsTitleAr:'الشروط والأحكام'/);
+  assert.match(contractFn,/leaseContractTermsHtml\(\)/);
+  assert.match(contractFn,/liveryContractField\('Lessee Name','اسم المستأجر'/);
+  assert.match(contractFn,/sigLeft:'Lessee Signature \/ توقيع المستأجر'/);
   const cardBlock=functionBlock(core,'renderHorses','addHorse');
   assert.match(cardBlock,/h\.lease_active\?'<button[^']*title="Print Lease Contract" onclick="printLeaseContract\('\+hid\+'\)"/);
 });
