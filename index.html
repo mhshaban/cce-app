@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20261012-4300"></script>
+<script src="app-bootstrap.js?v=20261017-4301"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20261012-4300" rel="stylesheet"/>
-<link href="member-portal.css?v=20261012-4300" rel="stylesheet"/>
-<link href="show-office.css?v=20261012-4300" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20261012-4300" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20261012-4300" rel="stylesheet"/>
+<link href="app-core.css?v=20261017-4301" rel="stylesheet"/>
+<link href="member-portal.css?v=20261017-4301" rel="stylesheet"/>
+<link href="show-office.css?v=20261017-4301" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20261017-4301" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20261017-4301" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -256,7 +256,25 @@
 <div class="form-group"><label>Emergency Contact — رقم الطوارئ</label><input id="b-emergency" maxlength="32" placeholder="رقم للتواصل في حالات الطوارئ" type="tel"/></div>
 <div class="form-group"><label>Health Condition — الحالة الصحية</label><input id="b-health" maxlength="500" placeholder="أي حالة صحية أو حساسية..." type="text"/></div>
 <div class="form-group"><label>Date *</label><input id="b-date" type="date"/></div>
-<div class="form-group"><label>Preferred Time *</label><input id="b-time" type="time"/></div>
+<div class="form-group"><label>Preferred Time — الوقت *</label><select id="b-time">
+<option value="">— اختر الوقت —</option>
+<optgroup label="🌅 الفترة الصباحية">
+<option value="08:00">08:00 ص</option>
+<option value="08:45">08:45 ص</option>
+<option value="09:30">09:30 ص</option>
+<option value="10:15">10:15 ص</option>
+<option value="11:00">11:00 ص</option>
+<option value="11:45">11:45 ص</option>
+</optgroup>
+<optgroup label="🌆 الفترة المسائية">
+<option value="16:00">04:00 م</option>
+<option value="16:45">04:45 م</option>
+<option value="17:30">05:30 م</option>
+<option value="18:15">06:15 م</option>
+<option value="19:00">07:00 م</option>
+<option value="19:45">07:45 م</option>
+</optgroup>
+</select></div>
 </div>
 <div class="card">
 <div class="card-title">🏇 Select Ride Type</div>
@@ -1379,32 +1397,32 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20261012-4300"></script>
-<script src="src/core/config.js?v=20261012-4300"></script>
-<script src="src/core/store.js?v=20261012-4300"></script>
-<script src="src/services/supabase-runtime.js?v=20261012-4300"></script>
-<script src="src/services/backup-runtime.js?v=20261012-4300"></script>
-<script src="src/modules/show-office/competition-service.js?v=20261012-4300"></script>
-<script src="src/modules/show-office/class-service.js?v=20261012-4300"></script>
-<script src="src/modules/show-office/entry-service.js?v=20261012-4300"></script>
-<script src="src/modules/show-office/judging-service.js?v=20261012-4300"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20261012-4300"></script>
-<script src="src/modules/horses/horse-service.js?v=20261012-4300"></script>
-<script src="src/modules/health/health-service.js?v=20261012-4300"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20261012-4300"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20261012-4300"></script>
-<script src="app-core.js?v=20261012-4300"></script>
-<script src="app-branding.js?v=20261012-4300"></script>
-<script src="show-office.js?v=20261012-4300"></script>
-<script src="judge-panel.js?v=20261012-4300"></script>
-<script src="live-results.js?v=20261012-4300"></script>
-<script src="horse-health.js?v=20261012-4300"></script>
-<script src="member-portal.js?v=20261012-4300"></script>
-<script src="src/components/header/header-system.js?v=20261012-4300"></script>
+<script src="src/core/events.js?v=20261017-4301"></script>
+<script src="src/core/config.js?v=20261017-4301"></script>
+<script src="src/core/store.js?v=20261017-4301"></script>
+<script src="src/services/supabase-runtime.js?v=20261017-4301"></script>
+<script src="src/services/backup-runtime.js?v=20261017-4301"></script>
+<script src="src/modules/show-office/competition-service.js?v=20261017-4301"></script>
+<script src="src/modules/show-office/class-service.js?v=20261017-4301"></script>
+<script src="src/modules/show-office/entry-service.js?v=20261017-4301"></script>
+<script src="src/modules/show-office/judging-service.js?v=20261017-4301"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20261017-4301"></script>
+<script src="src/modules/horses/horse-service.js?v=20261017-4301"></script>
+<script src="src/modules/health/health-service.js?v=20261017-4301"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20261017-4301"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20261017-4301"></script>
+<script src="app-core.js?v=20261017-4301"></script>
+<script src="app-branding.js?v=20261017-4301"></script>
+<script src="show-office.js?v=20261017-4301"></script>
+<script src="judge-panel.js?v=20261017-4301"></script>
+<script src="live-results.js?v=20261017-4301"></script>
+<script src="horse-health.js?v=20261017-4301"></script>
+<script src="member-portal.js?v=20261017-4301"></script>
+<script src="src/components/header/header-system.js?v=20261017-4301"></script>
 </body>
 </html>

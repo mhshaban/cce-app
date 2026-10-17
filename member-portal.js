@@ -324,7 +324,6 @@
     if (page === 'dashboard' && !canAccessDashboard()) page = 'admin';
     legacyNavigate(page);
     syncMemberLogoutButtons();
-    if (page === 'booking') loadCCHorses();
     if (page === 'owner' && hasMemberSession()) openOwnerMemberPortal();
     if (page === 'instructor' && hasMemberSession()) openInstructorMemberPortal();
     if (page === 'staff' && hasMemberSession()) openStaffMemberPortal();
