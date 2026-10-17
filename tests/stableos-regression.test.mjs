@@ -1424,14 +1424,31 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.30.0 cache key',()=>{
+test('all app assets use the v4.30.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
-  assert.ok(!html.includes('20261002-4293'));
-  assert.ok((html.match(/20261012-4300/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261012-4300/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261012-4300/);
-  assert.equal(read('VERSION.txt').trim(),'4.30.0');
+  assert.ok(!html.includes('20261012-4300'));
+  assert.ok((html.match(/20261017-4301/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261017-4301/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4301/);
+  assert.equal(read('VERSION.txt').trim(),'4.30.1');
+});
+
+test('the ride booking time is picked from the same fixed slots as training, not typed freely',()=>{
+  const html=read('index.html');
+  const core=read('app-core.js');
+  const select=html.slice(html.indexOf('<select id="b-time">'),html.indexOf('</select>',html.indexOf('<select id="b-time">')));
+  assert.ok(select.length>0,'b-time should be a <select>');
+  assert.doesNotMatch(html,/<input id="b-time"/);
+  assert.match(select,/<option value="">— اختر الوقت —<\/option>/);
+  const rideSlots=[...select.matchAll(/<option value="(\d\d:\d\d)">/g)].map(m=>m[1]);
+  const trainingBlock=functionBlock(core,'buildSessionSlots','submitTraining');
+  const trainingSlots=[...trainingBlock.matchAll(/<option value="(\d\d:\d\d)">/g)].map(m=>m[1]);
+  assert.equal(rideSlots.length,12);
+  assert.deepEqual(rideSlots,trainingSlots);
+  assert.match(functionBlock(core,'submitBooking','resetBooking'),/if\(!time\)missing\.push\('time'\)/);
+  // navigate('booking') used to call a loadCCHorses() that never existed.
+  assert.doesNotMatch(core+read('member-portal.js'),/loadCCHorses/);
 });
 
 test('the Shuwar category is renamed to Bran and Sand is a finance category',()=>{
