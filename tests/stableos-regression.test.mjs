@@ -1663,48 +1663,44 @@ test('submitLease() sends a request_type=lease booking with no date/price fields
   assert.match(resetFn,/le-name.*le-phone.*le-personal-id.*le-address.*le-horse.*le-notes/);
 });
 
-test('lease terms are one bilingual source (4 sections, 28 matching clauses) shown on the Book a Lease page and in the printed contract',()=>{
+test('lease terms are one condensed English source (sections A-D) shown on the Book a Lease page and in the printed contract',()=>{
   const core=read('app-core.js');
   const dataLine=core.slice(core.indexOf('const LEASE_TERMS='),core.indexOf('\n',core.indexOf('const LEASE_TERMS=')));
   const terms=JSON.parse(dataLine.replace(/^const LEASE_TERMS=/,'').replace(/;$/,''));
-  assert.deepEqual(terms.map(s=>s.clauses.length),[6,8,6,8]);
-  assert.deepEqual(terms.map(s=>s.en.slice(0,2)),['A.','B.','C.','D.']);
-  assert.deepEqual(terms.map(s=>s.ar.slice(0,2)),['أ.','ب.','ج.','د.']);
-  terms.forEach(section=>section.clauses.forEach(clause=>{
-    assert.ok(clause.en.title&&clause.ar.title&&clause.en.body.length&&clause.ar.body.length,`${clause.en.title} must have English and Arabic text`);
-    assert.equal(clause.en.title.split(' ')[0].slice(-1),clause.ar.title.split(' ')[0].slice(-1),`${clause.en.title} and ${clause.ar.title} must be the same clause number`);
+  assert.deepEqual(terms.map(s=>s.title.slice(0,2)),['A.','B.','C.','D.']);
+  assert.deepEqual(terms.map(s=>s.clauses.length),[6,8,5,6]);
+  terms.forEach(section=>section.clauses.forEach((clause,i)=>{
+    assert.equal(clause.title.split(' ')[0],section.title[0]+'.'+(i+1),`${clause.title} is numbered in order`);
+    assert.ok(clause.body.length&&clause.body.every(p=>p.length>20),`${clause.title} has text`);
   }));
   const flat=JSON.stringify(terms);
-  assert.match(flat,/B\.3 Pre-Existing Conditions/);
-  assert.match(flat,/governed by the laws of the Kingdom of Bahrain/);
-  assert.match(flat,/تخضع هذه الاتفاقية لقوانين مملكة البحرين/);
+  for(const key of ['B.3 Pre-Existing Conditions','B.5 Emergency Treatment','approved riding helmet','30 days’ written notice','partial-month stabling','laws of the Kingdom of Bahrain'])assert.ok(flat.includes(key),`missing ${key}`);
+  assert.doesNotMatch(flat,/[\u0600-\u06FF]/,'lease terms are English only');
+  assert.ok(flat.length<7000,'terms stay condensed so the contract fits one A4 page');
   assert.doesNotMatch(core,/Shots and checkups are the exclusive responsibility of LESSOR/);
   assert.doesNotMatch(core,/LESSOR'S Remedies on Breach/);
 
   const context={LEASE_TERMS:terms,esc:v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;'),document:{getElementById:()=>null}};
   vm.runInNewContext(functionBlock(core,'leaseTermsPanelHtml','leaseContractNo').replace(/^renderLeaseTermsPanel\(\);$/m,''),context);
-  const panelEn=context.leaseTermsPanelHtml('en'), panelAr=context.leaseTermsPanelHtml('ar');
-  assert.match(panelEn,/^<div dir="ltr" style="direction:ltr;text-align:left">/);
-  assert.match(panelAr,/^<div dir="rtl" style="direction:rtl;text-align:right">/);
-  assert.match(panelEn,/D\.8 Governing Law/);
-  assert.match(panelAr,/د\.8 القانون الواجب التطبيق/);
+  const panel=context.leaseTermsPanelHtml();
+  assert.match(panel,/^<div dir="ltr" style="direction:ltr;text-align:left">/);
+  assert.match(panel,/D\.6 Governing Law/);
   const contractTerms=context.leaseContractTermsHtml();
-  assert.equal((contractTerms.match(/page-break-inside:avoid/g)||[]).length,4+28);
-  assert.ok(contractTerms.indexOf('A.1 Lease Term')<contractTerms.indexOf('أ.1 مدة الاستئجار'));
-  assert.ok(contractTerms.indexOf('أ.1 مدة الاستئجار')<contractTerms.indexOf('A.2 Monthly Boarding Fees'),'each English clause sits beside its Arabic clause');
+  assert.match(contractTerms,/^<div style="column-count:2/);
+  assert.equal((contractTerms.match(/page-break-inside:avoid/g)||[]).length,4+25,'no section header or clause splits across columns/pages');
 });
 
-test('leaseContractHtml() is bilingual and renders the shared lease terms; printLeaseContract() is gated on lease_active',()=>{
+test('leaseContractHtml() is English-only with the three info cards in one row, and printLeaseContract() is gated on lease_active',()=>{
   const core=read('app-core.js');
   const contractFn=functionBlock(core,'leaseContractHtml','printLeaseContract');
   ['h.lease_customer_name','h.lease_cpr','h.lease_address','h.lease_mobile','h.lease_monthly_price','h.lease_farrier_share','h.lease_farrier_weeks','h.lease_farrier_name','h.lease_trainer_name','h.lease_start_date'].forEach(field=>{
     assert.ok(contractFn.includes(field),`leaseContractHtml should reference ${field}`);
   });
-  assert.match(contractFn,/subtitleAr:'اتفاقية تأجير خيل',subtitleEn:'Horse Lease Agreement'/);
-  assert.match(contractFn,/termsTitleAr:'الشروط والأحكام'/);
+  assert.match(contractFn,/subtitleAr:'',subtitleEn:'Horse Lease Agreement'/);
+  assert.match(contractFn,/termsArHtml:''/);
   assert.match(contractFn,/leaseContractTermsHtml\(\)/);
-  assert.match(contractFn,/liveryContractField\('Lessee Name','اسم المستأجر'/);
-  assert.match(contractFn,/sigLeft:'Lessee Signature \/ توقيع المستأجر'/);
+  assert.match(contractFn,/grid-template-columns:1fr 1fr 1fr/);
+  assert.doesNotMatch(contractFn,/[\u0600-\u06FF]/);
   const cardBlock=functionBlock(core,'renderHorses','addHorse');
   assert.match(cardBlock,/h\.lease_active\?'<button[^']*title="Print Lease Contract" onclick="printLeaseContract\('\+hid\+'\)"/);
 });
