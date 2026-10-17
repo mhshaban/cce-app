@@ -172,3 +172,28 @@ html[dir="rtl"] #alertsPanel.alerts-panel{right:auto!important;left:12px!importa
   .cce-service-responsive-header .cce-header-action{width:42px!important;min-width:42px!important;height:42px!important;padding:0!important}
   .cce-service-responsive-header .cce-header-action-label{display:none!important}
 }
+
+/* Installed Home Screen app on phones (Safari is fine with .cce-top-tint):
+   iOS 26 still draws its Liquid Glass edge blur over the top of standalone
+   web apps. Reported workaround: an opaque sticky header covering the top
+   edge, so headers stick there with a solid background-color and no blur. */
+@media (display-mode: standalone) and (max-width:700px){
+  .cce-top-tint{display:none!important}
+  /* overflow-x:hidden on html/body makes body a scroll container, which stops
+     position:sticky from sticking; clip hides overflow without that. */
+  html,body{overflow-x:clip!important}
+  .public-nav,
+  .service-header,
+  #globalHeader,
+  #globalHeader.cce-workspace-header,
+  body.member-authenticated #globalHeader.cce-workspace-header{
+    position:sticky!important;
+    top:0!important;
+    z-index:3000!important;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  .public-nav{background-color:#13213a!important}
+  .service-header{background-color:var(--cce-header-navy)!important}
+  #globalHeader,body.member-authenticated #globalHeader.cce-workspace-header{background-color:var(--cce-header-navy)!important}
+}
