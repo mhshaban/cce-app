@@ -21,19 +21,11 @@
   direction:ltr!important;
 }
 
-/* iOS 26 Safari ignores theme-color and tints the status-bar area from a
-   fixed element touching the top edge, otherwise from the cream body
-   background, which showed as a light fade over the navy header on phones
-   (where the header scrolls instead of sticking). Height is 0 off-notch. */
-body::before{
-  content:"";
-  position:fixed;
-  top:0;left:0;right:0;
-  height:var(--cce-safe-top);
-  background:var(--cce-header-navy);
-  z-index:2999;
-  pointer-events:none;
-}
+/* iOS 26 Safari ignores theme-color and fades the area under the status bar
+   with the page's root (canvas) background. With no html background the cream
+   body colour propagated there and showed as a light shadow over the navy
+   header. A navy root keeps that fade navy; body still paints its own cream. */
+html{background-color:var(--cce-header-navy)}
 
 #globalHeader.cce-workspace-header{
   position:sticky!important;
