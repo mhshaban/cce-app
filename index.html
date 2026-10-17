@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20261017-4301"></script>
+<script src="app-bootstrap.js?v=20261017-4310"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20261017-4301" rel="stylesheet"/>
-<link href="member-portal.css?v=20261017-4301" rel="stylesheet"/>
-<link href="show-office.css?v=20261017-4301" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20261017-4301" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20261017-4301" rel="stylesheet"/>
+<link href="app-core.css?v=20261017-4310" rel="stylesheet"/>
+<link href="member-portal.css?v=20261017-4310" rel="stylesheet"/>
+<link href="show-office.css?v=20261017-4310" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20261017-4310" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20261017-4310" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <!-- Loading Overlay -->
@@ -803,21 +803,7 @@
 <!-- Lease Terms & Conditions -->
 <div class="card" style="border:1px solid var(--amber)">
 <div class="card-title">📜 Horse Lease Agreement</div>
-<div style="max-height:260px;overflow-y:auto;font-size:12px;line-height:1.8;color:#333;padding:4px 2px;text-align:left">
-<div style="font-weight:700;color:var(--navy);margin-bottom:6px">A. Lease Term and Price</div>
-          LESSOR leases to LESSEE the horse on a month-to-month basis. LESSOR shall be paid by LESSEE as follows: (i) on the 1st of each month, for stabling, paid directly to LESSOR; (ii) the agreed farrier share, at the agreed frequency, using the farrier agreed with LESSOR — this may be subject to change at any time at LESSOR'S discretion; (iii) all training costs are to be discussed with the Trainer and are payable separate and apart from board, directly to the Trainer. The exact monthly price, farrier arrangement, and trainer will be confirmed by the club before the lease begins.<br/><br/>
-          LESSEE shall NOT have the right to sub-lease the horse. Only LESSEE is granted access to ride the horse. No other riders are allowed to ride the horse unless authorized by LESSOR, which will require that rider sign a waiver of liability form.
-<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">B. Care of the Horse</div>
-          LESSEE agrees to keep the horse in good health, giving due consideration to hoof care, and to humanely treat and care for the horse. If any injury to the horse occurs under LESSEE'S care or supervision, LESSEE is responsible for any and all veterinary expenses. Shots and checkups are the exclusive responsibility of LESSOR.<br/><br/>
-          LESSEE further agrees to keep the horse at the current stable location; the horse shall not spend the night away from it. LESSEE agrees to follow LESSOR'S advice on how to care for and train the horse, and to follow all of the stable's posted rules and regulations.
-<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">C. Limitation of Liability</div>
-          LESSEE agrees that LESSOR is not responsible for acts, occurrences, or elements of nature that can scare a horse, cause it to fall, or react in an unsafe way. Neither LESSOR, the stable, nor its employees and associates are liable for accidents, injuries, or thefts to animals and personal property kept at the stable.<br/><br/>
-          LESSEE understands that horseback riding carries certain risks, and will use best judgment to take safety first, including always wearing a safety helmet. By signing, LESSEE releases LESSOR of all liability in connection with any injury sustained from LESSEE'S activities on the horse.<br/><br/>
-          <strong style="color:#c0392b">Warning: there are inherent risks of injury voluntarily accepted in connection with riding and other activities (grooming, longeing, feeding, bathing, hoof care) with the horse. LESSEE, as part of this Agreement, agrees to sign the Waiver of Liability attached to the final Agreement.</strong>
-<div style="font-weight:700;color:var(--navy);margin:10px 0 6px">D. LESSOR'S Remedies on Breach</div>
-          This lease is subject to LESSEE'S performance of the covenants and conditions set forth herein. If LESSEE defaults in performance of any such covenants or conditions and the breach continues for more than 30 days, LESSOR may, at his option, declare the lease forfeit.<br/><br/>
-          This lease agreement may be voided with 30 days' written notice from either party for any reason, or immediately if the LESSOR and/or stable manager determines that the horse's health is put at risk by acts or omissions of LESSEE. If less than 30 days' notice is given by LESSEE, payments for the next 30 days remain due. If proper notice is given, monies paid in advance will be refunded, except for a partial month's stabling.
-        </div>
+<div id="leaseTermsPanel" style="max-height:320px;overflow-y:auto;font-size:12px;line-height:1.8;color:#333;padding:4px 2px"></div>
 <label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;cursor:pointer;padding:12px;background:var(--sand);border-radius:10px">
 <input id="le-terms" style="width:20px;height:20px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--amber)" type="checkbox"/>
 <span style="font-size:13px;font-weight:600;color:var(--navy)">
@@ -1397,32 +1383,32 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20261017-4301"></script>
-<script src="src/core/config.js?v=20261017-4301"></script>
-<script src="src/core/store.js?v=20261017-4301"></script>
-<script src="src/services/supabase-runtime.js?v=20261017-4301"></script>
-<script src="src/services/backup-runtime.js?v=20261017-4301"></script>
-<script src="src/modules/show-office/competition-service.js?v=20261017-4301"></script>
-<script src="src/modules/show-office/class-service.js?v=20261017-4301"></script>
-<script src="src/modules/show-office/entry-service.js?v=20261017-4301"></script>
-<script src="src/modules/show-office/judging-service.js?v=20261017-4301"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20261017-4301"></script>
-<script src="src/modules/horses/horse-service.js?v=20261017-4301"></script>
-<script src="src/modules/health/health-service.js?v=20261017-4301"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20261017-4301"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20261017-4301"></script>
-<script src="app-core.js?v=20261017-4301"></script>
-<script src="app-branding.js?v=20261017-4301"></script>
-<script src="show-office.js?v=20261017-4301"></script>
-<script src="judge-panel.js?v=20261017-4301"></script>
-<script src="live-results.js?v=20261017-4301"></script>
-<script src="horse-health.js?v=20261017-4301"></script>
-<script src="member-portal.js?v=20261017-4301"></script>
-<script src="src/components/header/header-system.js?v=20261017-4301"></script>
+<script src="src/core/events.js?v=20261017-4310"></script>
+<script src="src/core/config.js?v=20261017-4310"></script>
+<script src="src/core/store.js?v=20261017-4310"></script>
+<script src="src/services/supabase-runtime.js?v=20261017-4310"></script>
+<script src="src/services/backup-runtime.js?v=20261017-4310"></script>
+<script src="src/modules/show-office/competition-service.js?v=20261017-4310"></script>
+<script src="src/modules/show-office/class-service.js?v=20261017-4310"></script>
+<script src="src/modules/show-office/entry-service.js?v=20261017-4310"></script>
+<script src="src/modules/show-office/judging-service.js?v=20261017-4310"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20261017-4310"></script>
+<script src="src/modules/horses/horse-service.js?v=20261017-4310"></script>
+<script src="src/modules/health/health-service.js?v=20261017-4310"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20261017-4310"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20261017-4310"></script>
+<script src="app-core.js?v=20261017-4310"></script>
+<script src="app-branding.js?v=20261017-4310"></script>
+<script src="show-office.js?v=20261017-4310"></script>
+<script src="judge-panel.js?v=20261017-4310"></script>
+<script src="live-results.js?v=20261017-4310"></script>
+<script src="horse-health.js?v=20261017-4310"></script>
+<script src="member-portal.js?v=20261017-4310"></script>
+<script src="src/components/header/header-system.js?v=20261017-4310"></script>
 </body>
 </html>

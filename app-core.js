@@ -2103,6 +2103,32 @@ async function printRideContract(bookingRequestId){
     openContractPrintWindow(rideContractNo(request),rideContractHtml(request,safety,logoUrl));
   }catch(error){showError('Print contract',error);}
 }
+// Single source for the lease terms: the public Book a Lease page and the
+// printed contract both render from this, so the two can't drift apart.
+const LEASE_TERMS=[{"title":"A. LEASE TERM, FEES, AND RESTRICTIONS ON USE","clauses":[{"title":"A.1 Lease Term","body":["The horse is leased to the LESSEE on a month-to-month basis until this Agreement is terminated in accordance with its terms."]},{"title":"A.2 Monthly Boarding Fees","body":["The LESSEE pays the agreed monthly boarding fee directly to the LESSOR on or before the 1st of each month. The fee is confirmed in writing by the Club before the lease starts."]},{"title":"A.3 Farrier Fees","body":["The LESSEE pays the agreed share of farrier costs at the agreed frequency, using a farrier approved by the LESSOR. Any change that increases the LESSEE’s costs must be notified and confirmed in writing in advance."]},{"title":"A.4 Training Fees","body":["Training is separate from boarding. It is arranged and paid directly with the designated trainer confirmed by the Club, unless otherwise agreed in writing."]},{"title":"A.5 No Subleasing; Authorized Riders Only","body":["The LESSEE may not sublease, lend, or allow anyone else to use, handle, or ride the horse without the LESSOR’s prior written consent. Any authorized rider must first sign the Club’s liability waiver and follow its safety rules."]},{"title":"A.6 Additional Fees","body":["The LESSEE pays only the fees allocated to the LESSEE under this Agreement. Any new recurring fee or change to the agreed fees must be notified in writing before it applies."]}]},{"title":"B. CARE, WELFARE, AND VETERINARY EXPENSES","clauses":[{"title":"B.1 General Care","body":["The LESSEE shall care for the horse humanely and with reasonable care, and follow the reasonable instructions of the LESSOR, the stable manager, and the veterinarian, as well as the stable rules."]},{"title":"B.2 Veterinary Expenses","body":["Subject to B.3, the LESSEE pays all veterinary expenses arising during the lease (routine, preventive, diagnostic, medication, emergency, surgical, and follow-up care), whether or not the LESSEE caused the condition. Paying does not by itself mean the LESSEE caused it."]},{"title":"B.3 Pre-Existing Conditions","body":["The LESSEE is not responsible for costs caused solely by a condition that existed before the lease, was disclosed in writing before signing, and is recorded in a condition report acknowledged by both Parties, except costs resulting from the LESSEE’s negligence, misuse, or failure to follow veterinary instructions. Undisclosed conditions are assessed on the veterinary evidence and applicable law."]},{"title":"B.4 Reporting and Continuing Responsibility","body":["The LESSEE shall promptly report any injury, illness, or change in the horse’s condition to the LESSOR and the stable manager, and not delay necessary treatment. Costs of any condition caused or materially worsened by the LESSEE’s negligence or misuse remain payable after the lease ends."]},{"title":"B.5 Emergency Treatment","body":["The LESSEE or the stable manager may arrange emergency treatment without prior approval, notifying the LESSOR promptly. Costly non-emergency treatment requires prior approval from the LESSOR or the stable manager, which shall not be unreasonably withheld."]},{"title":"B.6 Payment and Reimbursement","body":["The LESSEE pays veterinary providers directly where practicable, and reimburses the LESSOR or the Club for any such costs they pay, on receipt of an itemized invoice."]},{"title":"B.7 Stable Location","body":["The horse stays at the stable designated by the Club and may not be moved or kept overnight elsewhere without the LESSOR’s written consent, except for an emergency veterinary referral."]},{"title":"B.8 Return of the Horse","body":["On termination, the LESSEE returns the horse as reasonably instructed. Its condition may be documented at the start and end of the lease, and the LESSEE is responsible for damage or deterioration caused by the LESSEE’s negligence, misuse, or breach."]}]},{"title":"C. ASSUMPTION OF RISK AND LIMITATION OF LIABILITY","clauses":[{"title":"C.1 Inherent Risks","body":["The LESSEE acknowledges that riding and handling horses carry inherent risks (including falls, kicks, bites, unpredictable behavior, and equipment failure) that may cause injury, damage, or death, and voluntarily accepts them, subject to applicable law."]},{"title":"C.2 Safety","body":["The LESSEE shall follow all safety instructions, always wear an approved riding helmet and suitable footwear when riding, and never ride or handle the horse while impaired. The LESSOR or the Club may suspend riding where reasonably necessary for safety."]},{"title":"C.3 Limitation of Liability","body":["To the extent permitted by law, the LESSOR and the Club are not liable for injury, loss, or damage arising solely from inherent risks or circumstances beyond their reasonable control. Nothing in this Agreement excludes liability that cannot lawfully be excluded, including for negligence or willful misconduct."]},{"title":"C.4 Personal Property","body":["The LESSEE is responsible for their own belongings. To the extent permitted by law, the LESSOR and the Club are not liable for loss, damage, or theft of property or animals at the stable, except where legally responsible."]},{"title":"C.5 Liability Waiver","body":["The LESSEE and any authorized rider shall sign the Club’s separate liability waiver, which forms part of this Agreement and is interpreted in accordance with applicable law."]}]},{"title":"D. DEFAULT, TERMINATION, AND FINANCIAL OBLIGATIONS","clauses":[{"title":"D.1 Breach","body":["If the LESSEE breaches a material term and does not remedy it within 30 days of written notice, the LESSOR may terminate this Agreement in writing."]},{"title":"D.2 Immediate Suspension or Termination","body":["The LESSOR or the Club may immediately suspend riding or terminate this Agreement where necessary to protect the horse’s welfare or anyone’s safety, giving the reasons where practicable."]},{"title":"D.3 Termination With Notice","body":["Either Party may terminate for any reason with 30 days’ written notice. If the LESSEE gives less notice, the fees for the 30-day notice period remain payable."]},{"title":"D.4 Refunds","body":["With proper notice, advance payments for periods after termination are refunded, less fees accrued up to the termination date, any partial-month stabling charge under the Club’s written fee policy, and other amounts properly due."]},{"title":"D.5 Obligations After Termination","body":["Termination does not release the LESSEE from veterinary costs attributable to the lease period or other accrued obligations, even if invoiced later. The LESSEE shall promptly return the horse and settle all outstanding amounts."]},{"title":"D.6 Governing Law","body":["This Agreement is governed by the laws of the Kingdom of Bahrain, and any dispute shall be referred to the competent courts of the Kingdom of Bahrain."]}]}];
+function leaseTermsPanelHtml(){
+  // Inline direction: app-core.css's `* {direction:inherit}` overrides dir attributes.
+  return '<div dir="ltr" style="direction:ltr;text-align:left">'+LEASE_TERMS.map(section=>
+    `<div style="font-weight:800;color:var(--navy);margin:12px 0 6px">${esc(section.title)}</div>`+
+    section.clauses.map(clause=>
+      `<div style="font-weight:700;color:var(--navy);margin:8px 0 2px">${esc(clause.title)}</div>`+clause.body.map(p=>`<p style="margin:0 0 6px">${esc(p)}</p>`).join('')
+    ).join('')
+  ).join('')+'</div>';
+}
+function renderLeaseTermsPanel(){
+  const el=document.getElementById('leaseTermsPanel');
+  if(el)el.innerHTML=leaseTermsPanelHtml();
+}
+renderLeaseTermsPanel();
+function leaseContractTermsHtml(){
+  const keep='break-inside:avoid;page-break-inside:avoid';
+  return '<div style="column-count:2;column-gap:14px">'+LEASE_TERMS.map(section=>
+    `<div style="font-weight:800;color:#C8923A;font-size:9px;margin:5px 0 2px;border-bottom:1px solid #E3D9C6;padding-bottom:1px;break-after:avoid;${keep}">${esc(section.title)}</div>`+
+    section.clauses.map(clause=>
+      `<div style="margin-bottom:3px;${keep}"><div style="font-weight:800;color:#1A2744">${esc(clause.title)}</div>`+clause.body.map(p=>`<div style="margin-top:1px">${esc(p)}</div>`).join('')+'</div>'
+    ).join('')
+  ).join('')+'</div>';
+}
 function leaseContractNo(h){return 'CCE-LSE-'+String(h.id||'').padStart(5,'0');}
 function leaseHorseAge(h){
   if(!h.birth_date)return '—';
@@ -2126,35 +2152,24 @@ function leaseContractHtml(h,logoUrl){
     liveryContractField('Passport','',esc(h.passport||'—')),
   ].join('');
   const termsRows=[
-    liveryContractField('Monthly Stabling Price','',BD(h.lease_monthly_price),true),
+    liveryContractField('Monthly Fee','',BD(h.lease_monthly_price),true),
     liveryContractField('Farrier Share','',esc(h.lease_farrier_share||'Full amount')),
-    liveryContractField('Farrier Frequency','',h.lease_farrier_weeks?('Every '+h.lease_farrier_weeks+' weeks'):'—'),
+    liveryContractField('Farrier Every','',h.lease_farrier_weeks?(h.lease_farrier_weeks+' weeks'):'—'),
     liveryContractField('Farrier','',esc(h.lease_farrier_name||'—')),
-    liveryContractField('Trainer (training billed separately)','',esc(h.lease_trainer_name||'—')),
-    liveryContractField('Lease Start Date','',h.lease_start_date?fmt(h.lease_start_date):'—'),
+    liveryContractField('Trainer','',esc(h.lease_trainer_name||'—')),
+    liveryContractField('Start Date','',h.lease_start_date?fmt(h.lease_start_date):'—'),
   ].join('');
-  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+  // Three cards in one row keep the whole agreement on a single A4 page.
+  const cardsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
         ${liveryContractCard('Lessee Information','',lesseeRows)}
         ${liveryContractCard('Horse Information','',horseRows)}
-      </div>
-      ${liveryContractCard('Lease Term &amp; Price','',termsRows)}`;
-  const termsEnHtml=`<div style="font-weight:800;color:#1A2744;margin-bottom:2px">A. Lease Term and Price</div>
-            &bull; LESSOR leases to LESSEE the horse on a month-to-month basis. LESSOR shall be paid by LESSEE as follows: (i) on the 1st of each month, for stabling, paid directly to LESSOR; (ii) the farrier share stated above (as needed, at the stated frequency), currently using the farrier named above — this may be subject to change at any time at LESSOR'S discretion; (iii) all training costs are to be discussed with the Trainer named above and are payable separate and apart from board, directly to the Trainer.<br>
-            &bull; LESSEE shall NOT have the right to sub-lease the horse. Only LESSEE is granted access to ride the horse. No other riders are allowed to ride the horse unless authorized by LESSOR, which will require that rider sign a waiver of liability form.
-            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">B. Care of the Horse</div>
-            &bull; LESSEE agrees to keep the horse in good health, giving due consideration to hoof care, and to humanely treat and care for the horse. If any injury to the horse occurs under LESSEE'S care or supervision, LESSEE is responsible for any and all veterinary expenses. Shots and checkups are the exclusive responsibility of LESSOR.<br>
-            &bull; LESSEE further agrees to keep the horse at the current stable location; the horse shall not spend the night away from it. LESSEE agrees to follow LESSOR'S advice on how to care for and train the horse, and to follow all of the stable's posted rules and regulations.
-            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">C. Limitation of Liability</div>
-            &bull; LESSEE agrees that LESSOR is not responsible for acts, occurrences, or elements of nature that can scare a horse, cause it to fall, or react in an unsafe way (e.g. thunder, lightning, rain, wind, wild or domestic animals, insects, reptiles, or irregular footing subject to constant change). Neither LESSOR, the stable, nor its employees and associates are liable for accidents, injuries, or thefts to animals and personal property kept at the stable.<br>
-            &bull; LESSEE understands that horseback riding carries certain risks, and will use best judgment to take safety first, including always wearing a safety helmet. By signing, LESSEE releases LESSOR of all liability in connection with any injury sustained from LESSEE'S activities on the horse, and acknowledges that horseback riding is inherently risky, releasing LESSOR, the stable, and any associated person from ANY liability for injury, damage, or loss to LESSEE or LESSEE'S equipment.<br>
-            &bull; <strong>Warning:</strong> there are inherent risks of injury voluntarily accepted in connection with riding and other activities (including but not limited to grooming, longeing, feeding, bathing, and hoof care) with the horse. LESSEE, as part of this Agreement, agrees to sign the Waiver of Liability attached to this Agreement.
-            <div style="font-weight:800;color:#1A2744;margin:5px 0 2px">D. LESSOR'S Remedies on Breach</div>
-            &bull; This lease is subject to LESSEE'S performance of the covenants and conditions set forth herein. If LESSEE defaults in performance of any such covenants or conditions and the breach continues for more than 30 days, LESSOR may, at his option, declare the lease forfeit.<br>
-            &bull; This lease agreement may be voided with 30 days' written notice from either party for any reason, or immediately if the LESSOR and/or stable manager determines that the horse's health is put at risk by acts or omissions of LESSEE. If less than 30 days' notice is given by LESSEE, payments for the next 30 days remain due. If proper notice is given, monies paid in advance will be refunded, except for a partial month's stabling (e.g. if voided mid-March, a refund is given for April or later, but not for the remainder of March).`;
+        ${liveryContractCard('Lease Term &amp; Fees','',termsRows)}
+      </div>`;
   return contractDocumentHtml({
     logoUrl,contractNo:leaseContractNo(h),dateStr:today,
     subtitleAr:'',subtitleEn:'Horse Lease Agreement',
-    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'',termsEnHtml,termsArHtml:'',
+    cardsHtml,termsTitleEn:'Terms &amp; Conditions',termsTitleAr:'',
+    termsEnHtml:`<div style="font-size:8px;line-height:1.36">${leaseContractTermsHtml()}</div>`,termsArHtml:'',
     sigLeft:'Lessee Signature',
     sigRight:'Country Club Equestrian (Lessor)',
   });
@@ -4783,7 +4798,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.30.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.31.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4886,7 +4901,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261017-4301', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261017-4310', {scope:'./'})
       .then(reg => {
 
         reg.update();
