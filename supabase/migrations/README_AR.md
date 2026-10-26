@@ -43,3 +43,9 @@
 2. شغّل `20260724_show_office_sprint4_judging_v4120.sql` ثم `../verification/verify_v4120.sql`.
 3. انشر واجهة v4.12.0 بمفتاح الأصول `20260724-4120` واختبر Judge وManager وView-only على iPad والجوال.
 4. اتبع `../../docs/DEPLOYMENT_V4120.md`. ملف `../rollback/rollback_v4120_compatibility.sql` يحفظ النتائج وسجل المراجعات لكنه يعطل وصول Sprint 4 ويعيد RPC الاستعادة إلى عقد v4.11.0.
+
+للانتقال إلى v4.32.0 (ربط النوافذ الصحية للخيول):
+
+1. خذ نسخة احتياطية ثم شغّل `../verification/preflight_v4320.sql`؛ يجب أن تكون أعمدة `*_ready` كلها true.
+2. شغّل `20261026_linked_horse_health_v4320.sql` ثم `../verification/verify_v4320.sql`؛ يجب أن تظهر ثلاثة مشغّلات وأن تكون كل أعداد عدم التطابق صفراً.
+3. ملف `../rollback/rollback_v4320_compatibility.sql` يزيل الربط ويرجع ملخص v4.7.0، ويحتفظ بكل السجلات.

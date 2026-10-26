@@ -94,6 +94,20 @@ test('pending events do not change summaries and newer manual dates are preserve
   assert.equal(merged[1].farrier_date,null);
 });
 
+test('open treatments and medical records with a medication update the client medicant summary',()=>{
+  const {mergeCompletedSummaries}=healthService();
+  const horses=[{id:7,medicant:'Imazol',med_date:'2026-01-07'},{id:8,medicant:null,med_date:null}];
+  const events=[
+    {id:59,horse_id:7,event_scope:'medical',event_type:'Medication',event_date:'2026-01-07',status:'Completed',title:'Imazol'},
+    {id:109,horse_id:7,event_scope:'medical',event_type:'Treatment',event_date:'2026-10-25',status:'Open',title:'Blood results',medication:'Imazol, Hemo15'},
+    {id:110,horse_id:8,event_scope:'medical',event_type:'Treatment',event_date:'2026-10-26',status:'Cancelled',title:'Void',medication:'Bute'},
+    {id:111,horse_id:8,event_scope:'care',event_type:'Medication',event_date:'2026-10-27',status:'Pending',title:'Planned dose'}
+  ];
+  const [nile,other]=mergeCompletedSummaries(horses,events);
+  assert.deepEqual([nile.medicant,nile.med_date],['Imazol, Hemo15','2026-10-25']);
+  assert.deepEqual([other.medicant,other.med_date],[null,null]);
+});
+
 test('notification loading, permissions and session field names stay wired',()=>{
   const portal=read('member-portal.js');
   const core=read('app-core.js');
@@ -327,6 +341,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260819_breeding_agreement_v4280.sql',
     'supabase/migrations/20260821_breeding_boarding_total_v4290.sql',
     'supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql',
+    'supabase/migrations/20261026_linked_horse_health_v4320.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -381,6 +396,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4280.sql',
     'supabase/verification/preflight_v4290.sql',
     'supabase/verification/verify_v4290.sql',
+    'supabase/verification/preflight_v4320.sql',
+    'supabase/verification/verify_v4320.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -413,7 +430,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4261_compatibility.sql',
     'supabase/rollback/rollback_v4270_compatibility.sql',
     'supabase/rollback/rollback_v4280_compatibility.sql',
-    'supabase/rollback/rollback_v4290_compatibility.sql'
+    'supabase/rollback/rollback_v4290_compatibility.sql',
+    'supabase/rollback/rollback_v4320_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1424,14 +1442,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.31.4 cache key',()=>{
+test('all app assets use the v4.32.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261017-4314/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261017-4314/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261017-4314/);
-  assert.equal(read('VERSION.txt').trim(),'4.31.4');
+  assert.ok((html.match(/20261026-4320/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261026-4320/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261026-4320/);
+  assert.equal(read('VERSION.txt').trim(),'4.32.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
