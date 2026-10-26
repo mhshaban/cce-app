@@ -2722,6 +2722,121 @@ test('v4.30.0 renames Shuwar rows to Bran in income, expenses and schedule, and 
   }
 });
 
+test('v4.32.0 links horse card, health profile and health records both ways, reconciles existing drift, and rollback removes the sync triggers',async()=>{
+  const db=await buildDatabaseThrough('20261012_rename_shuwar_to_bran_v4300.sql');
+  const migration=read('supabase/migrations/20261026_linked_horse_health_v4320.sql');
+  const one=async(sql,params=[])=>(await db.query(sql,params)).rows[0];
+  const card=id=>one(`select farrier_date::text,farrier_name,teeth_date::text,vaccine_date::text,vaccine_dr,medicant,med_date::text from public.horses where id=$1`,[id]);
+  const profile=id=>one(`select health_status,current_medication,veterinarian,next_review_date::text from public.horse_health_profiles where horse_id=$1`,[id]);
+  const count=async(where,params=[])=>(await one(`select count(*)::int as n from public.horse_health_events where ${where}`,params)).n;
+  try{
+    // Drift that existed before v4.32.0: card dates typed directly, and an
+    // open treatment that never reached the profile.
+    const drift=(await one(`insert into public.horses(horse_name,owner,status) values('Drift','CC','Available') returning id`)).id;
+    await db.exec(`
+      update public.horses set farrier_date='2026-08-26',farrier_name='Lakh',teeth_date='2026-09-01' where id=${drift};
+      insert into public.horse_health_profiles(horse_id,health_status) values(${drift},'Healthy');
+      insert into public.horse_health_events(horse_id,event_scope,event_type,event_date,title,medication,veterinarian,due_date,status)
+      values(${drift},'medical','Medical','2026-09-15','Leg swelling','Dexa + Finadyne','Dr Salah','2026-09-20','Open');
+    `);
+    assert.equal(await count(`horse_id=${drift} and event_type='Farrier'`),0);
+    assert.equal((await card(drift)).medicant,null);
+
+    await db.exec(migration);
+    assert.equal(await count(`horse_id=${drift} and event_type='Farrier' and event_scope='care' and status='Completed' and assigned_to='Lakh'`),1);
+    assert.equal(await count(`horse_id=${drift} and event_type='Dental' and status='Completed'`),1);
+    assert.deepEqual({...await card(drift)},{farrier_date:'2026-08-26',farrier_name:'Lakh',teeth_date:'2026-09-01',
+      vaccine_date:null,vaccine_dr:null,medicant:'Dexa + Finadyne',med_date:'2026-09-15'});
+    assert.deepEqual({...await profile(drift)},{health_status:'Under Treatment',current_medication:'Dexa + Finadyne',
+      veterinarian:'Dr Salah',next_review_date:'2026-09-20'});
+    // Re-running is a no-op.
+    const eventsBefore=await count('true');
+    await db.exec(migration);
+    assert.equal(await count('true'),eventsBefore);
+
+    // Horse card -> records.
+    const horse=(await one(`insert into public.horses(horse_name,owner,status,farrier_date,farrier_name,vaccine_date,vaccine_dr)
+      values('Linked','CC','Available','2026-10-01','Ali','2026-09-01','Dr A') returning id`)).id;
+    assert.equal(await count(`horse_id=${horse} and event_type='Farrier' and event_date='2026-10-01' and assigned_to='Ali'`),1);
+    assert.equal(await count(`horse_id=${horse} and event_type='Vaccination' and event_scope='vaccination' and veterinarian='Dr A'`),1);
+    assert.equal((await card(horse)).farrier_date,'2026-10-01');
+
+    await db.exec(`update public.horses set farrier_date='2026-10-20',farrier_name='Husain' where id=${horse}`);
+    assert.equal(await count(`horse_id=${horse} and event_type='Farrier'`),2,'a newer card date is a new visit');
+    await db.exec(`update public.horses set farrier_date='2026-10-19' where id=${horse}`);
+    assert.equal(await count(`horse_id=${horse} and event_type='Farrier'`),2,'an earlier date corrects the latest visit');
+    assert.equal(await count(`horse_id=${horse} and event_type='Farrier' and event_date='2026-10-19' and assigned_to='Husain'`),1);
+    assert.deepEqual([(await card(horse)).farrier_date,(await card(horse)).farrier_name],['2026-10-19','Husain']);
+    await db.exec(`update public.horses set vaccine_dr='Dr B' where id=${horse}`);
+    assert.equal(await count(`horse_id=${horse} and event_type='Vaccination' and veterinarian='Dr B'`),1);
+    assert.equal((await card(horse)).vaccine_dr,'Dr B');
+
+    // Records -> profile and card: an open treatment.
+    const treatment=(await one(`insert into public.horse_health_events(horse_id,event_scope,event_type,event_date,title,medication,veterinarian,due_date,status)
+      values($1,'medical','Treatment','2026-10-25','Blood results','Imazol, Hemo15','Dr Mohamed Salah','2026-10-30','Open') returning id`,[horse])).id;
+    assert.deepEqual({...await profile(horse)},{health_status:'Under Treatment',current_medication:'Imazol, Hemo15',
+      veterinarian:'Dr Mohamed Salah',next_review_date:'2026-10-30'});
+    assert.deepEqual([(await card(horse)).medicant,(await card(horse)).med_date],['Imazol, Hemo15','2026-10-25']);
+
+    // Card medicant edit -> the open record -> the profile.
+    await db.exec(`update public.horses set medicant='Imazol, Hemo15, B complex' where id=${horse}`);
+    assert.equal((await one(`select medication from public.horse_health_events where id=$1`,[treatment])).medication,'Imazol, Hemo15, B complex');
+    assert.equal((await profile(horse)).current_medication,'Imazol, Hemo15, B complex');
+    assert.equal(await count(`horse_id=${horse} and event_type='Medication'`),0,'editing the medicant does not add a duplicate record');
+
+    // Profile medication edit -> the open record -> the card.
+    await db.exec(`update public.horse_health_profiles set current_medication='Imazol 8ml IM; Hemo15 20ml IV' where horse_id=${horse}`);
+    assert.equal((await one(`select medication from public.horse_health_events where id=$1`,[treatment])).medication,'Imazol 8ml IM; Hemo15 20ml IV');
+    assert.equal((await card(horse)).medicant,'Imazol 8ml IM; Hemo15 20ml IV');
+
+    // Completing the record releases the profile; the card keeps the last medication.
+    await db.exec(`update public.horse_health_events set status='Completed' where id=${treatment}`);
+    assert.deepEqual({...await profile(horse)},{health_status:'Healthy',current_medication:null,
+      veterinarian:'Dr Mohamed Salah',next_review_date:null});
+    assert.equal((await card(horse)).medicant,'Imazol 8ml IM; Hemo15 20ml IV');
+
+    // Profile medication on a horse with no open treatment opens one.
+    await db.exec(`update public.horse_health_profiles set current_medication='Bute 2g' where horse_id=${horse}`);
+    const opened=await one(`select id,event_type,status,medication from public.horse_health_events
+      where horse_id=$1 and status='Open' order by id desc limit 1`,[horse]);
+    assert.deepEqual([opened.event_type,opened.status,opened.medication],['Treatment','Open','Bute 2g']);
+    assert.equal((await card(horse)).medicant,'Bute 2g');
+
+    // Setting the profile Healthy completes the open records and clears the untouched medication.
+    await db.exec(`update public.horse_health_profiles set health_status='Under Treatment' where horse_id=${horse}`);
+    await db.exec(`update public.horse_health_profiles set health_status='Healthy' where horse_id=${horse}`);
+    assert.equal((await one(`select status from public.horse_health_events where id=$1`,[opened.id])).status,'Completed');
+    assert.equal((await profile(horse)).current_medication,null);
+
+    // Deleting the only open treatment releases the profile too.
+    const injury=(await one(`insert into public.horse_health_events(horse_id,event_scope,event_type,event_date,title,medication,status)
+      values($1,'medical','Injury','2026-10-26','Cut','Betadine','Monitoring') returning id`,[horse])).id;
+    assert.equal((await profile(horse)).health_status,'Under Treatment');
+    await db.exec(`delete from public.horse_health_events where id=${injury}`);
+    assert.deepEqual([(await profile(horse)).health_status,(await profile(horse)).current_medication],['Healthy',null]);
+    assert.equal((await card(horse)).medicant,'Bute 2g');
+
+    // A profile status the stable chose (Injured) is not overwritten.
+    await db.exec(`update public.horse_health_profiles set health_status='Injured' where horse_id=${horse}`);
+    await db.exec(`insert into public.horse_health_events(horse_id,event_scope,event_type,event_date,title,medication,status)
+      values(${horse},'medical','Injury','2026-10-26','Tendon','Ice + Bute','Open')`);
+    assert.deepEqual([(await profile(horse)).health_status,(await profile(horse)).current_medication],['Injured','Ice + Bute']);
+
+    await db.exec(read('supabase/rollback/rollback_v4320_compatibility.sql'));
+    const triggers=await db.query(`select tgname from pg_trigger where not tgisinternal
+      and tgname in ('cce_horse_card_sync_health','cce_horse_profile_sync_health','cce_health_event_recompute_horse_summary') order by tgname`);
+    assert.deepEqual(triggers.rows.map(r=>r.tgname),['cce_health_event_recompute_horse_summary']);
+    const farrierBefore=await count(`horse_id=${horse} and event_type='Farrier'`);
+    await db.exec(`update public.horses set farrier_date='2026-11-01' where id=${horse}`);
+    assert.equal(await count(`horse_id=${horse} and event_type='Farrier'`),farrierBefore);
+
+    await db.exec(migration);
+    assert.equal((await db.query(`select 1 from pg_trigger where tgname='cce_horse_card_sync_health'`)).rows.length,1);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

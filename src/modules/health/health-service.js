@@ -26,20 +26,32 @@
     return event.event_date||bahrainDate(event.completed_at)||null;
   }
   function completedPerson(event){
-    if(event.event_type==='Medication')return event.medication||event.title||event.assigned_to||null;
     return event.assigned_to||event.veterinarian||null;
+  }
+  // Mirrors cce_health_event_medication(): the medication a record shows on the horse card.
+  function medicationValue(event){
+    const text=value=>String(value||'').trim()||null;
+    if(event.status==='Cancelled')return null;
+    const completedMedication=event.event_type==='Medication'&&event.status==='Completed';
+    if(event.event_scope==='medical')return text(event.medication)||(completedMedication?text(event.title):null);
+    return completedMedication?text(event.medication)||text(event.title):null;
   }
   function mergeCompletedSummaries(horseRows,events){
     const latest=new Map();
-    (events||[]).forEach(event=>{
-      const meta=summaryMeta[event.event_type];
-      const date=event.status==='Completed'&&meta?completedDate(event):null;
-      if(!date)return;
-      const key=`${event.horse_id}:${event.event_type}`;
+    const consider=(event,type,date,person)=>{
+      const key=`${event.horse_id}:${type}`;
       const current=latest.get(key);
       if(!current||date>current.date||(date===current.date&&Number(event.id||0)>Number(current.event.id||0))){
-        latest.set(key,{date,event,meta});
+        latest.set(key,{date,event,meta:summaryMeta[type],person});
       }
+    };
+    (events||[]).forEach(event=>{
+      const medication=medicationValue(event);
+      if(medication&&event.event_date)consider(event,'Medication',event.event_date,medication);
+      if(event.event_type==='Medication')return;
+      const meta=summaryMeta[event.event_type];
+      const date=event.status==='Completed'&&meta?completedDate(event):null;
+      if(date)consider(event,event.event_type,date,completedPerson(event));
     });
     return (horseRows||[]).map(horse=>{
       const next={...horse};
@@ -49,10 +61,7 @@
         const current=String(next[summary.meta.date]||'');
         if(current&&current>summary.date)return;
         next[summary.meta.date]=summary.date;
-        if(summary.meta.person){
-          const person=completedPerson(summary.event);
-          if(person)next[summary.meta.person]=person;
-        }
+        if(summary.meta.person&&summary.person)next[summary.meta.person]=summary.person;
       });
       return next;
     });
@@ -75,7 +84,7 @@
     async load(){
       const [profiles,events]=await Promise.all([
         sbGet('horse_health_profiles','select=*&limit=500'),
-        sbGet('horse_health_events','select=*&order=event_date.desc,id.desc&limit=4000')
+        sbGetAll('horse_health_events','select=*&order=event_date.desc,id.desc')
       ]);
       if(CCE.store)CCE.store.setMany({horseHealthProfiles:profiles,horseHealthEvents:events});
       return {profiles,events,derived:derive(events)};
