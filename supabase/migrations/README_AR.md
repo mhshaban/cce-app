@@ -49,3 +49,9 @@
 1. خذ نسخة احتياطية ثم شغّل `../verification/preflight_v4320.sql`؛ يجب أن تكون أعمدة `*_ready` كلها true.
 2. شغّل `20261026_linked_horse_health_v4320.sql` ثم `../verification/verify_v4320.sql`؛ يجب أن تظهر ثلاثة مشغّلات وأن تكون كل أعداد عدم التطابق صفراً.
 3. ملف `../rollback/rollback_v4320_compatibility.sql` يزيل الربط ويرجع ملخص v4.7.0، ويحتفظ بكل السجلات.
+
+للانتقال إلى v4.33.0 (الإيواء الشهري بالسعر الموسمي):
+
+1. شغّل `../verification/preflight_v4330.sql`؛ يجب أن يكون `v4190_ready` = true، ويعرض خيول AC وأسعارها الشتوية والصيفية.
+2. شغّل `20261101_seasonal_livery_income_v4330.sql` ثم `../verification/verify_v4330.sql`؛ المتوقع 65 و100 وصفر.
+3. ملف `../rollback/rollback_v4330_compatibility.sql` يرجع دالة v4.19.0 ولا يغير الفواتير.
