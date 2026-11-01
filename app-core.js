@@ -697,6 +697,12 @@ async function forceLoad(){
   await loadAll();
 }
 
+// Mirrors cce_livery_monthly_amount(): AC livery is billed at the A/C price
+// in summer (May–Sep) and at the livery price in winter (Oct–Apr).
+function liveryMonthlyAmount(h,month){
+  const winter=parseFloat(h.livery_bd||0), summer=parseFloat(h.ac_livery_bd||0);
+  return month>=5&&month<=9?(summer||winter):(winter||summer);
+}
 async function checkAndCreateLiveryNotifications(){
   // Auto-add livery payments for AVAILABLE horses — due on the 1st of EVERY month
   const today=new Date();
@@ -713,13 +719,13 @@ async function checkAndCreateLiveryNotifications(){
   for(const horse of liveryHorses){
     // Skip if a livery record for THIS month already exists (Pending OR Paid — no duplicates)
     const existing=income.find(r=>
-      r.horse_name===horse.horse_name&&
+      String(r.horse_name||'').trim()===String(horse.horse_name||'').trim()&&
       (r.activity||'').startsWith('Livery')&&
       r.due_date&&r.due_date.startsWith(currentMonth)
     );
 
     if(!existing){
-      const liveryAmount=parseFloat(horse.ac_livery_bd||0)>0?parseFloat(horse.ac_livery_bd):parseFloat(horse.livery_bd||0);
+      const liveryAmount=liveryMonthlyAmount(horse,m);
       try{
         await sbPost('income',{
           date:todayStr,
@@ -4798,7 +4804,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.32.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.33.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4901,7 +4907,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261026-4320', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261101-4330', {scope:'./'})
       .then(reg => {
 
         reg.update();

@@ -108,6 +108,17 @@ test('open treatments and medical records with a medication update the client me
   assert.deepEqual([other.medicant,other.med_date],[null,null]);
 });
 
+test('client livery safety net bills AC horses by season like the database',()=>{
+  const core=read('app-core.js');
+  const src=core.match(/function liveryMonthlyAmount\(h,month\)\{[\s\S]*?\n\}/)[0];
+  const liveryMonthlyAmount=new Function(src+';return liveryMonthlyAmount;')();
+  const ac={livery_bd:'65',ac_livery_bd:'100'};
+  assert.deepEqual([1,4,5,9,10,11].map(m=>liveryMonthlyAmount(ac,m)),[65,65,100,100,65,65]);
+  assert.equal(liveryMonthlyAmount({livery_bd:'0',ac_livery_bd:'150'},11),150);
+  assert.equal(liveryMonthlyAmount({livery_bd:'80',ac_livery_bd:'0'},7),80);
+  assert.match(core,/const liveryAmount=liveryMonthlyAmount\(horse,m\);/);
+});
+
 test('notification loading, permissions and session field names stay wired',()=>{
   const portal=read('member-portal.js');
   const core=read('app-core.js');
@@ -342,6 +353,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20260821_breeding_boarding_total_v4290.sql',
     'supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql',
     'supabase/migrations/20261026_linked_horse_health_v4320.sql',
+    'supabase/migrations/20261101_seasonal_livery_income_v4330.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -398,6 +410,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4290.sql',
     'supabase/verification/preflight_v4320.sql',
     'supabase/verification/verify_v4320.sql',
+    'supabase/verification/preflight_v4330.sql',
+    'supabase/verification/verify_v4330.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -431,7 +445,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4270_compatibility.sql',
     'supabase/rollback/rollback_v4280_compatibility.sql',
     'supabase/rollback/rollback_v4290_compatibility.sql',
-    'supabase/rollback/rollback_v4320_compatibility.sql'
+    'supabase/rollback/rollback_v4320_compatibility.sql',
+    'supabase/rollback/rollback_v4330_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1442,14 +1457,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.32.0 cache key',()=>{
+test('all app assets use the v4.33.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261026-4320/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261026-4320/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261026-4320/);
-  assert.equal(read('VERSION.txt').trim(),'4.32.0');
+  assert.ok((html.match(/20261101-4330/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261101-4330/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261101-4330/);
+  assert.equal(read('VERSION.txt').trim(),'4.33.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

@@ -2167,6 +2167,9 @@ test('v4.19.0 monthly livery income creation covers Full Livery and AC Livery, i
 
     const created=await db.query(`select public.cce_create_monthly_livery_income() as rows_created`);
     assert.equal(created.rows[0].rows_created,3);
+    // Since v4.33.0 a horse with both prices is billed by season.
+    const bahrainMonth=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bahrain',month:'numeric'}).format(new Date()));
+    const bahrainSummer=bahrainMonth>=5&&bahrainMonth<=9;
 
     const rows=await db.query(`
       select horse_name,customer_name,amount_bd::text,status
@@ -2176,7 +2179,7 @@ test('v4.19.0 monthly livery income creation covers Full Livery and AC Livery, i
     `);
     assert.deepEqual(rows.rows.map(r=>({...r})),[
       {horse_name:'AC Livery Horse',customer_name:'Owner Two',amount_bd:'150.000',status:'Pending'},
-      {horse_name:'Both Set Horse',customer_name:'Owner Three',amount_bd:'150.000',status:'Pending'},
+      {horse_name:'Both Set Horse',customer_name:'Owner Three',amount_bd:bahrainSummer?'150.000':'80.000',status:'Pending'},
       {horse_name:'Full Livery Horse',customer_name:'Owner One',amount_bd:'80.000',status:'Pending'}
     ]);
 
@@ -2832,6 +2835,56 @@ test('v4.32.0 links horse card, health profile and health records both ways, rec
 
     await db.exec(migration);
     assert.equal((await db.query(`select 1 from pg_trigger where tgname='cce_horse_card_sync_health'`)).rows.length,1);
+  }finally{
+    await db.close();
+  }
+});
+
+test('v4.33.0 bills AC livery at the winter price Oct–Apr and the A/C price May–Sep, corrects this month\'s unpaid rows, ignores stray spaces in horse names, and rollback restores v4.19',async()=>{
+  const db=await buildDatabaseThrough('20261026_linked_horse_health_v4320.sql');
+  const migration=read('supabase/migrations/20261101_seasonal_livery_income_v4330.sql');
+  const bahrainMonth=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bahrain',month:'numeric'}).format(new Date()));
+  const summer=bahrainMonth>=5&&bahrainMonth<=9;
+  try{
+    await db.exec(`
+      insert into public.horses(horse_name,owner,status,livery_type,livery_bd,ac_livery_bd) values
+        ('Seasonal AC','Owner A','Available','AC',65,100),
+        ('Fan Horse','Owner B','Available','FAN',75,75),
+        ('Spaced Name ','Owner C','Available','AC',60,100),
+        ('Paid Already','Owner D','Available','AC',90,130);
+    `);
+    // v4.19 billed the A/C price all year.
+    await db.query(`select public.cce_create_monthly_livery_income()`);
+    await db.exec(`
+      update public.income set paid_bd=130,status='Paid' where horse_name='Paid Already';
+      update public.income set horse_name='Spaced Name' where horse_name='Spaced Name ';
+    `);
+
+    await db.exec(migration);
+    await db.exec(migration);
+    const amounts=Object.fromEntries((await db.query(`select trim(horse_name) as h,amount_bd::numeric::text as a from public.income where activity='Livery'`)).rows.map(r=>[r.h,r.a]));
+    assert.equal(amounts['Seasonal AC'],summer?'100.000':'65.000');
+    assert.equal(amounts['Fan Horse'],'75.000');
+    assert.equal(amounts['Spaced Name'],summer?'100.000':'60.000');
+    assert.equal(amounts['Paid Already'],'130.000','paid rows are never changed');
+
+    const prices=(await db.query(`select
+      public.cce_livery_monthly_amount(65,100,1) jan,public.cce_livery_monthly_amount(65,100,4) apr,
+      public.cce_livery_monthly_amount(65,100,5) may,public.cce_livery_monthly_amount(65,100,9) sep,
+      public.cce_livery_monthly_amount(65,100,10) oct,public.cce_livery_monthly_amount(0,150,11) only_ac,
+      public.cce_livery_monthly_amount(80,0,7) only_livery`)).rows[0];
+    assert.deepEqual(Object.fromEntries(Object.entries(prices).map(([k,v])=>[k,Number(v)])),
+      {jan:65,apr:65,may:100,sep:100,oct:65,only_ac:150,only_livery:80});
+
+    // The trimmed name counts as already billed: no duplicate row.
+    assert.equal((await db.query(`select public.cce_create_monthly_livery_income() as n`)).rows[0].n,0);
+    assert.equal((await db.query(`select count(*)::int n from public.income where activity='Livery'`)).rows[0].n,4);
+
+    await db.exec(read('supabase/rollback/rollback_v4330_compatibility.sql'));
+    assert.equal((await db.query(`select to_regprocedure('public.cce_livery_monthly_amount(numeric,numeric,integer)') is null as gone`)).rows[0].gone,true);
+    assert.equal((await db.query(`select to_regprocedure('public.cce_create_monthly_livery_income()') is not null as kept`)).rows[0].kept,true);
+    await db.exec(migration);
+    assert.equal((await db.query(`select to_regprocedure('public.cce_livery_monthly_amount(numeric,numeric,integer)') is not null as back`)).rows[0].back,true);
   }finally{
     await db.close();
   }
