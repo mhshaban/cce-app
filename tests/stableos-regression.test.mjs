@@ -119,6 +119,14 @@ test('client livery safety net bills AC horses by season like the database',()=>
   assert.match(core,/const liveryAmount=liveryMonthlyAmount\(horse,m\);/);
 });
 
+test('Mark Paid on income moves the income date to today (Bahrain), expenses keep their date',()=>{
+  const core=read('app-core.js');
+  const mark=functionBlock(core,'markPaid','sendWhatsAppThanks');
+  assert.match(mark,/if\(t==='income'\)payload\.date=bahrainDateISO\(\);/);
+  const training=functionBlock(core,'confirmTrainingPayment','markPaid');
+  assert.match(training,/status:'Paid',date:bahrainDateISO\(\)/);
+});
+
 test('notification loading, permissions and session field names stay wired',()=>{
   const portal=read('member-portal.js');
   const core=read('app-core.js');
@@ -1457,14 +1465,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.33.0 cache key',()=>{
+test('all app assets use the v4.33.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261101-4330/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261101-4330/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261101-4330/);
-  assert.equal(read('VERSION.txt').trim(),'4.33.0');
+  assert.ok((html.match(/20261103-4331/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261103-4331/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261103-4331/);
+  assert.equal(read('VERSION.txt').trim(),'4.33.1');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
