@@ -2904,7 +2904,7 @@ async function confirmTrainingPayment(id){
   if(!trainer){alert('Select an active instructor.');return;}
   const finalAmount=moneyNum(r.amount_bd);
   try{
-    await sbPatch('income',id,{paid_bd:finalAmount,status:'Paid',training_split_enabled:true,instructor_id:trainer.id});
+    await sbPatch('income',id,{paid_bd:finalAmount,status:'Paid',date:bahrainDateISO(),training_split_enabled:true,instructor_id:trainer.id});
     closeModal();await loadAll();
     if(confirm('✅ Payment split recorded.\n\nStable: '+BD(splitStableHalf(finalAmount))+'\n'+trainer.name+': '+BD(finalAmount-splitStableHalf(finalAmount))+'\n\nSend a thank-you WhatsApp message?'))sendWhatsAppThanks(r,finalAmount);
   }catch(e){showError('Training payment',e);}
@@ -2925,6 +2925,8 @@ async function markPaid(t,id,amt){
   const rec=(t==='income')?row:null;
   try{
     const payload={paid_bd:finalAmount,status:'Paid'};
+    // Income is dated on the day it is received, so Mark Paid moves the date to today.
+    if(t==='income')payload.date=bahrainDateISO();
     if(t==='expenses'&&row){
       const meta=expenseMeta(row);
       const plan=expenseInstallments(row);
@@ -4804,7 +4806,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.33.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.33.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4907,7 +4909,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261101-4330', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261103-4331', {scope:'./'})
       .then(reg => {
 
         reg.update();
