@@ -32,7 +32,7 @@
       return `<li class="pd-slot pd-${h(s.slot_type)} pd-bumped${s.mine&&ownerView?' pd-mine':''}"${attrs}><span class="pd-tm">${range(s)}</span><span class="pd-nm">${h(s.horse_name)}<small>${meta}</small><small class="pd-bump">${ownerView?BUMP_OWNER:BUMP_STAFF}</small></span><span class="pd-ty">${TYPES[s.slot_type]||''}</span></li>`;
     }
     if(ownerView&&!s.mine){
-      return `<li class="pd-slot ${s.booked?'pd-booked':'pd-open'}"><span class="pd-tm">${range(s)}</span><span class="pd-nm">${s.booked?'محجوز':'متاح'}</span><span class="pd-ty"></span></li>`;
+      return `<li class="pd-slot ${s.booked?'pd-booked':'pd-open'}"><span class="pd-tm">${range(s)}</span><span class="pd-nm">${s.booked?'محجوز':''}</span><span class="pd-ty"></span></li>`;
     }
     if(!s.horse_name){
       const label=s.slot_type==='stable'?'حصة تدريبية (محجوز)':(manage?'+ متاح':'متاح');

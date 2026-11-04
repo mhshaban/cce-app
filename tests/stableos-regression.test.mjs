@@ -154,7 +154,8 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(el.innerHTML,/Bentli/);
   assert.equal((el.innerHTML.match(/محجوز/g)||[]).length>=1,true);
   assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">9:20 – 9:40<\/span><span class="pd-nm">محجوز/);
-  assert.match(el.innerHTML,/pd-slot pd-open"><span class="pd-tm">9:00 – 9:20<\/span><span class="pd-nm">متاح/);
+  assert.match(el.innerHTML,/pd-slot pd-open"><span class="pd-tm">9:00 – 9:20<\/span><span class="pd-nm"><\/span>/,'empty slots stay blank for owners');
+  assert.doesNotMatch(el.innerHTML,/متاح/);
   assert.doesNotMatch(el.innerHTML,/role="button"/,'owners cannot open the edit dialog');
   assert.match(el.innerHTML,/Shumokh[\s\S]*?الأولوية لحصة تدريبية/,'the owner is told a lesson takes their slot that day');
   assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">5:30 – 6:15<\/span><span class="pd-nm">محجوز/,'another rider\'s lesson is just booked');
