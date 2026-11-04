@@ -55,3 +55,9 @@
 1. شغّل `../verification/preflight_v4330.sql`؛ يجب أن يكون `v4190_ready` = true، ويعرض خيول AC وأسعارها الشتوية والصيفية.
 2. شغّل `20261101_seasonal_livery_income_v4330.sql` ثم `../verification/verify_v4330.sql`؛ المتوقع 65 و100 وصفر.
 3. ملف `../rollback/rollback_v4330_compatibility.sql` يرجع دالة v4.19.0 ولا يغير الفواتير.
+
+للانتقال إلى v4.34.0 (جدول البادوكات):
+
+1. شغّل `../verification/preflight_v4340.sql`؛ يجب أن يكون `rbac_ready` = true. القائمة الثانية تبيّن أي خيل من البذر لا يطابق خيلاً متاحاً (يُتخطى ولا يوقف الترحيل).
+2. شغّل `20261104_paddock_board_v4340.sql` ثم `../verification/verify_v4340.sql`؛ المتوقع `functions_ready` = true و`permissions` = 2 وأعداد التداخل صفر.
+3. ملف `../rollback/rollback_v4340_compatibility.sql` يحذف دوال البادوكات ويبقي الجدول وبياناته.

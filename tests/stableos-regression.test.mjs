@@ -362,6 +362,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql',
     'supabase/migrations/20261026_linked_horse_health_v4320.sql',
     'supabase/migrations/20261101_seasonal_livery_income_v4330.sql',
+    'supabase/migrations/20261104_paddock_board_v4340.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -420,6 +421,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4320.sql',
     'supabase/verification/preflight_v4330.sql',
     'supabase/verification/verify_v4330.sql',
+    'supabase/verification/preflight_v4340.sql',
+    'supabase/verification/verify_v4340.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -454,7 +457,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4280_compatibility.sql',
     'supabase/rollback/rollback_v4290_compatibility.sql',
     'supabase/rollback/rollback_v4320_compatibility.sql',
-    'supabase/rollback/rollback_v4330_compatibility.sql'
+    'supabase/rollback/rollback_v4330_compatibility.sql',
+    'supabase/rollback/rollback_v4340_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1465,14 +1469,15 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.33.1 cache key',()=>{
+test('all app assets use the v4.34.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261103-4331/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261103-4331/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261103-4331/);
-  assert.equal(read('VERSION.txt').trim(),'4.33.1');
+  assert.ok(!html.includes('20261103-4331'));
+  assert.ok((html.match(/20261104-4340/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261104-4340/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261104-4340/);
+  assert.equal(read('VERSION.txt').trim(),'4.34.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -1883,4 +1888,40 @@ test('the "Update now" PWA banner sits at the bottom of the screen (above the ho
   assert.match(fn,/position:fixed;bottom:0;left:0;right:0/);
   assert.doesNotMatch(fn,/position:fixed;top:0/);
   assert.match(fn,/env\(safe-area-inset-bottom,0px\)/);
+});
+
+test('v4.34.0 paddock board is wired into the Horses group and the Owner Portal, and labels never invent a horse name for reserved slots',()=>{
+  const html=read('index.html');
+  assert.match(html,/id="nav-paddocks" onclick="showDashPage\('paddocks',this\)"/);
+  assert.match(html,/<div class="section" id="page-paddocks">[\s\S]*?<div id="paddockBoard"><\/div>/);
+  assert.match(html,/id="ownerPaddockSection" style="display:none"/);
+  assert.ok(html.indexOf('paddock-service.js')<html.indexOf('paddock-board.js'),'the service loads before the controller');
+  const core=read('app-core.js');
+  assert.match(core,/horses:\['horses','health','breeding','paddocks'\]/);
+  assert.match(core,/if\(id==='paddocks'&&typeof renderPaddockPage==='function'\) renderPaddockPage\(\);/);
+  const portal=read('member-portal.js');
+  assert.match(portal,/paddocks: \['paddocks\.view'\]/);
+  assert.match(portal,/renderOwnerHorses\(\);\n\s*if \(typeof window\.renderOwnerPaddocks === 'function'\) window\.renderOwnerPaddocks\(\);/);
+  const board=read('paddock-board.js');
+  assert.match(board,/sbRpc\('cce_paddock_board',\{\}\)/);
+  assert.doesNotMatch(board,/sbGet(All)?\('paddock_slots'/,'the UI reads through the masking RPC only');
+
+  const context={window:{}};
+  vm.runInNewContext(read('src/modules/paddocks/paddock-service.js'),context);
+  const service=context.window.CCE.paddocks;
+  assert.equal(service.slotTitle({activity:'movement',reserved:true}),'(محجوز)');
+  assert.equal(service.slotTitle({activity:'stable_session'}),'حصة تدريبية (محجوز)');
+  assert.equal(service.slotTitle({activity:'session',horse_name:'Tofan ',reserved:false}),'Tofan');
+  assert.equal(service.clock('17:45'),'5:45');
+  assert.equal(service.clock('09:00'),'9:00');
+  assert.equal(service.defaultEnd('17:00','session'),'17:45');
+  assert.equal(service.defaultEnd('09:40','movement'),'10:00');
+  const grouped=service.group([
+    {id:2,paddock:'inner',start_time:'09:20',end_time:'09:40'},
+    {id:1,paddock:'inner',start_time:'09:00',end_time:'09:20'},
+    {id:3,paddock:'big',start_time:'17:00',end_time:'17:45'}
+  ]);
+  assert.equal(JSON.stringify(grouped.morning.inner.map(s=>s.id)),'[1,2]');
+  assert.equal(JSON.stringify(grouped.evening.big.map(s=>s.id)),'[3]');
+  assert.equal(grouped.morning.outer.length,0);
 });
