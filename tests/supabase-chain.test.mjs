@@ -2890,6 +2890,89 @@ test('v4.33.0 bills AC livery at the winter price Oct–Apr and the A/C price Ma
   }
 });
 
+test('v4.34.0 paddock schedule: staff see every slot, owners see only their own horses and every other taken slot as booked, only paddocks.manage edits, rollback/reapply',async()=>{
+  const db=await buildDatabase();
+  const migration=read('supabase/migrations/20261104_paddock_schedule_v4340.sql');
+  const ownerA='00000000-0000-4000-8000-000000000101';
+  const ownerB='00000000-0000-4000-8000-000000000102';
+  const staff='00000000-0000-4000-8000-000000000103';
+  const manager='00000000-0000-4000-8000-000000000104';
+  const as=async(user,sql)=>{
+    await db.exec(`set "request.jwt.claim.sub"='${user}'; set role authenticated`);
+    try{return await db.query(sql);}finally{await db.exec('reset role');}
+  };
+  try{
+    const seeded=(await db.query(`select count(*)::int n,count(*) filter (where period='morning')::int am,
+      count(*) filter (where slot_type='stable')::int cce from public.paddock_slots`)).rows[0];
+    assert.deepEqual({...seeded},{n:46,am:27,cce:3});
+
+    await db.exec(`
+      insert into auth.users(id,email) values
+        ('${ownerA}','paddock-owner-a@example.com'),('${ownerB}','paddock-owner-b@example.com'),
+        ('${staff}','paddock-staff@example.com'),('${manager}','paddock-manager@example.com');
+      update public.profiles p set is_active=true,role_id=r.id,owner_name='Hashem' from public.app_roles r where p.id='${ownerA}' and r.code='owner';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${ownerB}' and r.code='owner';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${staff}' and r.code='staff';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      insert into public.horses(horse_name,owner,status,stable_no,owner_profile_id) values
+        ('Bentli','Hashem','Available','B2',null),('Warda','Abdulla','Available','B5','${ownerB}'),('Tofan','Mahmood','Available','3',null);
+      update public.paddock_slots set horse_id=(select id from public.horses where horse_name='Bentli') where paddock='inner' and start_time='09:00';
+      update public.paddock_slots set horse_id=(select id from public.horses where horse_name='Warda') where paddock='inner' and start_time='09:20';
+      update public.paddock_slots set horse_id=(select id from public.horses where horse_name='Tofan'),slot_type='session' where paddock='big' and start_time='17:00';
+    `);
+
+    const board=async user=>(await as(user,`select public.cce_paddock_schedule() as b`)).rows[0].b;
+    const find=(rows,pad,start)=>rows.find(r=>r.paddock===pad&&r.start_time===start);
+
+    const staffBoard=await board(staff);
+    assert.equal(staffBoard.length,46);
+    assert.equal(find(staffBoard,'inner','09:20').horse_name,'Warda');
+    assert.equal(find(staffBoard,'inner','09:20').owner,'Abdulla');
+
+    // Owner A owns Bentli by owner name; Warda belongs to owner B.
+    const a=await board(ownerA);
+    assert.equal(a.length,46);
+    const mine=find(a,'inner','09:00');
+    assert.deepEqual([mine.mine,mine.booked,mine.horse_name,mine.stable_no,mine.slot_type],[true,true,'Bentli','B2','lunge']);
+    const other=find(a,'inner','09:20');
+    assert.deepEqual({...other},{id:other.id,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false});
+    assert.equal(JSON.stringify(a).includes('Warda'),false,'no other horse name reaches the owner');
+    assert.equal(JSON.stringify(a).includes('Abdulla'),false,'no other owner name reaches the owner');
+    assert.equal(find(a,'big','17:45').booked,true,'reserved CCE sessions show as booked');
+    assert.equal(find(a,'outer','09:00').booked,false,'empty slots stay open');
+
+    // Owner B owns Warda through owner_profile_id.
+    const b=await board(ownerB);
+    assert.equal(find(b,'inner','09:20').horse_name,'Warda');
+    assert.equal(find(b,'inner','09:00').horse_name,undefined);
+
+    // Owners cannot read the table directly or edit it; staff read but cannot edit; managers edit.
+    assert.equal((await as(ownerA,`select count(*)::int n from public.paddock_slots`)).rows[0].n,0);
+    await as(ownerA,`update public.paddock_slots set note='x'`);
+    await as(staff,`update public.paddock_slots set note='staff'`);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots where note is not null`)).rows[0].n,0);
+    assert.equal((await as(staff,`select count(*)::int n from public.paddock_slots`)).rows[0].n,46);
+    await as(manager,`update public.paddock_slots set note='Vet visit' where paddock='outer' and start_time='09:00'`);
+    assert.equal((await db.query(`select note from public.paddock_slots where paddock='outer' and start_time='09:00'`)).rows[0].note,'Vet visit');
+    await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000199'; set role anon`);
+    await assert.rejects(db.query(`select public.cce_paddock_schedule()`),/permission denied/i);
+    await db.exec('reset role');
+
+    // Re-running keeps the edited board.
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots`)).rows[0].n,46);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots where horse_id is not null`)).rows[0].n,3);
+
+    await db.exec(read('supabase/rollback/rollback_v4340_compatibility.sql'));
+    assert.equal((await db.query(`select to_regclass('public.paddock_slots') is null as gone`)).rows[0].gone,true);
+    assert.equal((await db.query(`select count(*)::int n from public.app_permissions where code like 'paddocks.%'`)).rows[0].n,0);
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots`)).rows[0].n,46);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

@@ -127,6 +127,36 @@ test('Mark Paid on income moves the income date to today (Bahrain), expenses kee
   assert.match(training,/status:'Paid',date:bahrainDateISO\(\)/);
 });
 
+test('paddock board is wired into the dashboard and the owner portal, and owners never see other horses',async()=>{
+  const html=read('index.html'), core=read('app-core.js'), portal=read('member-portal.js');
+  assert.match(html,/id="nav-paddocks" onclick="showDashPage\('paddocks',this\)"/);
+  assert.match(html,/id="page-paddocks"[\s\S]*?id="paddockBoard"/);
+  assert.match(html,/id="ownerPaddockBoard"/);
+  assert.match(html,/src\/modules\/paddocks\/paddock-board\.js\?v=/);
+  assert.match(html,/src\/modules\/paddocks\/paddock-board\.css\?v=/);
+  assert.match(core,/horses:\['horses','health','breeding','paddocks'\]/);
+  assert.match(core,/if\(id==='paddocks'&&window\.CCE&&CCE\.paddocks\) CCE\.paddocks\.open/);
+  assert.match(portal,/paddocks: \['paddocks\.view', 'paddocks\.manage'\]/);
+  assert.match(portal,/CCE\.paddocks\.open\(paddockEl, \{ownerView: true\}\)/);
+
+  const el={innerHTML:''};
+  const context={window:{},console,canUser:()=>false,openModal(){},
+    sbRpc:async()=>[
+      {id:1,period:'morning',paddock:'inner',start_time:'09:00',end_time:'09:20',slot_type:'lunge',booked:true,mine:true,horse_id:1,horse_name:'Bentli',owner:'Hashem',stable_no:'B2'},
+      {id:2,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false},
+      {id:3,period:'morning',paddock:'outer',start_time:'09:00',end_time:'09:20',booked:false,mine:false}
+    ]};
+  context.window=context;context.window.canUser=context.canUser;
+  vm.runInNewContext(read('src/modules/paddocks/paddock-board.js'),context,{filename:'paddock-board.js'});
+  await context.CCE.paddocks.open(el,{ownerView:true});
+  assert.match(el.innerHTML,/Bentli/);
+  assert.equal((el.innerHTML.match(/محجوز/g)||[]).length>=1,true);
+  assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">9:20 – 9:40<\/span><span class="pd-nm">محجوز/);
+  assert.match(el.innerHTML,/pd-slot pd-open"><span class="pd-tm">9:00 – 9:20<\/span><span class="pd-nm">متاح/);
+  assert.doesNotMatch(el.innerHTML,/role="button"/,'owners cannot open the edit dialog');
+  assert.equal(context.CCE.paddocks._clock('17:45'),'5:45');
+});
+
 test('notification loading, permissions and session field names stay wired',()=>{
   const portal=read('member-portal.js');
   const core=read('app-core.js');
@@ -362,6 +392,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261012_rename_shuwar_to_bran_v4300.sql',
     'supabase/migrations/20261026_linked_horse_health_v4320.sql',
     'supabase/migrations/20261101_seasonal_livery_income_v4330.sql',
+    'supabase/migrations/20261104_paddock_schedule_v4340.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -420,6 +451,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4320.sql',
     'supabase/verification/preflight_v4330.sql',
     'supabase/verification/verify_v4330.sql',
+    'supabase/verification/preflight_v4340.sql',
+    'supabase/verification/verify_v4340.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -454,7 +487,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4280_compatibility.sql',
     'supabase/rollback/rollback_v4290_compatibility.sql',
     'supabase/rollback/rollback_v4320_compatibility.sql',
-    'supabase/rollback/rollback_v4330_compatibility.sql'
+    'supabase/rollback/rollback_v4330_compatibility.sql',
+    'supabase/rollback/rollback_v4340_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1465,14 +1499,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.33.1 cache key',()=>{
+test('all app assets use the v4.34.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261103-4331/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261103-4331/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261103-4331/);
-  assert.equal(read('VERSION.txt').trim(),'4.33.1');
+  assert.ok((html.match(/20261104-4340/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261104-4340/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261104-4340/);
+  assert.equal(read('VERSION.txt').trim(),'4.34.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
