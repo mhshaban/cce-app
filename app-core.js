@@ -277,7 +277,7 @@ const DASH_GROUPS={
   dashboard:['dashboard'],
   finance:['income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
-  horses:['horses','health','breeding'],
+  horses:['horses','health','breeding','paddocks'],
   showoffice:['show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results'],
   management:['users','notifications','audit','tools']
 };
@@ -308,6 +308,7 @@ function showDashPage(id, btn) {
   if(id==='reports') renderAdvancedReports();
   if(id==='receipts') renderReceipts();
   if(id==='health') renderHorseHealth();
+  if(id==='paddocks'&&window.CCE&&CCE.paddocks) CCE.paddocks.open(document.getElementById('paddockBoard'));
   if(id==='tools') renderToolsPanel();
   if(id==='show-office'&&typeof renderShowOfficeDashboard==='function') renderShowOfficeDashboard();
   if(id==='competitions'&&typeof renderCompetitions==='function') renderCompetitions();
@@ -4806,7 +4807,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.33.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.34.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4909,7 +4910,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261103-4331', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261104-4340', {scope:'./'})
       .then(reg => {
 
         reg.update();

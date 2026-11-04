@@ -55,3 +55,9 @@
 1. شغّل `../verification/preflight_v4330.sql`؛ يجب أن يكون `v4190_ready` = true، ويعرض خيول AC وأسعارها الشتوية والصيفية.
 2. شغّل `20261101_seasonal_livery_income_v4330.sql` ثم `../verification/verify_v4330.sql`؛ المتوقع 65 و100 وصفر.
 3. ملف `../rollback/rollback_v4330_compatibility.sql` يرجع دالة v4.19.0 ولا يغير الفواتير.
+
+للانتقال إلى v4.34.0 (جدول إشغال البادوكات):
+
+1. شغّل `../verification/preflight_v4340.sql`؛ يجب أن تكون أعمدة `*_ready` كلها true و`horses_found` = 21.
+2. شغّل `20261104_paddock_schedule_v4340.sql` ثم `../verification/verify_v4340.sql`؛ المتوقع 46 موعداً (27 صباحاً و19 مساءً)، و21 منها فيها خيل، و3 حصص CCE، وRLS مفعّل، وصلاحيتين.
+3. ملف `../rollback/rollback_v4340_compatibility.sql` يحذف الجدول والصلاحيات (تضيع مواعيد البادوكات).
