@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <!-- PWA -->
 <link href="manifest.json" id="cceManifestLink" rel="manifest"/>
-<script src="app-bootstrap.js?v=20261103-4331"></script>
+<script src="app-bootstrap.js?v=20261104-4340"></script>
 <meta content="#1A2744" name="theme-color"/>
 <meta content="Country Club Equestrian — horse ride bookings, training packages, and livery services in Bahrain. يدعم الموقع اللغة العربية بشكل كامل." name="description"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -23,11 +23,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&amp;display=swap" rel="stylesheet"/>
 <title>Country Club Equestrian | نادي الريف للفروسية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="app-core.css?v=20261103-4331" rel="stylesheet"/>
-<link href="member-portal.css?v=20261103-4331" rel="stylesheet"/>
-<link href="show-office.css?v=20261103-4331" rel="stylesheet"/>
-<link href="src/styles/design-system.css?v=20261103-4331" rel="stylesheet"/>
-<link href="src/components/header/header-system.css?v=20261103-4331" rel="stylesheet"/>
+<link href="app-core.css?v=20261104-4340" rel="stylesheet"/>
+<link href="member-portal.css?v=20261104-4340" rel="stylesheet"/>
+<link href="show-office.css?v=20261104-4340" rel="stylesheet"/>
+<link href="src/styles/design-system.css?v=20261104-4340" rel="stylesheet"/>
+<link href="src/components/header/header-system.css?v=20261104-4340" rel="stylesheet"/>
 </head>
 <body class="page-home">
 <div aria-hidden="true" class="cce-top-tint"></div>
@@ -839,6 +839,10 @@
 <div class="welcome-sub">Manage your horse(s) information</div>
 </div>
 <div id="ownerHorseList"></div>
+<div class="owner-paddock-section" id="ownerPaddockSection" style="display:none">
+<h3>🏇 جدول البادوكات</h3>
+<div id="ownerPaddockBoard"></div>
+</div>
 </div>
 </div>
 <!-- ════════════════════════════ STAFF CARE PAGE ════════════════════════════ -->
@@ -975,6 +979,7 @@
 <button class="nav-btn" data-dash-group="horses" id="nav-horses" onclick="showDashPage('horses',this)">🐴 Horses</button>
 <button class="nav-btn" data-dash-group="horses" id="nav-health" onclick="showDashPage('health',this)">🩺 Horse Health</button>
 <button class="nav-btn" data-dash-group="horses" id="nav-breeding" onclick="showDashPage('breeding',this)">🔬 Breeding</button>
+<button class="nav-btn" data-dash-group="horses" id="nav-paddocks" onclick="showDashPage('paddocks',this)">🏇 Paddocks</button>
 <button class="nav-btn" data-dash-group="showoffice" id="nav-show-office" onclick="showDashPage('show-office',this)">🏆 Overview</button>
 <button class="nav-btn" data-dash-group="showoffice" id="nav-competitions" onclick="showDashPage('competitions',this)">🏅 Competitions</button>
 <button class="nav-btn" data-dash-group="showoffice" id="nav-show-office-classes" onclick="showDashPage('show-office-classes',this)">🏇 Classes</button>
@@ -1361,6 +1366,10 @@
 <div class="pagination" id="bookPag"></div>
 </div>
 </div>
+<div class="section" id="page-paddocks">
+<div class="paddock-page-head"><h2>🏇 جدول البادوكات</h2><span>Owners see their own horses; every other slot shows as (محجوز).</span></div>
+<div id="paddockBoard"></div>
+</div>
 <div class="section" id="page-breeding">
 <div class="card"><div class="card-title" onclick="toggleForm('breedForm')" style="cursor:pointer">➕ Add Breeding Record <span style="margin-left:auto;font-size:12px;color:var(--muted)">▼ expand</span></div>
 <div id="breedForm" style="display:none">
@@ -1384,32 +1393,34 @@
 <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
 <div class="modal"><div class="modal-title"><span id="modalTitle">Edit</span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
 </div>
-<script src="src/core/events.js?v=20261103-4331"></script>
-<script src="src/core/config.js?v=20261103-4331"></script>
-<script src="src/core/store.js?v=20261103-4331"></script>
-<script src="src/services/supabase-runtime.js?v=20261103-4331"></script>
-<script src="src/services/backup-runtime.js?v=20261103-4331"></script>
-<script src="src/modules/show-office/competition-service.js?v=20261103-4331"></script>
-<script src="src/modules/show-office/class-service.js?v=20261103-4331"></script>
-<script src="src/modules/show-office/entry-service.js?v=20261103-4331"></script>
-<script src="src/modules/show-office/judging-service.js?v=20261103-4331"></script>
-<script src="src/modules/show-office/show-office-module-service.js?v=20261103-4331"></script>
-<script src="src/modules/horses/horse-service.js?v=20261103-4331"></script>
-<script src="src/modules/health/health-service.js?v=20261103-4331"></script>
-<script src="src/modules/timeline/timeline-service.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/overview-panel.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/medical-panel.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/care-panel.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/timeline-panel.js?v=20261103-4331"></script>
-<script src="src/modules/horses/profile/profile-shell.js?v=20261103-4331"></script>
-<script src="app-core.js?v=20261103-4331"></script>
-<script src="app-branding.js?v=20261103-4331"></script>
-<script src="show-office.js?v=20261103-4331"></script>
-<script src="judge-panel.js?v=20261103-4331"></script>
-<script src="live-results.js?v=20261103-4331"></script>
-<script src="horse-health.js?v=20261103-4331"></script>
-<script src="member-portal.js?v=20261103-4331"></script>
-<script src="src/components/header/header-system.js?v=20261103-4331"></script>
+<script src="src/core/events.js?v=20261104-4340"></script>
+<script src="src/core/config.js?v=20261104-4340"></script>
+<script src="src/core/store.js?v=20261104-4340"></script>
+<script src="src/services/supabase-runtime.js?v=20261104-4340"></script>
+<script src="src/services/backup-runtime.js?v=20261104-4340"></script>
+<script src="src/modules/show-office/competition-service.js?v=20261104-4340"></script>
+<script src="src/modules/show-office/class-service.js?v=20261104-4340"></script>
+<script src="src/modules/show-office/entry-service.js?v=20261104-4340"></script>
+<script src="src/modules/show-office/judging-service.js?v=20261104-4340"></script>
+<script src="src/modules/show-office/show-office-module-service.js?v=20261104-4340"></script>
+<script src="src/modules/horses/horse-service.js?v=20261104-4340"></script>
+<script src="src/modules/health/health-service.js?v=20261104-4340"></script>
+<script src="src/modules/timeline/timeline-service.js?v=20261104-4340"></script>
+<script src="src/modules/paddocks/paddock-service.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/overview-panel.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/medical-panel.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/vaccinations-panel.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/care-panel.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/timeline-panel.js?v=20261104-4340"></script>
+<script src="src/modules/horses/profile/profile-shell.js?v=20261104-4340"></script>
+<script src="app-core.js?v=20261104-4340"></script>
+<script src="app-branding.js?v=20261104-4340"></script>
+<script src="show-office.js?v=20261104-4340"></script>
+<script src="judge-panel.js?v=20261104-4340"></script>
+<script src="live-results.js?v=20261104-4340"></script>
+<script src="horse-health.js?v=20261104-4340"></script>
+<script src="paddock-board.js?v=20261104-4340"></script>
+<script src="member-portal.js?v=20261104-4340"></script>
+<script src="src/components/header/header-system.js?v=20261104-4340"></script>
 </body>
 </html>

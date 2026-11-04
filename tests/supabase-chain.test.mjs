@@ -3198,3 +3198,98 @@ test('legacy finance repair is backed up, fail-closed and reversible',async()=>{
     await db.close();
   }
 });
+
+test('v4.34.0 paddock board seeds the agreed schedule once, shows owners only their own horses, validates writes, and rollback keeps the rows',async()=>{
+  const db=await buildDatabaseThrough('20261101_seasonal_livery_income_v4330.sql');
+  const migration=read('supabase/migrations/20261104_paddock_board_v4340.sql');
+  const manager='00000000-0000-4000-8000-000000000341';
+  const owner='00000000-0000-4000-8000-000000000342';
+  const reception='00000000-0000-4000-8000-000000000343';
+  const linkedOwner='00000000-0000-4000-8000-000000000344';
+  try{
+    await db.exec(`
+      insert into public.horses(horse_name,owner,status,stable_no) values
+        ('Dark Ash','Abdulla Al Zarqi','Available','B6'),
+        ('Warda','Abdulla Al Zarqi','Available','B5'),
+        ('Bentli','Hashem','Available','B2'),
+        ('Dastan ','Aqeela Allahyari','Available','5'),
+        ('Tofan','Mahmood Ali','Available','3'),
+        ('Maya','Latifa Mansori','Out',null),
+        ('Spare','CC','Available','9');
+      insert into auth.users(id,email) values
+        ('${manager}','paddock-manager@example.com'),
+        ('${owner}','paddock-owner@example.com'),
+        ('${reception}','paddock-reception@example.com'),
+        ('${linkedOwner}','paddock-linked@example.com');
+      update public.profiles p set is_active=true,role_id=r.id,
+        owner_name=case p.id when '${owner}' then 'abdulla al zarqi ' else p.owner_name end
+      from public.app_roles r
+      where (p.id='${manager}' and r.code='manager')
+         or (p.id in ('${owner}','${linkedOwner}') and r.code='owner')
+         or (p.id='${reception}' and r.code='reception');
+      update public.horses set owner_profile_id='${linkedOwner}' where horse_name='Tofan';
+    `);
+
+    await db.exec(migration);
+    await db.exec(migration);
+    const seeded=(await db.query(`select count(*)::int n,
+      count(*) filter (where activity='stable_session')::int stable,
+      count(*) filter (where horse_id=(select id from public.horses where horse_name='Dastan '))::int dastan
+      from public.paddock_slots`)).rows[0];
+    // Dark Ash, Warda, Bentli, Dastan (trailing space) and Tofan match; Maya is Out; re-running does not seed twice.
+    assert.deepEqual(seeded,{n:8,stable:3,dastan:1});
+
+    await db.exec(`set "request.jwt.claim.sub"='${owner}'; set role authenticated`);
+    const ownerBoard=(await db.query(`select public.cce_paddock_board() as b`)).rows[0].b;
+    assert.equal(ownerBoard.full,false);
+    assert.equal(ownerBoard.slots.length,8,'owners see every slot time');
+    const visible=ownerBoard.slots.filter(s=>!s.reserved);
+    assert.deepEqual(visible.map(s=>s.horse_name).sort(),['Dark Ash','Warda']);
+    assert.ok(visible.every(s=>s.mine===true));
+    for(const slot of ownerBoard.slots.filter(s=>s.reserved)){
+      for(const key of ['horse_id','horse_name','owner','stable_no','note'])assert.equal(key in slot,false,`reserved slot leaks ${key}`);
+    }
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots`)).rows[0].n,0,'owners cannot read the table directly');
+    await assert.rejects(db.query(`select public.cce_paddock_save_slot(null,'outer','12:00','12:20','movement',(select 1),null)`),/Permission denied/);
+
+    await db.exec(`reset role; set "request.jwt.claim.sub"='${linkedOwner}'; set role authenticated`);
+    const linkedBoard=(await db.query(`select public.cce_paddock_board() as b`)).rows[0].b;
+    assert.deepEqual(linkedBoard.slots.filter(s=>!s.reserved).map(s=>s.horse_name),['Tofan'],'owner_profile_id links win');
+
+    await db.exec(`reset role; set "request.jwt.claim.sub"='${reception}'; set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_paddock_board()`),/Permission denied/);
+
+    await db.exec(`reset role; set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    const full=(await db.query(`select public.cce_paddock_board() as b`)).rows[0].b;
+    assert.equal(full.full,true);
+    assert.ok(full.slots.filter(s=>s.activity!=='stable_session').every(s=>s.horse_name&&!s.reserved));
+    assert.ok(full.slots.some(s=>s.horse_name==='Dastan'),'names are trimmed');
+    const spare=(await db.query(`select id from public.horses where horse_name='Spare'`)).rows[0].id;
+    const darkAsh=(await db.query(`select id from public.horses where horse_name='Dark Ash'`)).rows[0].id;
+    await assert.rejects(db.query(`select public.cce_paddock_save_slot(null,'inner','09:10','09:30','movement',${spare},null)`),/already booked/);
+    await assert.rejects(db.query(`select public.cce_paddock_save_slot(null,'outer','09:00','09:20','movement',${darkAsh},null)`),/already has a paddock slot/);
+    await assert.rejects(db.query(`select public.cce_paddock_save_slot(null,'outer','10:00','09:40','movement',${spare},null)`),/End time/);
+    await assert.rejects(db.query(`select public.cce_paddock_save_slot(null,'outer','12:00','12:20','movement',null,null)`),/Choose a horse/);
+    const created=(await db.query(`select public.cce_paddock_save_slot(null,'outer','12:00','12:20','movement',${spare},'Lunging') as r`)).rows[0].r;
+    assert.equal(created.horse_id,Number(spare));
+    const moved=(await db.query(`select public.cce_paddock_save_slot(${created.id},'outer','12:20','12:40','movement',${spare},null) as r`)).rows[0].r;
+    assert.equal(moved.start_time,'12:20:00');
+    const reserved=(await db.query(`select public.cce_paddock_save_slot(null,'outer','15:00','15:45','stable_session',${spare},null) as r`)).rows[0].r;
+    assert.equal(reserved.horse_id,null,'stable sessions never carry a horse');
+    await db.query(`select public.cce_paddock_delete_slot(${reserved.id})`);
+    await assert.rejects(db.query(`select public.cce_paddock_delete_slot(${reserved.id})`),/not found/);
+    await db.exec('reset role');
+
+    await db.exec(read('supabase/rollback/rollback_v4340_compatibility.sql'));
+    assert.equal((await db.query(`select to_regprocedure('public.cce_paddock_board()') is null as gone`)).rows[0].gone,true);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots`)).rows[0].n,9,'rollback keeps the rows');
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.paddock_slots`)).rows[0].n,9,'re-applying does not re-seed');
+    const verify=(await db.query(read('supabase/verification/verify_v4340.sql'))).rows[0];
+    assert.equal(verify.functions_ready,true);
+    assert.equal(Number(verify.paddock_overlaps),0);
+    assert.equal(Number(verify.horse_overlaps),0);
+  }finally{
+    await db.close();
+  }
+});
