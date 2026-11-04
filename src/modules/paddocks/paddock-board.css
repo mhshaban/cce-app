@@ -1,5 +1,10 @@
 /* Daily paddock schedule board — same palette as the stable's printed pages */
 .pd-board{display:flex;flex-direction:column;gap:18px;font-family:'Cairo',sans-serif;color:var(--navy,#1A2744)}
+/* The app's global direction rules would otherwise override the board's own dir. */
+.pd-board[dir="ltr"],.pd-board[dir="ltr"] *{direction:ltr;text-align:left}
+.pd-board[dir="rtl"],.pd-board[dir="rtl"] *{direction:rtl;text-align:right}
+.pd-board[dir] .pd-tm,.pd-board[dir] input[type="date"],.pd-board[dir] bdi{direction:ltr;unicode-bidi:isolate}
+.pd-board[dir="rtl"] .pd-tm{text-align:right}
 .pd-head{border-bottom:2px solid var(--amber,#C8923A);padding-bottom:10px;display:flex;flex-direction:column;gap:4px}
 .pd-head h2{margin:0;font-size:20px;font-weight:800}
 .pd-head p{margin:0;color:var(--muted,#7A8399);font-size:13px}
@@ -24,7 +29,7 @@
 .pd-slot+.pd-slot{margin-top:4px}
 .pd-slot[role="button"]{cursor:pointer}
 .pd-slot[role="button"]:hover{filter:brightness(.97)}
-.pd-tm{font-size:12.5px;color:var(--muted,#7A8399);direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.pd-tm{font-size:12.5px;color:var(--muted,#7A8399);font-variant-numeric:tabular-nums}
 .pd-nm{font-weight:700;min-width:0;font-size:13.5px}
 .pd-nm small{display:block;font-weight:500;font-size:11.5px;color:var(--muted,#7A8399)}
 .pd-nm small.pd-note{color:var(--amber,#C8923A)}
