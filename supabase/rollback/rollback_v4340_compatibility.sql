@@ -5,7 +5,9 @@
 
 begin;
 
+drop function if exists public.cce_paddock_schedule(date);
 drop function if exists public.cce_paddock_schedule();
+drop function if exists public.cce_paddock_lessons(date);
 drop table if exists public.paddock_slots;
 delete from public.user_permissions where permission_code in ('paddocks.view','paddocks.manage');
 delete from public.role_permissions where permission_code in ('paddocks.view','paddocks.manage');

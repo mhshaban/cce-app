@@ -9,6 +9,7 @@
 .pd-pill.pd-session{background:#F5E6D4;color:#9A5B1E}
 .pd-pill.pd-stable{background:#F3E7C8;color:var(--navy,#1A2744)}
 .pd-pill.pd-booked{background:#ECEAE6;color:#5d616a}
+.pd-pill.pd-lesson{background:#E7E3F4;color:#4B3F8F}
 .pd-period{display:flex;flex-direction:column;gap:10px}
 .pd-ph{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .pd-ph h3{margin:0;font-size:16px;font-weight:800}
@@ -34,6 +35,16 @@
 .pd-slot.pd-open{background:transparent;border:1px dashed var(--border,#E3D9C6)}
 .pd-slot.pd-open .pd-nm{color:#B9B3A6;font-weight:600}
 .pd-slot.pd-booked{background:#ECEAE6;border-color:#B9B3A6}
+.pd-slot.pd-lesson{background:#E7E3F4;border-color:#4B3F8F}.pd-slot.pd-lesson .pd-ty{color:#4B3F8F}
+.pd-slot.pd-bumped{opacity:.75;background:repeating-linear-gradient(-45deg,#FBF1DE 0 6px,#F6E6C6 6px 12px);border-color:#C0392B}
+.pd-nm small.pd-bump{color:#C0392B;font-weight:700}
+.pd-mine-item.pd-bumped{border-inline-start-color:#C0392B}
+.pd-lane-sub{display:block;font-size:11px;font-weight:600;color:#4B3F8F}
+.pd-day{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+.pd-day button{font:inherit;font-weight:800;border:1px solid var(--border,#E3D9C6);background:#fff;color:var(--navy,#1A2744);border-radius:8px;padding:2px 10px;cursor:pointer}
+.pd-day .pd-today{font-size:12px}
+.pd-day input{font:inherit;border:1px solid var(--border,#E3D9C6);border-radius:8px;padding:2px 8px;background:#fff;color:var(--navy,#1A2744)}
+.pd-day span{font-weight:700;font-size:13px}
 .pd-slot.pd-booked .pd-nm{color:#5d616a}
 .pd-slot.pd-mine{outline:2px solid var(--amber,#C8923A);outline-offset:1px}
 .pd-note-box{background:var(--sand,#F5EDD8);border-radius:10px;padding:10px 12px;font-size:13px}

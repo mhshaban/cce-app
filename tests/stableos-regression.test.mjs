@@ -141,11 +141,13 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
 
   const el={innerHTML:''};
   const context={window:{},console,canUser:()=>false,openModal(){},
-    sbRpc:async()=>[
+    sbRpc:async()=>({date:'2026-11-05',slots:[
       {id:1,period:'morning',paddock:'inner',start_time:'09:00',end_time:'09:20',slot_type:'lunge',booked:true,mine:true,horse_id:1,horse_name:'Bentli',owner:'Hashem',stable_no:'B2'},
       {id:2,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false},
-      {id:3,period:'morning',paddock:'outer',start_time:'09:00',end_time:'09:20',booked:false,mine:false}
-    ]};
+      {id:3,period:'morning',paddock:'outer',start_time:'09:00',end_time:'09:20',booked:false,mine:false},
+      {id:4,period:'evening',paddock:'big',start_time:'17:00',end_time:'17:45',slot_type:'session',booked:true,mine:true,bumped:true,horse_id:2,horse_name:'Shumokh',owner:'Hashem',stable_no:'B3'},
+      {id:5,period:'evening',paddock:'big',start_time:'17:45',end_time:'18:30',booked:true,mine:false,bumped:true}
+    ],lessons:[{id:9,paddock:'big',period:'evening',start_time:'17:30',end_time:'18:15',mine:false}]})};
   context.window=context;context.window.canUser=context.canUser;
   vm.runInNewContext(read('src/modules/paddocks/paddock-board.js'),context,{filename:'paddock-board.js'});
   await context.CCE.paddocks.open(el,{ownerView:true});
@@ -154,6 +156,10 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">9:20 – 9:40<\/span><span class="pd-nm">محجوز/);
   assert.match(el.innerHTML,/pd-slot pd-open"><span class="pd-tm">9:00 – 9:20<\/span><span class="pd-nm">متاح/);
   assert.doesNotMatch(el.innerHTML,/role="button"/,'owners cannot open the edit dialog');
+  assert.match(el.innerHTML,/Shumokh[\s\S]*?الأولوية لحصة تدريبية/,'the owner is told a lesson takes their slot that day');
+  assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">5:30 – 6:15<\/span><span class="pd-nm">محجوز/,'another rider\'s lesson is just booked');
+  assert.doesNotMatch(el.innerHTML,/6:30<\/span>/,'a bumped slot of someone else is covered by the lesson');
+  assert.match(el.innerHTML,/الخميس 5 نوفمبر 2026/);
   assert.equal(context.CCE.paddocks._clock('17:45'),'5:45');
 });
 

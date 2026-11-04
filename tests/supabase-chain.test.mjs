@@ -2921,8 +2921,30 @@ test('v4.34.0 paddock schedule: staff see every slot, owners see only their own 
       update public.paddock_slots set horse_id=(select id from public.horses where horse_name='Tofan'),slot_type='session' where paddock='big' and start_time='17:00';
     `);
 
-    const board=async user=>(await as(user,`select public.cce_paddock_schedule() as b`)).rows[0].b;
+    // Training lessons booked through the app on 5 Nov: they use the big paddock and win.
+    await db.exec(`
+      insert into public.instructors(name,active) values('Efti Paddock',true);
+      insert into public.schedule(date,start_time,end_time,activity,horse_name,customer_name,instructor,instructor_id,status)
+      select v.d::date,v.s::time,v.e::time,'Lesson',v.h,v.c,'Efti Paddock',(select id from public.instructors where name='Efti Paddock'),v.st
+      from (values
+        ('2026-11-05','17:30','18:15','Bentli','Elaf Rahmani','Scheduled'),
+        ('2026-11-05','08:00','08:45','Warda','Private Rider','Scheduled'),
+        ('2026-11-05','16:00','16:45','Warda','Cancelled Rider','Cancelled'),
+        ('2026-11-06','17:30','18:15','Tofan','Other Day','Scheduled')) v(d,s,e,h,c,st);
+    `);
+    const day=async(user,date='2026-11-05')=>(await as(user,`select public.cce_paddock_schedule('${date}') as b`)).rows[0].b;
+    const board=async user=>(await day(user)).slots;
     const find=(rows,pad,start)=>rows.find(r=>r.paddock===pad&&r.start_time===start);
+
+    const staffDay=await day(staff);
+    assert.equal(staffDay.date,'2026-11-05');
+    assert.deepEqual(staffDay.lessons.map(l=>[l.start_time,l.end_time,l.paddock,l.period,l.customer_name]),
+      [['08:00','08:45','big','morning','Private Rider'],['17:30','18:15','big','evening','Elaf Rahmani']]);
+    assert.equal(find(staffDay.slots,'big','17:00').bumped,true,'Tofan\'s 17:00 slot gives way to the 17:30 lesson');
+    assert.equal(find(staffDay.slots,'big','17:45').bumped,true);
+    assert.equal(find(staffDay.slots,'big','18:30').bumped,false);
+    assert.equal(find(staffDay.slots,'inner','09:00').bumped,false,'other paddocks are never bumped');
+    assert.equal((await day(staff,'2026-11-07')).lessons.length,0);
 
     const staffBoard=await board(staff);
     assert.equal(staffBoard.length,46);
@@ -2935,11 +2957,19 @@ test('v4.34.0 paddock schedule: staff see every slot, owners see only their own 
     const mine=find(a,'inner','09:00');
     assert.deepEqual([mine.mine,mine.booked,mine.horse_name,mine.stable_no,mine.slot_type],[true,true,'Bentli','B2','lunge']);
     const other=find(a,'inner','09:20');
-    assert.deepEqual({...other},{id:other.id,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false});
+    assert.deepEqual({...other},{id:other.id,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false,bumped:false});
     assert.equal(JSON.stringify(a).includes('Warda'),false,'no other horse name reaches the owner');
     assert.equal(JSON.stringify(a).includes('Abdulla'),false,'no other owner name reaches the owner');
     assert.equal(find(a,'big','17:45').booked,true,'reserved CCE sessions show as booked');
     assert.equal(find(a,'outer','09:00').booked,false,'empty slots stay open');
+
+    const aDay=await day(ownerA);
+    const lessonMine=aDay.lessons.find(l=>l.start_time==='17:30');
+    assert.deepEqual([lessonMine.mine,lessonMine.horse_name,lessonMine.customer_name],[true,'Bentli',undefined],'owners never see the lesson customer');
+    const lessonOther=aDay.lessons.find(l=>l.start_time==='08:00');
+    assert.deepEqual(Object.keys(lessonOther).sort(),['end_time','id','mine','paddock','period','start_time']);
+    assert.equal(JSON.stringify(aDay).includes('Elaf'),false);
+    assert.equal(JSON.stringify(aDay).includes('Private Rider'),false);
 
     // Owner B owns Warda through owner_profile_id.
     const b=await board(ownerB);
@@ -2956,6 +2986,9 @@ test('v4.34.0 paddock schedule: staff see every slot, owners see only their own 
     assert.equal((await db.query(`select note from public.paddock_slots where paddock='outer' and start_time='09:00'`)).rows[0].note,'Vet visit');
     await db.exec(`set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000199'; set role anon`);
     await assert.rejects(db.query(`select public.cce_paddock_schedule()`),/permission denied/i);
+    await db.exec('reset role');
+    await db.exec(`set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_paddock_lessons('2026-11-05')`),/permission denied/i);
     await db.exec('reset role');
 
     // Re-running keeps the edited board.

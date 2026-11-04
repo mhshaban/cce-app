@@ -4,10 +4,12 @@
 --   * morning daily movement (Lunging / Free, 20 min, 9:00–12:00)
 --   * evening sessions (45 min, 3:00–8:00) and reserved CCE stable sessions
 -- Staff with paddocks.view see the whole board; paddocks.manage edits it.
--- Horse owners read it through cce_paddock_schedule(): their own horses'
--- slots come back with full details, every other taken slot comes back
--- only as "booked" — no horse, owner or stable number ever leaves the
--- database for a horse the caller does not own.
+-- Horse owners read it through cce_paddock_schedule(date): their own
+-- horses' slots come back with full details, every other taken slot comes
+-- back only as "booked" — no horse, owner, stable number or lesson customer
+-- ever leaves the database for a horse the caller does not own.
+-- Training lessons booked through the app use the big paddock and take
+-- priority: overlapping big-paddock board slots are bumped for that day.
 -- Safe to re-run: the board is seeded only while the table is empty.
 
 begin;
@@ -74,10 +76,34 @@ drop policy if exists cce_paddock_slots_delete on public.paddock_slots;
 create policy cce_paddock_slots_delete on public.paddock_slots for delete to authenticated
   using (public.cce_has_permission('paddocks.manage'));
 
--- The board as the caller may see it. Staff get every detail; an owner gets
--- details only for horses they own (same rule as cce_member_owner_horses)
--- and a bare "booked" flag for every other taken slot.
-create or replace function public.cce_paddock_schedule()
+-- Training lessons booked through the app (schedule rows with activity
+-- 'Lesson') always use the big paddock and take priority over the daily
+-- board: a board slot in the big paddock that overlaps a lesson on the
+-- chosen day is marked bumped for that day.
+create or replace function public.cce_paddock_lessons(p_date date)
+returns table(id bigint,start_time time,end_time time,horse_name text,customer_name text,instructor text,booking_request_id bigint,status text)
+language sql
+stable
+security definer
+set search_path=public,pg_temp
+as $$
+  select s.id,s.start_time,
+    case when s.end_time is null or s.end_time<=s.start_time then s.start_time+interval '45 minutes' else s.end_time end,
+    nullif(trim(s.horse_name),''),nullif(trim(s.customer_name),''),nullif(trim(s.instructor),''),
+    s.booking_request_id,s.status
+  from public.schedule s
+  where s.date=p_date
+    and s.activity='Lesson'
+    and s.start_time is not null
+    and coalesce(s.status,'') not in ('Cancelled','Canceled','Rejected')
+$$;
+
+-- The board for one day as the caller may see it. Staff get every detail;
+-- an owner gets details only for horses they own (same rule as
+-- cce_member_owner_horses) and a bare "booked" flag for everything else.
+-- Lessons never reveal the customer to an owner.
+drop function if exists public.cce_paddock_schedule();
+create or replace function public.cce_paddock_schedule(p_date date default null)
 returns jsonb
 language plpgsql
 stable
@@ -85,48 +111,82 @@ security definer
 set search_path=public,pg_temp
 as $$
 declare
+  v_date date:=coalesce(p_date,timezone('Asia/Bahrain',now())::date);
   v_full boolean:=public.cce_has_permission('paddocks.view') or public.cce_has_permission('paddocks.manage');
   v_owner_view boolean:=public.cce_has_permission('owner.horses.view');
   v_owner text;
+  v_slots jsonb;
+  v_lessons jsonb;
+  v_owned bigint[]:='{}';
 begin
   if not v_full and not v_owner_view then
     raise exception 'Permission denied';
   end if;
   select nullif(trim(owner_name),'') into v_owner from public.profiles where id=auth.uid() and is_active=true;
 
-  return coalesce((
-    select jsonb_agg(r.j order by r.j->>'period' desc, r.j->>'paddock', r.j->>'start_time')
+  if not v_full then
+    select coalesce(array_agg(oh.id),'{}') into v_owned
+    from public.horses oh
+    where oh.owner_profile_id=auth.uid()
+       or (oh.owner_profile_id is null and v_owner is not null and lower(trim(oh.owner))=lower(v_owner));
+  end if;
+
+  select coalesce(jsonb_agg(r.j order by r.j->>'period' desc, r.j->>'paddock', r.j->>'start_time'),'[]'::jsonb) into v_slots
+  from (
+    select case
+      when v_full or s.mine then jsonb_build_object(
+        'id',s.id,'period',s.period,'paddock',s.paddock,
+        'start_time',to_char(s.start_time,'HH24:MI'),'end_time',to_char(s.end_time,'HH24:MI'),
+        'slot_type',s.slot_type,'booked',s.horse_id is not null or s.slot_type='stable','mine',s.mine,
+        'bumped',s.bumped,'horse_id',s.horse_id,'horse_name',trim(h.horse_name),'owner',h.owner,
+        'stable_no',h.stable_no,'note',s.note)
+      else jsonb_build_object(
+        'id',s.id,'period',s.period,'paddock',s.paddock,
+        'start_time',to_char(s.start_time,'HH24:MI'),'end_time',to_char(s.end_time,'HH24:MI'),
+        'booked',s.horse_id is not null or s.slot_type='stable','mine',false,'bumped',s.bumped)
+    end as j
     from (
-      select case
-        when v_full or s.mine then jsonb_build_object(
-          'id',s.id,'period',s.period,'paddock',s.paddock,
-          'start_time',to_char(s.start_time,'HH24:MI'),'end_time',to_char(s.end_time,'HH24:MI'),
-          'slot_type',s.slot_type,'booked',s.horse_id is not null or s.slot_type='stable','mine',s.mine,
-          'horse_id',s.horse_id,'horse_name',trim(h.horse_name),'owner',h.owner,'stable_no',h.stable_no,
-          'note',s.note)
-        else jsonb_build_object(
-          'id',s.id,'period',s.period,'paddock',s.paddock,
-          'start_time',to_char(s.start_time,'HH24:MI'),'end_time',to_char(s.end_time,'HH24:MI'),
-          'booked',s.horse_id is not null or s.slot_type='stable','mine',false)
-      end as j
-      from (
-        select ps.*,
-          coalesce(ps.horse_id is not null and exists(
-            select 1 from public.horses oh
-            where oh.id=ps.horse_id
-              and (oh.owner_profile_id=auth.uid()
-                or (oh.owner_profile_id is null and v_owner is not null and lower(trim(oh.owner))=lower(v_owner)))
-          ),false) as mine
-        from public.paddock_slots ps
-      ) s
-      left join public.horses h on h.id=s.horse_id
-    ) r
-  ),'[]'::jsonb);
+      select ps.*,
+        coalesce(ps.horse_id=any(v_owned),false) as mine,
+        (ps.paddock='big' and exists(
+          select 1 from public.cce_paddock_lessons(v_date) l
+          where l.start_time<ps.end_time and l.end_time>ps.start_time)) as bumped
+      from public.paddock_slots ps
+    ) s
+    left join public.horses h on h.id=s.horse_id
+  ) r;
+
+  select coalesce(jsonb_agg(r.j order by r.j->>'start_time'),'[]'::jsonb) into v_lessons
+  from (
+    select case
+      when v_full then jsonb_build_object(
+        'id',l.id,'paddock','big','period',case when l.start_time<'13:00' then 'morning' else 'evening' end,
+        'start_time',to_char(l.start_time,'HH24:MI'),'end_time',to_char(l.end_time,'HH24:MI'),
+        'mine',false,'horse_name',l.horse_name,'customer_name',l.customer_name,'instructor',l.instructor,
+        'booking_request_id',l.booking_request_id,'status',l.status)
+      when lh.id is not null then jsonb_build_object(
+        'id',l.id,'paddock','big','period',case when l.start_time<'13:00' then 'morning' else 'evening' end,
+        'start_time',to_char(l.start_time,'HH24:MI'),'end_time',to_char(l.end_time,'HH24:MI'),
+        'mine',true,'horse_name',l.horse_name)
+      else jsonb_build_object(
+        'id',l.id,'paddock','big','period',case when l.start_time<'13:00' then 'morning' else 'evening' end,
+        'start_time',to_char(l.start_time,'HH24:MI'),'end_time',to_char(l.end_time,'HH24:MI'),'mine',false)
+    end as j
+    from public.cce_paddock_lessons(v_date) l
+    left join lateral (
+      select oh.id from public.horses oh
+      where oh.id=any(v_owned) and l.horse_name is not null and lower(trim(oh.horse_name))=lower(l.horse_name)
+      limit 1
+    ) lh on true
+  ) r;
+
+  return jsonb_build_object('date',to_char(v_date,'YYYY-MM-DD'),'slots',v_slots,'lessons',v_lessons);
 end;
 $$;
 
-revoke all on function public.cce_paddock_schedule() from public,anon;
-grant execute on function public.cce_paddock_schedule() to authenticated;
+revoke all on function public.cce_paddock_lessons(date) from public,anon,authenticated;
+revoke all on function public.cce_paddock_schedule(date) from public,anon;
+grant execute on function public.cce_paddock_schedule(date) to authenticated;
 
 -- Starting board, from the paddock schedule page (Nov 2026).
 do $$
