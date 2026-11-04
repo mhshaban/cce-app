@@ -136,11 +136,12 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(html,/src\/modules\/paddocks\/paddock-board\.css\?v=/);
   assert.match(core,/horses:\['horses','health','breeding','paddocks'\]/);
   assert.match(core,/if\(id==='paddocks'&&window\.CCE&&CCE\.paddocks\) CCE\.paddocks\.open/);
+  assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.paddocks\.render\(\)/,'switching language re-renders the board');
   assert.match(portal,/paddocks: \['paddocks\.view', 'paddocks\.manage'\]/);
   assert.match(portal,/CCE\.paddocks\.open\(paddockEl, \{ownerView: true\}\)/);
 
   const el={innerHTML:''};
-  const context={window:{},console,canUser:()=>false,openModal(){},
+  const context={window:{},console,Intl,currentLang:'ar',canUser:()=>false,openModal(){},
     sbRpc:async()=>({date:'2026-11-05',slots:[
       {id:1,period:'morning',paddock:'inner',start_time:'09:00',end_time:'09:20',slot_type:'lunge',booked:true,mine:true,horse_id:1,horse_name:'Bentli',owner:'Hashem',stable_no:'B2'},
       {id:2,period:'morning',paddock:'inner',start_time:'09:20',end_time:'09:40',booked:true,mine:false},
@@ -160,7 +161,17 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(el.innerHTML,/Shumokh[\s\S]*?الأولوية لحصة تدريبية/,'the owner is told a lesson takes their slot that day');
   assert.match(el.innerHTML,/pd-slot pd-booked"><span class="pd-tm">5:30 – 6:15<\/span><span class="pd-nm">محجوز/,'another rider\'s lesson is just booked');
   assert.doesNotMatch(el.innerHTML,/6:30<\/span>/,'a bumped slot of someone else is covered by the lesson');
-  assert.match(el.innerHTML,/الخميس 5 نوفمبر 2026/);
+  assert.match(el.innerHTML,/الخميس،? 5 نوفمبر 2026/);
+  assert.match(el.innerHTML,/<div class="pd-board" dir="rtl" lang="ar">/);
+  // The board follows the app language: English is LTR with English labels.
+  context.currentLang='en';
+  context.CCE.paddocks.render();
+  assert.match(el.innerHTML,/<div class="pd-board" dir="ltr" lang="en">/);
+  assert.match(el.innerHTML,/Paddock Schedule · Your Horses/);
+  assert.match(el.innerHTML,/Inner Paddock/);
+  assert.match(el.innerHTML,/<span class="pd-nm">Booked<\/span>/);
+  assert.match(el.innerHTML,/Thursday,? 5 November 2026/);
+  assert.doesNotMatch(el.innerHTML,/محجوز|البادوك/);
   assert.equal(context.CCE.paddocks._clock('17:45'),'5:45');
 });
 
@@ -1506,14 +1517,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.34.0 cache key',()=>{
+test('all app assets use the v4.34.1 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261104-4340/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261104-4340/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261104-4340/);
-  assert.equal(read('VERSION.txt').trim(),'4.34.0');
+  assert.ok((html.match(/20261104-4341/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261104-4341/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261104-4341/);
+  assert.equal(read('VERSION.txt').trim(),'4.34.1');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
