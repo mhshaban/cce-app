@@ -134,7 +134,7 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(html,/id="ownerPaddockBoard"/);
   assert.match(html,/src\/modules\/paddocks\/paddock-board\.js\?v=/);
   assert.match(html,/src\/modules\/paddocks\/paddock-board\.css\?v=/);
-  assert.match(core,/horses:\['horses','health','breeding','paddocks'\]/);
+  assert.match(core,/horses:\['horses','health','breeding','paddocks'(,'bran')?\]/);
   assert.match(core,/if\(id==='paddocks'&&window\.CCE&&CCE\.paddocks\) CCE\.paddocks\.open/);
   assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.paddocks\.render\(\)/,'switching language re-renders the board');
   assert.match(portal,/paddocks: \['paddocks\.view', 'paddocks\.manage'\]/);
@@ -173,6 +173,38 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(el.innerHTML,/Thursday,? 5 November 2026/);
   assert.doesNotMatch(el.innerHTML,/محجوز|البادوك/);
   assert.equal(context.CCE.paddocks._clock('17:45'),'5:45');
+});
+
+test('Bran stock is wired into the dashboard and the owner portal and renders the account in both languages',async()=>{
+  const html=read('index.html'), core=read('app-core.js'), portal=read('member-portal.js');
+  assert.match(html,/id="nav-bran" onclick="showDashPage\('bran',this\)"/);
+  assert.match(html,/id="page-bran"[\s\S]*?id="branBoard"/);
+  assert.match(html,/id="ownerBranBoard"/);
+  assert.match(html,/src\/modules\/feed\/bran-stock\.js\?v=/);
+  assert.match(core,/horses:\['horses','health','breeding','paddocks','bran'\]/);
+  assert.match(core,/if\(id==='bran'&&window\.CCE&&CCE\.bran\) CCE\.bran\.open/);
+  assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.bran\.render\(\)/);
+  assert.match(portal,/bran: \['feed\.view', 'feed\.manage'\]/);
+  assert.match(portal,/CCE\.bran\.open\(branEl, \{ownerView: true\}\)/);
+
+  const el={innerHTML:'',style:{}};
+  const context={window:{},console,Intl,currentLang:'en',canUser:()=>false,
+    sbRpc:async()=>({month:'2026-10',stable_monthly_bags:100,accounts:[{id:1,name:'Abdulla & Hashem',horse_count:5,
+      horses:[{horse_name:'Warda'},{horse_name:'Bentli'}],allocation:21.7,allocation_fixed:false,issued:26,allocation_left:0,from_own:4.3,
+      purchased:15,opening_balance:15,closing_balance:25.7,entries:[{id:9,date:'2026-10-01',kind:'purchase',qty:15,note:null}]}]})};
+  context.window=context;
+  vm.runInNewContext(read('src/modules/feed/bran-stock.js'),context,{filename:'bran-stock.js'});
+  await context.CCE.bran.open(el,{ownerView:true});
+  assert.match(el.innerHTML,/dir="ltr" lang="en"/);
+  assert.match(el.innerHTML,/Own stock now<\/span><b>25\.7<\/b>/);
+  assert.match(el.innerHTML,/From own stock<\/span><b>4\.3<\/b>/);
+  assert.match(el.innerHTML,/October 2026/);
+  assert.doesNotMatch(el.innerHTML,/CCE\.bran\.record|CCE\.bran\.remove/,'owners cannot record or delete');
+  context.currentLang='ar';
+  context.CCE.bran.render();
+  assert.match(el.innerHTML,/dir="rtl" lang="ar"/);
+  assert.match(el.innerHTML,/المخزون الخاص الحين<\/span><b>25\.7<\/b>/);
+  assert.match(el.innerHTML,/أكتوبر 2026/);
 });
 
 test('notification loading, permissions and session field names stay wired',()=>{
@@ -411,6 +443,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261026_linked_horse_health_v4320.sql',
     'supabase/migrations/20261101_seasonal_livery_income_v4330.sql',
     'supabase/migrations/20261104_paddock_schedule_v4340.sql',
+    'supabase/migrations/20261109_bran_stock_v4350.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -471,6 +504,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4330.sql',
     'supabase/verification/preflight_v4340.sql',
     'supabase/verification/verify_v4340.sql',
+    'supabase/verification/preflight_v4350.sql',
+    'supabase/verification/verify_v4350.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -506,7 +541,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4290_compatibility.sql',
     'supabase/rollback/rollback_v4320_compatibility.sql',
     'supabase/rollback/rollback_v4330_compatibility.sql',
-    'supabase/rollback/rollback_v4340_compatibility.sql'
+    'supabase/rollback/rollback_v4340_compatibility.sql',
+    'supabase/rollback/rollback_v4350_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1517,14 +1553,14 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.34.1 cache key',()=>{
+test('all app assets use the v4.35.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
-  assert.ok((html.match(/20261104-4341/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261104-4341/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261104-4341/);
-  assert.equal(read('VERSION.txt').trim(),'4.34.1');
+  assert.ok((html.match(/20261109-4350/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261109-4350/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261109-4350/);
+  assert.equal(read('VERSION.txt').trim(),'4.35.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

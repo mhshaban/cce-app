@@ -1,0 +1,30 @@
+/* Bran stock board — reuses the paddock board's header and nav styles */
+.bs-board{display:flex;flex-direction:column;gap:16px;font-family:'Cairo',sans-serif;color:var(--navy,#1A2744)}
+.bs-board[dir="ltr"],.bs-board[dir="ltr"] *{direction:ltr;text-align:left}
+.bs-board[dir="rtl"],.bs-board[dir="rtl"] *{direction:rtl;text-align:right}
+.bs-board[dir] input[type="date"],.bs-board[dir] input[type="number"],.bs-board[dir] td[dir="ltr"]{direction:ltr}
+.bs-board .pd-head{border-bottom:2px solid var(--amber,#C8923A);padding-bottom:10px;display:flex;flex-direction:column;gap:4px}
+.bs-board .pd-head h2{margin:0;font-size:20px;font-weight:800}
+.bs-board .pd-head p{margin:0;color:var(--muted,#7A8399);font-size:13px}
+.bs-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.bs-account{background:#fff;border:1px solid var(--border,#E3D9C6);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.bs-acc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.bs-acc-h h3{margin:0;font-size:16px;font-weight:800}
+.bs-acc-h small{color:var(--muted,#7A8399);font-size:12px}
+.bs-account h4{margin:2px 0 0;font-size:13px;font-weight:800}
+.bs-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.bs-kpi{background:var(--sand,#F5EDD8);border-radius:10px;padding:7px 10px;border-inline-start:3px solid var(--amber,#C8923A)}
+.bs-kpi span{display:block;font-size:11.5px;color:var(--muted,#7A8399);font-weight:700}
+.bs-kpi b{font-size:20px;font-weight:900;font-variant-numeric:tabular-nums}
+.bs-kpi b small{font-size:10.5px;font-weight:600;color:var(--muted,#7A8399)}
+.bs-kpi.bs-warn{border-inline-start-color:#C0392B}.bs-kpi.bs-warn b{color:#C0392B}
+.bs-kpi.bs-good{border-inline-start-color:var(--green,#1E7D4E)}.bs-kpi.bs-good b{color:var(--green,#1E7D4E)}
+.bs-kpi.bs-bad{border-inline-start-color:#C0392B;background:#FBE7E4}.bs-kpi.bs-bad b{color:#C0392B}
+.bs-alert{background:#FBE7E4;color:#8f2a1f;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700}
+.bs-form{display:grid;grid-template-columns:150px 80px 150px 1fr auto;gap:8px;align-items:center}
+.bs-form input,.bs-form select{font:inherit;border:1px solid var(--border,#E3D9C6);border-radius:8px;padding:6px 8px;background:var(--cream,#FDFAF4);min-width:0}
+.bs-table{width:100%;font-size:13px}
+.bs-del{font:inherit;font-size:12px;border:0;background:#FDECEA;color:#C0392B;border-radius:6px;padding:2px 8px;cursor:pointer}
+.bs-note{background:var(--sand,#F5EDD8);border-radius:10px;padding:10px 12px;font-size:13px}
+#ownerBranBoard{margin-top:18px}
+@media (max-width:700px){.bs-form{grid-template-columns:1fr 1fr}.bs-form input[type="text"],.bs-form button{grid-column:1/-1}}
