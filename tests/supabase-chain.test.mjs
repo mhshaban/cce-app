@@ -3006,6 +3006,67 @@ test('v4.34.0 paddock schedule: staff see every slot, owners see only their own 
   }
 });
 
+test('v4.35.0 Bran stock: share by horses, issues above the share come from the owners\' own stock, owners see only their account, rollback/reapply',async()=>{
+  const db=await buildDatabase();
+  const migration=read('supabase/migrations/20261109_bran_stock_v4350.sql');
+  const hashem='00000000-0000-4000-8000-000000000111';
+  const other='00000000-0000-4000-8000-000000000112';
+  const manager='00000000-0000-4000-8000-000000000113';
+  const as=async(user,sql)=>{
+    await db.exec(`set "request.jwt.claim.sub"='${user}'; set role authenticated`);
+    try{return await db.query(sql);}finally{await db.exec('reset role');}
+  };
+  try{
+    await db.exec(`
+      insert into auth.users(id,email) values('${hashem}','bran-hashem@example.com'),('${other}','bran-other@example.com'),('${manager}','bran-manager@example.com');
+      update public.profiles p set is_active=true,role_id=r.id,owner_name='Hashem' from public.app_roles r where p.id='${hashem}' and r.code='owner';
+      update public.profiles p set is_active=true,role_id=r.id,owner_name='Someone Else' from public.app_roles r where p.id='${other}' and r.code='owner';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      insert into public.horses(horse_name,owner,status)
+      select 'H'||g,case when g<=2 then 'Abdulla Al Zarqi' when g<=5 then 'Hashem' else 'Other Owner' end,'Available' from generate_series(1,23) g;
+      insert into public.horses(horse_name,owner,status) values('Gone','Hashem','Sold');
+    `);
+    const month=async(user,m)=>(await as(user,`select public.cce_feed_summary('${m}') as s`)).rows[0].s;
+
+    const sep=(await month(manager,'2026-09-15')).accounts[0];
+    assert.deepEqual([sep.name,sep.horse_count,Number(sep.allocation),Number(sep.issued),Number(sep.purchased),Number(sep.from_own),Number(sep.closing_balance)],
+      ['Abdulla & Hashem',5,21.7,21,15,0,15]);
+    const oct=(await month(manager,'2026-10-01')).accounts[0];
+    assert.deepEqual([Number(oct.issued),Number(oct.purchased),Number(oct.from_own),Number(oct.opening_balance),Number(oct.closing_balance)],[26,15,4.3,15,25.7]);
+    const nov=(await month(manager,'2026-11-01')).accounts[0];
+    assert.deepEqual([Number(nov.opening_balance),Number(nov.issued),nov.entries.length],[25.7,7,7]);
+
+    // A fixed allocation overrides the per-horse share.
+    await as(manager,`update public.feed_accounts set monthly_allocation=20`);
+    assert.equal(Number((await month(manager,'2026-10-01')).accounts[0].from_own),6);
+    await as(manager,`update public.feed_accounts set monthly_allocation=null`);
+
+    // Owners: only their own account; no writes.
+    assert.equal((await month(hashem,'2026-11-01')).accounts.length,1);
+    assert.equal((await month(other,'2026-11-01')).accounts.length,0);
+    await as(hashem,`insert into public.feed_ledger(account_id,entry_date,kind,qty) select id,'2026-11-09','issue',5 from public.feed_accounts`).catch(()=>{});
+    assert.equal((await as(hashem,`select count(*)::int n from public.feed_ledger`)).rows[0].n,0,'owners cannot read the raw ledger');
+    await as(manager,`insert into public.feed_ledger(account_id,entry_date,kind,qty) select id,'2026-11-09','issue',2 from public.feed_accounts`);
+    assert.equal(Number((await month(manager,'2026-11-01')).accounts[0].issued),9);
+    await assert.rejects(as(manager,`insert into public.feed_ledger(account_id,entry_date,kind,qty) select id,'2026-11-09','issue',-1 from public.feed_accounts`),/check constraint/);
+    await db.exec(`set role anon`);
+    await assert.rejects(db.query(`select public.cce_feed_summary()`),/permission denied/i);
+    await db.exec('reset role');
+    await db.exec(`set "request.jwt.claim.sub"='${manager}'; set role authenticated`);
+    await assert.rejects(db.query(`select public.cce_feed_account_month(1,'2026-11-01')`),/permission denied/i);
+    await db.exec('reset role');
+
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.feed_ledger`)).rows[0].n,51,'re-running does not import twice');
+    await db.exec(read('supabase/rollback/rollback_v4350_compatibility.sql'));
+    assert.equal((await db.query(`select to_regclass('public.feed_ledger') is null as gone`)).rows[0].gone,true);
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.feed_ledger`)).rows[0].n,50);
+  }finally{
+    await db.close();
+  }
+});
+
 test('v4.11 compatibility rollback preserves entries and Sprint 3 can be re-applied',async()=>{
   const db=await buildDatabase();
   const manager='00000000-0000-4000-8000-000000000045';

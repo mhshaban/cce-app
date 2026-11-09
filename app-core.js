@@ -117,6 +117,7 @@ function applyLanguage(lang){
   }
   updateHeaderLanguage();
   if(window.CCE&&CCE.paddocks)CCE.paddocks.render();
+  if(window.CCE&&CCE.bran)CCE.bran.render();
   tagArabicLeafText();
 }
 function updateHeaderLanguage(){
@@ -278,7 +279,7 @@ const DASH_GROUPS={
   dashboard:['dashboard'],
   finance:['income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
-  horses:['horses','health','breeding','paddocks'],
+  horses:['horses','health','breeding','paddocks','bran'],
   showoffice:['show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results'],
   management:['users','notifications','audit','tools']
 };
@@ -310,6 +311,7 @@ function showDashPage(id, btn) {
   if(id==='receipts') renderReceipts();
   if(id==='health') renderHorseHealth();
   if(id==='paddocks'&&window.CCE&&CCE.paddocks) CCE.paddocks.open(document.getElementById('paddockBoard'));
+  if(id==='bran'&&window.CCE&&CCE.bran) CCE.bran.open(document.getElementById('branBoard'));
   if(id==='tools') renderToolsPanel();
   if(id==='show-office'&&typeof renderShowOfficeDashboard==='function') renderShowOfficeDashboard();
   if(id==='competitions'&&typeof renderCompetitions==='function') renderCompetitions();
@@ -4808,7 +4810,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.34.1',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.35.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4911,7 +4913,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261104-4341', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261109-4350', {scope:'./'})
       .then(reg => {
 
         reg.update();

@@ -36,6 +36,7 @@
     health: ['horse_health.view', 'horses.view'],
     breeding: ['breeding.view'],
     paddocks: ['paddocks.view', 'paddocks.manage'],
+    bran: ['feed.view', 'feed.manage'],
     notifications: ['notifications.view', 'settings.manage'],
     audit: ['audit.view'],
     tools: ['settings.manage'],
@@ -354,11 +355,11 @@
     const role = String(memberAccess?.role?.code || '').toLowerCase();
     if (role === 'judge' && canOpenDashPage('show-office-judge')) return 'show-office-judge';
     const order = prefersSchedule()
-      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','breeding','paddocks','instructors','reports','receipts','overdue','users','audit','notifications','tools']
+      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools']
       // Operations (bookings/schedule) is the day-to-day workflow, so it
       // comes before Show Office whenever Dashboard itself isn't reachable
       // (e.g. an account restricted to operations-only access).
-      : ['dashboard','bookings','schedule','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','horses','health','breeding','paddocks','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+      : ['dashboard','bookings','schedule','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','horses','health','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
@@ -567,6 +568,8 @@
       renderOwnerHorses();
       const paddockEl = document.getElementById('ownerPaddockBoard');
       if (paddockEl && window.CCE?.paddocks) window.CCE.paddocks.open(paddockEl, {ownerView: true});
+      const branEl = document.getElementById('ownerBranBoard');
+      if (branEl && window.CCE?.bran) window.CCE.bran.open(branEl, {ownerView: true});
       const list = document.getElementById('ownerHorseList');
       if (list && !ownerHorses.length) {
         list.innerHTML = '<div class="member-empty owner-empty-state"><strong>No horses linked to this account.</strong><span>Please ask the administrator to link the owner account to the correct horse record.</span></div>';
