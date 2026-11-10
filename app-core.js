@@ -3644,6 +3644,14 @@ function buildNotifMessages(){
       const d=daysSince(h.vaccine_date);
       if(d!==null&&d>150) msgs.push('💉 Vaccine: '+h.horse_name+' ('+d+' days)');
     });
+    // Scheduled doses (e.g. a second dose 21 days after the first): due within 3 days or overdue.
+    const doseHorses=new Map(notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').map(h=>[String(h.id),h]));
+    (horse_health_events||[]).filter(e=>e.event_scope==='vaccination'&&e.due_date&&!['Completed','Cancelled'].includes(e.status)&&doseHorses.has(String(e.horse_id))).forEach(e=>{
+      const left=-daysSince(e.due_date);
+      if(left>3)return;
+      const name=doseHorses.get(String(e.horse_id)).horse_name;
+      msgs.push('💉 '+(left<0?'Overdue dose':left===0?'Dose due today':'Dose due in '+left+' days')+': '+name+' — '+e.title+' ('+e.due_date+')');
+    });
   }
   if(notifGet('check_teeth')!==false){
     notificationHorses.filter(h=>h.status==='Available'||h.status==='Out').forEach(h=>{
@@ -4810,7 +4818,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.35.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.36.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4913,7 +4921,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261109-4350', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261110-4360', {scope:'./'})
       .then(reg => {
 
         reg.update();
