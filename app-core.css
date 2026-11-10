@@ -102,6 +102,9 @@ select.badge-select{min-height:auto;box-sizing:border-box;border-radius:12px;pad
 .search-bar select{border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;background:#fff;outline:none}
 .horse-grid{display:grid;grid-template-columns:1fr;gap:12px}
 .horse-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;gap:14px}
+.horse-chip-flag{font-size:11px;border-radius:6px;padding:2px 7px;font-weight:700;white-space:nowrap}
+.horse-chip-missing{background:#FDECEA;color:#C0392B;border:1px solid #F5C6C0}
+.horse-chip-invalid{background:#FFF4E0;color:#A35F00;border:1px solid #F3D9A8}
 .horse-name{font-weight:700;font-size:15px;color:var(--navy)}.horse-meta{font-size:12px;color:var(--muted);margin-top:3px}
 .breed-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
 .breed-days{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}

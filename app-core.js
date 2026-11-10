@@ -1748,10 +1748,42 @@ function renderOverdue(){
   document.getElementById('overdueList').innerHTML=html;
 }
 
+function horseMicrochipStatus(h){return CCE.horses.microchipStatus(h&&h.microchip);}
+function horseMicrochipChipHTML(h){
+  const status=horseMicrochipStatus(h);
+  if(status==='missing')return '<span class="horse-chip-flag horse-chip-missing" title="No microchip number on file">&#9888; No microchip</span>';
+  if(status==='invalid')return '<span class="horse-chip-flag horse-chip-invalid" title="Microchip '+escAttr(h.microchip)+' is not '+CCE.horses.MICROCHIP_DIGITS+' digits">&#9888; Check microchip</span>';
+  return '';
+}
+function updateHorseChipFilterCounts(rows){
+  const sel=document.getElementById('horseChipFilter');
+  if(!sel)return;
+  const missing=CCE.horses.missingMicrochip(rows).length;
+  const invalid=CCE.horses.invalidMicrochip(rows).length;
+  const label={'':'All microchips',missing:'Missing microchip ('+missing+')',invalid:'Microchip not '+CCE.horses.MICROCHIP_DIGITS+' digits ('+invalid+')'};
+  Array.from(sel.options).forEach(o=>{if(o.value in label)o.textContent=label[o.value];});
+}
+function validatedMicrochipInput(inputId,previous){
+  const el=document.getElementById(inputId);
+  const chip=CCE.horses.normalizeMicrochip(el?el.value:'');
+  if(!chip)return null;
+  // An unchanged legacy value is kept so other fields can still be saved; the list flags it.
+  if(previous!=null&&chip===CCE.horses.normalizeMicrochip(previous))return chip;
+  if(CCE.horses.microchipStatus(chip)!=='valid'){
+    alert('Microchip number must be exactly '+CCE.horses.MICROCHIP_DIGITS+' digits (you entered '+chip.length+' character'+(chip.length===1?'':'s')+'). Leave it empty if the horse has no microchip yet.');
+    if(el)el.focus();
+    return false;
+  }
+  return chip;
+}
 function renderHorses(){
   const q=(document.getElementById('horseSearch').value||'').toLowerCase();
   const st=document.getElementById('horseStFilter').value;
-  const data=horses.filter(h=>{if(!h.horse_name)return false;const m=!q||(h.horse_name||'').toLowerCase().includes(q)||(h.owner||'').toLowerCase().includes(q);return m&&(!st||h.status===st);});
+  const chipSel=document.getElementById('horseChipFilter');
+  const chipF=chipSel?chipSel.value:'';
+  const inStatus=horses.filter(h=>h.horse_name&&(!st||h.status===st));
+  updateHorseChipFilterCounts(inStatus);
+  const data=inStatus.filter(h=>{const m=!q||(h.horse_name||'').toLowerCase().includes(q)||(h.owner||'').toLowerCase().includes(q)||String(h.microchip||'').toLowerCase().includes(q);return m&&(!chipF||horseMicrochipStatus(h)===chipF);});
   document.getElementById('horsesGrid').innerHTML=data.map(h=>{
     const hid=h.id;
     const st=h.status||'';
@@ -1770,17 +1802,19 @@ function renderHorses(){
       h.deworm_date?'<span style="font-size:11px;background:'+(wOver?'#FDECEA':'#F0F4F0')+';color:'+(wOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128027; '+fmt(h.deworm_date)+(wOver?' &#9888;':'')+'</span>':'',
       h.vaccine_date?'<span style="font-size:11px;background:'+(vOver?'#FDECEA':'#F0F4F0')+';color:'+(vOver?'#C0392B':'#2E7D52')+';border-radius:6px;padding:2px 7px;font-weight:600">&#128137; '+fmt(h.vaccine_date)+(vOver?' &#9888;':'')+'</span>':'',
     ].filter(Boolean).join('');
-    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#F6F2E8;color:#C8923A;padding:8px 10px;font-size:15px" title="Print Livery Contract" onclick="printLiveryContract(${hid})">&#128196;</button>${h.lease_active?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy);padding:8px 10px;font-size:15px" title="Print Lease Contract" onclick="printLeaseContract('+hid+')">&#128220;</button>':''}<button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
+    return `<div class="horse-card" style="display:flex;align-items:center;gap:12px;padding:12px 14px"><div style="font-size:26px;flex-shrink:0">&#128052;</div><div style="flex:1;min-width:0"><div class="horse-name" style="font-size:14px">${esc(h.horse_name)}</div><div class="horse-meta">${esc(h.owner||'—')} &middot; #${esc(h.stable_no||'—')}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="badge ${stBadge}" style="cursor:pointer" title="Operational status — click to change" onclick="toggleHorse(${hid},${jsStr(st)})">${esc(st||'—')}</span>${horseMicrochipChipHTML(h)}${healthChip}${chips}</div></div><div style="display:flex;gap:6px;flex-shrink:0;align-items:center"><button class="action-btn horse-profile-btn" title="Health Profile" onclick="openHorseHealthProfile(${hid})">&#129658;</button><button class="action-btn" style="background:#F6F2E8;color:#C8923A;padding:8px 10px;font-size:15px" title="Print Livery Contract" onclick="printLiveryContract(${hid})">&#128196;</button>${h.lease_active?'<button class="action-btn" style="background:#EEF3FF;color:var(--navy);padding:8px 10px;font-size:15px" title="Print Lease Contract" onclick="printLeaseContract('+hid+')">&#128220;</button>':''}<button class="action-btn" style="background:#E8EAF0;color:var(--navy);padding:8px 10px;font-size:15px" title="Edit" onclick="editHorse(${hid})">&#9999;&#65039;</button><button class="action-btn" style="background:#FDECEA;color:var(--red);padding:8px 10px;font-size:15px" title="Delete" onclick="delRec('horses',${hid})">&#128465;&#65039;</button></div></div></div>`;
   }).join('')||'<p style="color:var(--muted);padding:12px">No horses found</p>';
 }
 async function addHorse(){
   const name=document.getElementById('h-name').value.trim();
   const owner=document.getElementById('h-owner').value.trim();
   if(!name||!owner){alert('Fill: Horse Name and Owner');return;}
+  const microchip=validatedMicrochipInput('h-micro');
+  if(microchip===false)return;
   const btn=document.getElementById('horseSaveBtn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    await sbPost('horses',{stable_no:document.getElementById('h-stable').value||null,status:document.getElementById('h-status').value,horse_name:name,owner,contact:document.getElementById('h-contact').value||null,sex:document.getElementById('h-sex').value||null,color:document.getElementById('h-color').value||null,breed:document.getElementById('h-breed').value||null,livery_bd:parseFloat(document.getElementById('h-livery').value)||0,start_date:document.getElementById('h-start').value||null});
-    ['h-stable','h-name','h-owner','h-contact','h-color','h-breed'].forEach(id=>document.getElementById(id).value='');
+    await sbPost('horses',{stable_no:document.getElementById('h-stable').value||null,status:document.getElementById('h-status').value,horse_name:name,owner,contact:document.getElementById('h-contact').value||null,sex:document.getElementById('h-sex').value||null,color:document.getElementById('h-color').value||null,breed:document.getElementById('h-breed').value||null,livery_bd:parseFloat(document.getElementById('h-livery').value)||0,start_date:document.getElementById('h-start').value||null,microchip});
+    ['h-stable','h-name','h-owner','h-contact','h-color','h-breed','h-micro'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('h-livery').value='0';
     await loadAll();
   }catch(e){showError('Error',e);}
@@ -2803,7 +2837,7 @@ function editHorse(id){
     <div class="form-group"><label>Start Date</label><input type="date" id="eh-start" value="${h.start_date||''}"></div>
     <div class="form-group"><label>End Date</label><input type="date" id="eh-end" value="${h.end_date||''}"></div>
     <div class="form-group"><label>Birth Date</label><input type="date" id="eh-birth" value="${h.birth_date||''}"></div>
-    <div class="form-group"><label>Microchip</label><input type="text" id="eh-micro" value="${escAttr(h.microchip||'')}"></div>
+    <div class="form-group"><label>Microchip</label><input type="text" id="eh-micro" inputmode="numeric" autocomplete="off" placeholder="15 digits" value="${escAttr(h.microchip||'')}"></div>
     <div class="form-group"><label>Passport</label><input type="text" id="eh-passport" value="${escAttr(h.passport||'')}"></div>
     <div class="form-group"><label>Farrier Name</label><input type="text" id="eh-farrier-name" value="${escAttr(h.farrier_name||'')}"></div>
     <div class="form-group"><label>Farrier Date</label><input type="date" id="eh-farrier" value="${h.farrier_date||''}"></div>
@@ -2856,7 +2890,9 @@ function editHorse(id){
   </div><div class="btn-row"><button class="btn btn-amber" onclick="saveHorse(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
 }
 async function saveHorse(id){
-  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip:document.getElementById('eh-micro').value||null,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,standard_wash:document.getElementById('eh-std-wash').checked,standard_feed:document.getElementById('eh-std-feed').checked,standard_cleaning:document.getElementById('eh-std-cleaning').checked,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null,lease_active:document.getElementById('eh-lease-active').checked,lease_customer_name:document.getElementById('eh-lease-customer').value||null,lease_cpr:document.getElementById('eh-lease-cpr').value||null,lease_address:document.getElementById('eh-lease-address').value||null,lease_mobile:document.getElementById('eh-lease-mobile').value||null,lease_monthly_price:parseFloat(document.getElementById('eh-lease-price').value)||0,lease_farrier_share:document.getElementById('eh-lease-farrier-share').value||null,lease_farrier_weeks:parseInt(document.getElementById('eh-lease-farrier-weeks').value)||null,lease_farrier_name:document.getElementById('eh-lease-farrier-name').value||null,lease_trainer_name:document.getElementById('eh-lease-trainer').value||null,lease_start_date:document.getElementById('eh-lease-start').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
+  const microchip=validatedMicrochipInput('eh-micro',(CCE.horses.find(horses,id)||{}).microchip);
+  if(microchip===false)return;
+  try{await sbPatch('horses',id,{stable_no:document.getElementById('eh-stable').value||null,horse_name:document.getElementById('eh-name').value,owner:document.getElementById('eh-owner').value,contact:document.getElementById('eh-contact').value||null,cpr:document.getElementById('eh-cpr').value||null,address:document.getElementById('eh-address').value||null,sex:document.getElementById('eh-sex').value||null,color:document.getElementById('eh-color').value||null,breed:document.getElementById('eh-breed').value||null,livery_bd:parseFloat(document.getElementById('eh-livery').value)||0,ac_livery_bd:parseFloat(document.getElementById('eh-aclivery').value)||0,livery_type:document.getElementById('eh-lvtype').value||null,payment:document.getElementById('eh-payment').value||null,status:document.getElementById('eh-status').value,start_date:document.getElementById('eh-start').value||null,end_date:document.getElementById('eh-end').value||null,birth_date:document.getElementById('eh-birth').value||null,microchip,passport:document.getElementById('eh-passport').value||null,farrier_name:document.getElementById('eh-farrier-name').value||null,farrier_date:document.getElementById('eh-farrier').value||null,deworm_date:document.getElementById('eh-deworm').value||null,vaccine_dr:document.getElementById('eh-vaccine-dr').value||null,vaccine_date:document.getElementById('eh-vaccine').value||null,teeth_date:document.getElementById('eh-teeth').value||null,medicant:document.getElementById('eh-medicant').value||null,med_date:document.getElementById('eh-meddate').value||null,standard_wash:document.getElementById('eh-std-wash').checked,standard_feed:document.getElementById('eh-std-feed').checked,standard_cleaning:document.getElementById('eh-std-cleaning').checked,extra_shower:document.getElementById('eh-extra-shower').checked,extra_vip_shower:document.getElementById('eh-extra-vip-shower').checked,extra_cleaning:document.getElementById('eh-extra-cleaning').checked,extra_outdoor_leading:document.getElementById('eh-extra-outdoor').checked,extra_training:document.getElementById('eh-extra-training').checked,feed_teben:document.getElementById('eh-feed-teben').checked,feed_hay:document.getElementById('eh-feed-hay').checked,feed_wood_shavings:document.getElementById('eh-feed-wood').checked,livery_notes:document.getElementById('eh-livery-notes').value||null,lease_active:document.getElementById('eh-lease-active').checked,lease_customer_name:document.getElementById('eh-lease-customer').value||null,lease_cpr:document.getElementById('eh-lease-cpr').value||null,lease_address:document.getElementById('eh-lease-address').value||null,lease_mobile:document.getElementById('eh-lease-mobile').value||null,lease_monthly_price:parseFloat(document.getElementById('eh-lease-price').value)||0,lease_farrier_share:document.getElementById('eh-lease-farrier-share').value||null,lease_farrier_weeks:parseInt(document.getElementById('eh-lease-farrier-weeks').value)||null,lease_farrier_name:document.getElementById('eh-lease-farrier-name').value||null,lease_trainer_name:document.getElementById('eh-lease-trainer').value||null,lease_start_date:document.getElementById('eh-lease-start').value||null});closeModal();await loadAll();}catch(e){showError('Error',e);}
 }
 function editBreeding(id){
   const r=breeding.find(x=>x.id===id);if(!r)return;
@@ -3413,7 +3449,7 @@ function renderOwnerHorses(){
           <div class="form-group"><label>Color</label><input type="text" id="oe_color_${i}" value="${escAttr(h.color||'')}"></div>
           <div class="form-group"><label>Breed</label><input type="text" id="oe_breed_${i}" value="${escAttr(h.breed||'')}"></div>
           <div class="form-group"><label>Birth Date</label><input type="date" id="oe_birth_${i}" value="${h.birth_date||''}"></div>
-          <div class="form-group"><label>Microchip</label><input type="text" id="oe_micro_${i}" value="${escAttr(h.microchip||'')}"></div>
+          <div class="form-group"><label>Microchip</label><input type="text" id="oe_micro_${i}" inputmode="numeric" autocomplete="off" placeholder="15 digits" value="${escAttr(h.microchip||'')}"></div>
           <div class="form-group"><label>Passport</label><input type="text" id="oe_passport_${i}" value="${escAttr(h.passport||'')}"></div>
           <div class="form-group"><label>Farrier Name</label><input type="text" id="oe_farrier_name_${i}" value="${escAttr(h.farrier_name||'')}"></div>
           <div class="form-group"><label>Farrier Date</label><input type="date" id="oe_farrier_${i}" value="${h.farrier_date||''}"></div>
@@ -3452,6 +3488,8 @@ async function ownerUpdateHorse(){
 }
 
 async function saveOwnerHorse(i,id){
+  const microchip=validatedMicrochipInput('oe_micro_'+i,(ownerHorses[i]||{}).microchip);
+  if(microchip===false)return;
   const btn=document.querySelector('#ownerEdit_'+i+' .save-btn');
   btn.disabled=true;btn.textContent='⏳ Saving...';
   try{
@@ -3464,7 +3502,7 @@ async function saveOwnerHorse(i,id){
       color:document.getElementById('oe_color_'+i).value||null,
       breed:document.getElementById('oe_breed_'+i).value||null,
       birth_date:document.getElementById('oe_birth_'+i).value||null,
-      microchip:document.getElementById('oe_micro_'+i).value||null,
+      microchip,
       passport:document.getElementById('oe_passport_'+i).value||null,
       farrier_name:document.getElementById('oe_farrier_name_'+i).value||null,
       farrier_date:document.getElementById('oe_farrier_'+i).value||null,
@@ -4810,7 +4848,7 @@ function downloadTextFile(name,text,type='application/json'){
 }
 async function backupObject(){
   if(!window.CCE?.backupRuntime)throw new Error('Backup runtime is unavailable.');
-  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.35.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
+  return window.CCE.backupRuntime.createJsonBackup({app:'Country Club Equestrian',version:'4.36.0',created_at:new Date().toISOString(),income,expenses,horses,breeding,schedule:schedule_data,instructors:instructors_data,booking_requests,audit_logs:readAuditLog()});
 }
 async function downloadJsonBackup(){
   try{
@@ -4913,7 +4951,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261109-4350', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261110-4360', {scope:'./'})
       .then(reg => {
 
         reg.update();
