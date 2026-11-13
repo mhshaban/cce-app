@@ -1553,15 +1553,48 @@ test('Bahrain date boundaries and reminder windows are deterministic',()=>{
   assert.match(reminders,/if\(diff<=36e5\)\{[\s\S]*\}\s*else if\(diff<=864e5/);
 });
 
-test('all app assets use the v4.36.0 cache key',()=>{
+test('vaccinations: a follow-up dose is scheduled N days after a recorded dose and shows as a pending reminder',()=>{
+  const health=healthService();
+  assert.equal(health.followUpDate('2026-11-09',21),'2026-11-30');
+  assert.equal(health.followUpDate('2026-12-20',21),'2027-01-10');
+  assert.equal(health.followUpDate('2028-02-08',21),'2028-02-29');
+  for(const bad of [0,-3,2.5,NaN,'x'])assert.equal(health.followUpDate('2026-11-09',bad),null);
+  assert.equal(health.followUpDate('',21),null);
+  const next=health.followUpDose({horse_id:8,title:'Vaccination — dose 1',event_date:'2026-11-09',veterinarian:'Dr A'},21,'Vaccination — dose 2');
+  assert.equal(next.horse_id,8);
+  assert.equal(next.event_scope,'vaccination');
+  assert.equal(next.event_type,'Vaccination');
+  assert.equal(next.status,'Pending');
+  assert.equal(next.due_date,'2026-11-30');
+  assert.equal(next.event_date,'2026-11-30');
+  assert.equal(next.title,'Vaccination — dose 2');
+  assert.equal(next.veterinarian,'Dr A');
+  assert.equal(health.followUpDose({horse_id:8,title:'Flu',event_date:'2026-11-09'},28).title,'Flu — next dose');
+  assert.equal(health.followUpDose({horse_id:8,title:'Flu',event_date:'2026-11-09'},0),null);
+  const derived=health.vaccines([{id:1,...next}],8);
+  assert.equal(derived.length,1);
+  assert.equal(derived[0].administered_date,null);
+  assert.equal(derived[0].due_date,'2026-11-30');
+
+  const ui=read('horse-health.js');
+  assert.match(ui,/id="vx-next-days"/);
+  assert.match(functionBlock(ui,'saveVaccine','openNextDose'),/followUpDose\(dose,Number\(nextDays\)[\s\S]*createEvent\(dose\);if\(next\)await CCE\.health\.createEvent\(next\)/);
+  assert.match(functionBlock(ui,'saveNextDose','completeVaccine'),/followUpDose\([\s\S]*createEvent\(next\)/);
+  assert.match(read('src/modules/horses/profile/vaccinations-panel.js'),/openNextDose\(\$\{v\.id\},\$\{h\.id\}\)/);
+  const notif=functionBlock(read('app-core.js'),'buildNotifMessages','sendAllNotifications');
+  assert.match(notif,/e\.event_scope==='vaccination'[\s\S]*Overdue dose/);
+});
+
+test('all app assets use the v4.37.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
   assert.ok(!html.includes('20261109-4350'));
-  assert.ok((html.match(/20261110-4360/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261110-4360/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261110-4360/);
-  assert.equal(read('VERSION.txt').trim(),'4.36.0');
+  assert.ok(!html.includes('20261110-4360'));
+  assert.ok((html.match(/20261113-4370/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261113-4370/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261113-4370/);
+  assert.equal(read('VERSION.txt').trim(),'4.37.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

@@ -74,8 +74,31 @@
       care:rows.filter(x=>x.event_scope==='care').map(x=>({...x,task_type:x.event_type==='Veterinary Visit'?'Veterinary':x.event_type,due_date:x.due_date||x.event_date}))
     };
   }
+  // Date of a follow-up dose: whole days after the given ISO date (calendar maths in UTC, no time zone drift).
+  function followUpDate(dateISO,days){
+    const n=Number(days);
+    if(!dateISO||!/^\d{4}-\d{2}-\d{2}$/.test(String(dateISO))||!Number.isInteger(n)||n<1)return null;
+    const d=new Date(String(dateISO)+'T00:00:00Z');
+    if(Number.isNaN(d.getTime()))return null;
+    d.setUTCDate(d.getUTCDate()+n);
+    return d.toISOString().slice(0,10);
+  }
+  // Pending follow-up dose that is created next to a recorded vaccine dose.
+  function followUpDose(dose,days,title){
+    const due=followUpDate(dose&&(dose.event_date||dose.due_date),days);
+    if(!due)return null;
+    const from=dose.event_date||dose.due_date;
+    return {
+      horse_id:dose.horse_id,event_scope:'vaccination',event_type:'Vaccination',
+      event_date:due,due_date:due,title:String(title||'').trim()||`${dose.title} — next dose`,
+      veterinarian:dose.veterinarian||null,status:'Pending',priority:'Normal',severity:'None',
+      notes:`Follow-up dose, ${Number(days)} days after the dose on ${from}.`
+    };
+  }
   CCE.health={
     derive,
+    followUpDate,
+    followUpDose,
     mergeCompletedSummaries,
     profileFor(profiles,id){return (profiles||[]).find(x=>sameHorse(x,id))||null;},
     records(events,id){return derive(events).medical.filter(x=>sameHorse(x,id)).sort(byDateDesc);},
