@@ -1585,15 +1585,16 @@ test('vaccinations: a follow-up dose is scheduled N days after a recorded dose a
   assert.match(notif,/e\.event_scope==='vaccination'[\s\S]*Overdue dose/);
 });
 
-test('all app assets use the v4.36.0 cache key',()=>{
+test('all app assets use the v4.37.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
   assert.ok(!html.includes('20261109-4350'));
-  assert.ok((html.match(/20261110-4360/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261110-4360/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261110-4360/);
-  assert.equal(read('VERSION.txt').trim(),'4.36.0');
+  assert.ok(!html.includes('20261110-4360'));
+  assert.ok((html.match(/20261113-4370/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261113-4370/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261113-4370/);
+  assert.equal(read('VERSION.txt').trim(),'4.37.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -2004,4 +2005,69 @@ test('the "Update now" PWA banner sits at the bottom of the screen (above the ho
   assert.match(fn,/position:fixed;bottom:0;left:0;right:0/);
   assert.doesNotMatch(fn,/position:fixed;top:0/);
   assert.match(fn,/env\(safe-area-inset-bottom,0px\)/);
+});
+
+function horseServiceSelectors(){
+  const context={};
+  context.window=context;
+  vm.runInNewContext(read('src/modules/horses/horse-service.js'),context,{filename:'horse-service.js'});
+  return context.window.CCE.horses;
+}
+
+test('microchip numbers are valid only when exactly 15 digits; spaces, dashes and Arabic-Indic digits are normalised and empty means missing',()=>{
+  const H=horseServiceSelectors();
+  assert.equal(H.MICROCHIP_DIGITS,15);
+  for(const v of [null,undefined,'','   ']) assert.equal(H.microchipStatus(v),'missing');
+  assert.equal(H.microchipStatus('985141000123456'),'valid');
+  assert.equal(H.normalizeMicrochip(' 985 141-000 123 456 '),'985141000123456');
+  assert.equal(H.microchipStatus('985 141 000 123 456'),'valid');
+  assert.equal(H.normalizeMicrochip('٩٨٥١٤١٠٠٠١٢٣٤٥٦'),'985141000123456');
+  assert.equal(H.microchipStatus('٩٨٥١٤١٠٠٠١٢٣٤٥٦'),'valid');
+  assert.equal(H.microchipStatus('48098100006304'),'invalid'); // 14 digits
+  assert.equal(H.microchipStatus('9851410001234567'),'invalid'); // 16 digits
+  assert.equal(H.microchipStatus('98514100012345A'),'invalid');
+  const rows=[{id:1,microchip:''},{id:2,microchip:'985141000123456'},{id:3,microchip:null},{id:4,microchip:'123'}];
+  assert.deepEqual(Array.from(H.missingMicrochip(rows),h=>h.id),[1,3]);
+  assert.deepEqual(Array.from(H.invalidMicrochip(rows),h=>h.id),[4]);
+});
+
+test('horse list flags missing or non-15-digit microchips and has a microchip filter with live counts',()=>{
+  const html=read('index.html');
+  assert.match(html,/<select id="horseChipFilter" onchange="renderHorses\(\)"><option value="">All microchips<\/option><option value="missing">Missing microchip<\/option><option value="invalid">Microchip not 15 digits<\/option><\/select>/);
+  const core=read('app-core.js');
+  const chipFn=functionBlock(core,'horseMicrochipChipHTML','updateHorseChipFilterCounts');
+  assert.match(chipFn,/No microchip/);
+  assert.match(chipFn,/Check microchip/);
+  const list=functionBlock(core,'renderHorses','addHorse');
+  assert.match(list,/horseChipFilter/);
+  assert.match(list,/updateHorseChipFilterCounts\(inStatus\)/);
+  assert.match(list,/horseMicrochipStatus\(h\)===chipF/);
+  assert.match(list,/\$\{horseMicrochipChipHTML\(h\)\}/);
+  assert.match(read('app-core.css'),/\.horse-chip-missing\{/);
+});
+
+test('add, edit and owner-edit horse forms reject a microchip that is not exactly 15 digits before saving, but keep an unchanged legacy value',()=>{
+  const core=read('app-core.js');
+  const H=horseServiceSelectors();
+  const alerts=[];
+  const inputs={m:{value:'',focus(){}}};
+  const context={CCE:{horses:H},alert:m=>alerts.push(m),document:{getElementById:id=>inputs[id]}};
+  vm.runInNewContext(functionBlock(core,'validatedMicrochipInput','renderHorses'),context);
+  inputs.m.value='';assert.equal(context.validatedMicrochipInput('m'),null);
+  inputs.m.value='985 141 000 123 456';assert.equal(context.validatedMicrochipInput('m'),'985141000123456');
+  inputs.m.value='12345';assert.equal(context.validatedMicrochipInput('m'),false);
+  assert.match(alerts.at(-1),/exactly 15 digits \(you entered 5 characters\)/);
+  inputs.m.value='48098100006304';assert.equal(context.validatedMicrochipInput('m','48098100006304'),'48098100006304');
+  assert.equal(context.validatedMicrochipInput('m','985141000123456'),false);
+  const add=functionBlock(core,'addHorse','toggleHorse');
+  assert.match(add,/const microchip=validatedMicrochipInput\('h-micro'\);\s*if\(microchip===false\)return;/);
+  assert.match(add,/start_date:[^}]*,microchip\}\)/);
+  assert.match(read('index.html'),/id="h-micro" inputmode="numeric"/);
+  const save=functionBlock(core,'saveHorse','editBreeding');
+  assert.match(save,/const microchip=validatedMicrochipInput\('eh-micro',\(CCE\.horses\.find\(horses,id\)\|\|\{\}\)\.microchip\);\s*if\(microchip===false\)return;/);
+  assert.doesNotMatch(save,/getElementById\('eh-micro'\)\.value/);
+  const owner=functionBlock(core,'saveOwnerHorse','notifGet');
+  assert.match(owner,/validatedMicrochipInput\('oe_micro_'\+i,/);
+  assert.doesNotMatch(owner,/getElementById\('oe_micro_'\+i\)\.value/);
+  assert.match(core,/id="eh-micro" inputmode="numeric"/);
 });
