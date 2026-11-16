@@ -1,7 +1,7 @@
 // Horse profile shell and tab controller.
 (function(){
   window.CCE=window.CCE||{}; CCE.horseProfile=CCE.horseProfile||{};
-  const tabs=[['overview','Overview'],['medical','Medical'],['vaccines','Vaccinations'],['care','Care & Alerts'],['timeline','Timeline']];
+  const tabs=[['overview','Overview'],['medical','Medical'],['vaccines','Vaccinations'],['care','Care & Alerts'],['movement','Movement'],['timeline','Timeline']];
   CCE.horseProfile.selectTab=function(tab){
     document.querySelectorAll('.horse-profile-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));
     document.querySelectorAll('.horse-profile-pane').forEach(x=>x.hidden=x.id!==`hpp-${tab}`);

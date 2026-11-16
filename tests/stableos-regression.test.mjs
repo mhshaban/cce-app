@@ -134,7 +134,7 @@ test('paddock board is wired into the dashboard and the owner portal, and owners
   assert.match(html,/id="ownerPaddockBoard"/);
   assert.match(html,/src\/modules\/paddocks\/paddock-board\.js\?v=/);
   assert.match(html,/src\/modules\/paddocks\/paddock-board\.css\?v=/);
-  assert.match(core,/horses:\['horses','health','breeding','paddocks'(,'bran')?\]/);
+  assert.match(core,/horses:\['horses','health'(,'movement')?,'breeding','paddocks'(,'bran')?\]/);
   assert.match(core,/if\(id==='paddocks'&&window\.CCE&&CCE\.paddocks\) CCE\.paddocks\.open/);
   assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.paddocks\.render\(\)/,'switching language re-renders the board');
   assert.match(portal,/paddocks: \['paddocks\.view', 'paddocks\.manage'\]/);
@@ -181,7 +181,7 @@ test('Bran stock is wired into the dashboard and the owner portal and renders th
   assert.match(html,/id="page-bran"[\s\S]*?id="branBoard"/);
   assert.match(html,/id="ownerBranBoard"/);
   assert.match(html,/src\/modules\/feed\/bran-stock\.js\?v=/);
-  assert.match(core,/horses:\['horses','health','breeding','paddocks','bran'\]/);
+  assert.match(core,/horses:\['horses','health'(,'movement')?,'breeding','paddocks','bran'\]/);
   assert.match(core,/if\(id==='bran'&&window\.CCE&&CCE\.bran\) CCE\.bran\.open/);
   assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.bran\.render\(\)/);
   assert.match(portal,/bran: \['feed\.view', 'feed\.manage'\]/);
@@ -444,6 +444,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261101_seasonal_livery_income_v4330.sql',
     'supabase/migrations/20261104_paddock_schedule_v4340.sql',
     'supabase/migrations/20261109_bran_stock_v4350.sql',
+    'supabase/migrations/20261116_movement_log_v4380.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -506,6 +507,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4340.sql',
     'supabase/verification/preflight_v4350.sql',
     'supabase/verification/verify_v4350.sql',
+    'supabase/verification/preflight_v4380.sql',
+    'supabase/verification/verify_v4380.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -542,7 +545,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4320_compatibility.sql',
     'supabase/rollback/rollback_v4330_compatibility.sql',
     'supabase/rollback/rollback_v4340_compatibility.sql',
-    'supabase/rollback/rollback_v4350_compatibility.sql'
+    'supabase/rollback/rollback_v4350_compatibility.sql',
+    'supabase/rollback/rollback_v4380_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1585,16 +1589,85 @@ test('vaccinations: a follow-up dose is scheduled N days after a recorded dose a
   assert.match(notif,/e\.event_scope==='vaccination'[\s\S]*Overdue dose/);
 });
 
-test('all app assets use the v4.37.0 cache key',()=>{
+test('movement log: timeline merge, filters, concern detection and vet follow-up tasks',()=>{
+  const context={window:{},console,setTimeout,currentLang:'en',bahrainDateISO:()=>'2026-11-16'};
+  context.window=context;
+  vm.runInNewContext(read('src/modules/health/movement-log.js'),context,{filename:'movement-log.js'});
+  const mv=context.CCE.movement._test;
+  const plain=v=>JSON.parse(JSON.stringify(v));
+  const logs=[
+    {id:1,horse_id:4,observed_on:'2026-11-10',severity:'mild',limbs:['LF'],symptoms:['lameness'],created_at:'2026-11-10T08:00:00Z'},
+    {id:2,horse_id:5,observed_on:'2026-11-14',severity:'none',limbs:[],symptoms:['stumbling'],created_at:'2026-11-14T08:00:00Z'},
+    {id:3,horse_id:4,observed_on:'2026-11-14',severity:'severe',limbs:['RH','LH'],symptoms:['lameness','swelling'],onset:'after_ride',notes:'Hot fetlock',created_at:'2026-11-14T09:00:00Z'}
+  ];
+  const checks=[
+    {id:7,horse_id:4,check_date:'2026-11-15',phase:'pre',items:{movement:'ok',legs:'ok',hooves:'ok',back:'ok',tack:'ok'},cleared:true,created_at:'2026-11-15T07:00:00Z'},
+    {id:8,horse_id:5,check_date:'2026-11-12',phase:'post',items:{movement:'ok',legs:'concern',back:'ok',recovery:'ok'},cleared:false,decision:'monitor',created_at:'2026-11-12T10:00:00Z'}
+  ];
+  const all=mv.mergeTimeline(logs,checks);
+  assert.deepEqual(plain(all.map(r=>r.kind+r.id)),['check7','log3','log2','check8','log1']);
+  assert.deepEqual(plain(mv.filterTimeline(all,{horseId:4}).map(r=>r.id)),[7,3,1]);
+  assert.deepEqual(plain(mv.filterTimeline(all,{from:'2026-11-12',to:'2026-11-14'}).map(r=>r.kind+r.id)),['log3','log2','check8']);
+  assert.deepEqual(plain(mv.filterTimeline(all,{type:'checks'}).map(r=>r.id)),[7,8]);
+  assert.deepEqual(plain(mv.filterTimeline(all,{type:'concerns'}).map(r=>r.kind+r.id)),['log3','check8','log1']);
+  assert.deepEqual(plain(mv.filterTimeline(all,{symptom:'lameness'}).map(r=>r.id)),[3,1]);
+  assert.deepEqual(plain(mv.filterTimeline(all,{severity:'severe'}).map(r=>r.id)),[3]);
+  assert.equal(mv.checkConcerns(checks[1].items),1);
+  const task=mv.careTaskForLog(logs[2],'Blaze');
+  assert.equal(task.event_scope,'care');
+  assert.equal(task.event_type,'Veterinary Visit');
+  assert.equal(task.status,'Pending');
+  assert.equal(task.priority,'Urgent');
+  assert.equal(task.severity,'High');
+  assert.equal(task.due_date,'2026-11-14');
+  assert.equal(task.source_table,'horse_movement_logs');
+  assert.equal(task.source_id,3);
+  assert.match(task.title,/^Vet check — Blaze: RH\/LH · Lameness, Swelling$/);
+  assert.match(task.notes,/Onset: After riding[\s\S]*Hot fetlock/);
+  assert.equal(mv.careTaskForLog({...logs[0],severity:'moderate'},'Tameem').priority,'High');
+  const checkTask=mv.careTaskForCheck({...checks[1],decision:'vet'},'Badal');
+  assert.equal(checkTask.source_table,'horse_ride_checks');
+  assert.match(checkTask.title,/Post-ride check/);
+  assert.match(checkTask.notes,/Legs cool/);
+  for(const lang of ['en','ar']){
+    const t=mv.STRINGS[lang];
+    for(const phase of ['pre','post'])mv.CHECK_ITEMS[phase].forEach(k=>assert.ok(t.items[phase][k],`${lang} ${phase}.${k}`));
+  }
+});
+
+test('movement log is wired into the dashboard, horse profile, trainer and staff portals',()=>{
+  const html=read('index.html');
+  const core=read('app-core.js');
+  const portal=read('member-portal.js');
+  assert.match(html,/id="nav-movement" onclick="showDashPage\('movement',this\)"/);
+  assert.match(html,/id="page-movement"[\s\S]*?id="movementBoard"/);
+  assert.match(html,/src\/modules\/health\/movement-log\.js\?v=/);
+  assert.match(html,/src\/modules\/health\/movement-log\.css\?v=/);
+  assert.ok(html.indexOf('profile-shell.js')<html.indexOf('movement-log.js'));
+  assert.match(html,/id="instrMovementBoard"/);
+  assert.match(html,/id="staffMovementBoard"/);
+  assert.match(core,/horses:\['horses','health','movement','breeding','paddocks','bran'\]/);
+  assert.match(core,/if\(id==='movement'&&window\.CCE&&CCE\.movement\) CCE\.movement\.open/);
+  assert.match(core,/CCE\.movement\.sessionButtons\(s\)/);
+  assert.match(functionBlock(core,'applyLanguage','updateHeaderLanguage'),/CCE\.movement\.render\(\)/);
+  assert.match(portal,/movement: \['horse_care\.view', 'horse_events\.view'\]/);
+  assert.match(portal,/CCE\.movement\.loadSessionChecks/);
+  assert.match(portal,/openPortalMovementBoard\('staff'\)/);
+  assert.match(portal,/openPortalMovementBoard\('instr'\)/);
+  assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
+});
+
+test('all app assets use the v4.38.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
   assert.ok(!html.includes('20261109-4350'));
   assert.ok(!html.includes('20261110-4360'));
-  assert.ok((html.match(/20261113-4370/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261113-4370/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261113-4370/);
-  assert.equal(read('VERSION.txt').trim(),'4.37.0');
+  assert.ok(!html.includes('20261113-4370'));
+  assert.ok((html.match(/20261116-4380/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261116-4380/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261116-4380/);
+  assert.equal(read('VERSION.txt').trim(),'4.38.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

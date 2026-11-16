@@ -3375,3 +3375,84 @@ test('legacy finance repair is backed up, fail-closed and reversible',async()=>{
     await db.close();
   }
 });
+
+test('v4.38.0 movement log: trainers and staff record, owners and reception cannot, authors edit their own, vet follow-up links back, rollback/reapply',async()=>{
+  const db=await buildDatabase();
+  const migration=read('supabase/migrations/20261116_movement_log_v4380.sql');
+  const trainer='00000000-0000-4000-8000-000000000211';
+  const staff='00000000-0000-4000-8000-000000000212';
+  const manager='00000000-0000-4000-8000-000000000213';
+  const owner='00000000-0000-4000-8000-000000000214';
+  const reception='00000000-0000-4000-8000-000000000215';
+  const as=async(user,sql)=>{
+    await db.exec(`set "request.jwt.claim.sub"='${user}'; set role authenticated`);
+    try{return await db.query(sql);}finally{await db.exec('reset role');}
+  };
+  const fails=async(user,sql)=>{let failed=false;try{await as(user,sql);}catch(_e){failed=true;}return failed;};
+  try{
+    await db.exec(`
+      insert into auth.users(id,email,raw_user_meta_data) values
+        ('${trainer}','mv-trainer@example.com','{"full_name":"Coach Sara"}'),('${staff}','mv-staff@example.com','{}'),
+        ('${manager}','mv-manager@example.com','{}'),('${owner}','mv-owner@example.com','{}'),('${reception}','mv-reception@example.com','{}');
+      update public.profiles p set is_active=true,role_id=r.id,full_name='Coach Sara' from public.app_roles r where p.id='${trainer}' and r.code='trainer';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${staff}' and r.code='staff';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${owner}' and r.code='owner';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${reception}' and r.code='reception';
+      insert into public.horses(horse_name,owner,status) values('Blaze','Club','Available'),('Old Timer','Club','Sold');
+      insert into public.schedule(date,start_time,horse_name,status) values('2026-11-16','16:00','Blaze','Scheduled');
+    `);
+    const horseId=(await db.query(`select id from public.horses where horse_name='Blaze'`)).rows[0].id;
+    const scheduleId=(await db.query(`select id from public.schedule limit 1`)).rows[0].id;
+
+    const picker=(await as(trainer,`select horse_name from public.cce_movement_horses()`)).rows.map(r=>r.horse_name);
+    assert.deepEqual(picker,['Blaze','Old Timer']);
+    assert.ok(await fails(owner,`select * from public.cce_movement_horses()`));
+
+    const check=(await as(trainer,`insert into public.horse_ride_checks(horse_id,schedule_id,phase,items,cleared,decision,created_by_name)
+      values(${horseId},${scheduleId},'post','{"movement":"ok","legs":"concern"}',false,'vet','Spoofed') returning id,created_by,created_by_name`)).rows[0];
+    assert.equal(check.created_by,trainer);
+    assert.equal(check.created_by_name,'Coach Sara','author name comes from the profile, not the client');
+    const log=(await as(trainer,`insert into public.horse_movement_logs(horse_id,limbs,severity,onset,symptoms,notes,ride_check_id,media)
+      values(${horseId},'{LF,RH}','moderate','after_ride','{lameness,heat}','Short on LF',${check.id},'[{"path":"movement/1/a.mp4","type":"video"}]') returning id`)).rows[0];
+    const task=(await as(trainer,`insert into public.horse_health_events(horse_id,event_scope,event_type,title,status,priority,source_table,source_id)
+      values(${horseId},'care','Veterinary Visit','Vet check — Blaze','Pending','High','horse_movement_logs',${log.id}) returning id`)).rows[0];
+    await as(trainer,`update public.horse_movement_logs set health_event_id=${task.id} where id=${log.id}`);
+    assert.equal((await db.query(`select health_event_id from public.horse_movement_logs where id=${log.id}`)).rows[0].health_event_id,task.id);
+
+    // Invalid values are rejected.
+    assert.ok(await fails(trainer,`insert into public.horse_movement_logs(horse_id,limbs) values(${horseId},'{XX}')`));
+    assert.ok(await fails(trainer,`insert into public.horse_movement_logs(horse_id,severity) values(${horseId},'awful')`));
+    assert.ok(await fails(trainer,`insert into public.horse_ride_checks(horse_id,phase) values(${horseId},'during')`));
+
+    // Read access: trainer, staff, manager; not owners or reception.
+    for(const user of [trainer,staff,manager])assert.equal((await as(user,`select count(*)::int n from public.horse_movement_logs`)).rows[0].n,1);
+    for(const user of [owner,reception])assert.equal((await as(user,`select count(*)::int n from public.horse_movement_logs`)).rows[0].n,0);
+    assert.ok(await fails(owner,`insert into public.horse_movement_logs(horse_id) values(${horseId})`));
+    assert.ok(await fails(reception,`insert into public.horse_ride_checks(horse_id,phase) values(${horseId},'pre')`));
+
+    // Staff record their own; they cannot change or delete the trainer's record. Managers can.
+    await as(staff,`insert into public.horse_movement_logs(horse_id,severity) values(${horseId},'mild')`);
+    await as(staff,`update public.horse_movement_logs set notes='edited' where id=${log.id}`);
+    await as(staff,`delete from public.horse_ride_checks where id=${check.id}`);
+    assert.equal((await db.query(`select notes from public.horse_movement_logs where id=${log.id}`)).rows[0].notes,'Short on LF');
+    assert.equal((await db.query(`select count(*)::int n from public.horse_ride_checks`)).rows[0].n,1);
+    await as(manager,`update public.horse_movement_logs set notes='Reviewed' where id=${log.id}`);
+    const after=(await db.query(`select notes,created_by,created_by_name from public.horse_movement_logs where id=${log.id}`)).rows[0];
+    assert.deepEqual([after.notes,after.created_by,after.created_by_name],['Reviewed',trainer,'Coach Sara']);
+
+    // Deleting the check keeps the log; deleting the task keeps the log; deleting the horse removes both.
+    await as(manager,`delete from public.horse_ride_checks where id=${check.id}`);
+    await as(manager,`delete from public.horse_health_events where id=${task.id}`);
+    const kept=(await db.query(`select ride_check_id,health_event_id from public.horse_movement_logs where id=${log.id}`)).rows[0];
+    assert.deepEqual([kept.ride_check_id,kept.health_event_id],[null,null]);
+
+    await db.exec(read('supabase/rollback/rollback_v4380_compatibility.sql'));
+    assert.equal((await db.query(`select to_regclass('public.horse_movement_logs') is null as gone`)).rows[0].gone,true);
+    await db.exec(migration);
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.horse_movement_logs`)).rows[0].n,0);
+  }finally{
+    await db.close();
+  }
+});
