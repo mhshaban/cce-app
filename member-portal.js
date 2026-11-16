@@ -34,6 +34,7 @@
     instructors: ['instructors.view'],
     horses: ['horses.view'],
     health: ['horse_health.view', 'horses.view'],
+    movement: ['horse_care.view', 'horse_events.view'],
     breeding: ['breeding.view'],
     paddocks: ['paddocks.view', 'paddocks.manage'],
     bran: ['feed.view', 'feed.manage'],
@@ -355,11 +356,11 @@
     const role = String(memberAccess?.role?.code || '').toLowerCase();
     if (role === 'judge' && canOpenDashPage('show-office-judge')) return 'show-office-judge';
     const order = prefersSchedule()
-      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools']
+      ? ['schedule','bookings','horses','dashboard','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','health','movement','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools']
       // Operations (bookings/schedule) is the day-to-day workflow, so it
       // comes before Show Office whenever Dashboard itself isn't reachable
       // (e.g. an account restricted to operations-only access).
-      : ['dashboard','bookings','schedule','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','horses','health','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
+      : ['dashboard','bookings','schedule','show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results','income','expenses','horses','health','movement','breeding','paddocks','bran','instructors','reports','receipts','overdue','users','audit','notifications','tools'];
     return order.find(canOpenDashPage) || null;
   }
 
@@ -627,6 +628,7 @@
       if (farrierEl) farrierEl.innerHTML = `<div class="permission-denied"><strong>Unable to load the care board.</strong><span>${html(typeof userSafeError === 'function' ? userSafeError(error) : error.message)}</span></div>`;
       if (typeof showError === 'function') showError('Staff portal', error);
     }
+    openPortalMovementBoard('staff');
     const canSeeSchedule = hasPermission('schedule.view') || hasPermission('schedule.view_own');
     const scheduleSection = document.getElementById('staffScheduleSection');
     if (scheduleSection) scheduleSection.style.display = canSeeSchedule ? '' : 'none';
@@ -712,14 +714,25 @@
       window._instrMySessions = sessions;
       window._instrSessions = sessions;
       instrScope = 'mine';
+      if (window.CCE && CCE.movement) await CCE.movement.loadSessionChecks(sessions.map(s => s.id));
       renderInstrSchedule();
       if (typeof buildAlerts === 'function') buildAlerts();
+      openPortalMovementBoard('instr');
     } catch (error) {
       window._instrSessions = [];
       renderInstrSchedule();
       if (typeof showError === 'function') showError('Schedule Error', error);
     }
   };
+
+  // Movement & lameness log under the trainer and staff portals.
+  function openPortalMovementBoard(prefix) {
+    const section = document.getElementById(prefix + 'MovementSection');
+    const board = document.getElementById(prefix + 'MovementBoard');
+    const allowed = ['horse_care.view', 'horse_events.view'].some(hasPermission);
+    if (section) section.style.display = allowed ? '' : 'none';
+    if (allowed && board && window.CCE && CCE.movement) CCE.movement.open(board);
+  }
 
   window.instrMarkDone = async function secureInstructorDone(id) {
     if (!hasPermission('schedule.update_own')) return alert('You do not have permission to update this session.');
