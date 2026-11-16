@@ -2,3 +2,6 @@ project_id = "ipiarzkljcictghtkcri"
 
 [functions.admin-users]
 verify_jwt = false
+
+[functions.gait-analysis]
+verify_jwt = false

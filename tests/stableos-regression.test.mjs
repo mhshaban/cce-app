@@ -445,6 +445,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261104_paddock_schedule_v4340.sql',
     'supabase/migrations/20261109_bran_stock_v4350.sql',
     'supabase/migrations/20261116_movement_log_v4380.sql',
+    'supabase/migrations/20261116_movement_video_analysis_v4390.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -509,6 +510,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/verification/verify_v4350.sql',
     'supabase/verification/preflight_v4380.sql',
     'supabase/verification/verify_v4380.sql',
+    'supabase/verification/preflight_v4390.sql',
+    'supabase/verification/verify_v4390.sql',
     'supabase/maintenance/20260719_finance_pre_v470_repair.sql',
     'supabase/maintenance/20260719_training_legacy_gross_normalization.sql',
     'supabase/rollback/rollback_20260719_finance_pre_v470_repair.sql',
@@ -546,7 +549,8 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/rollback/rollback_v4330_compatibility.sql',
     'supabase/rollback/rollback_v4340_compatibility.sql',
     'supabase/rollback/rollback_v4350_compatibility.sql',
-    'supabase/rollback/rollback_v4380_compatibility.sql'
+    'supabase/rollback/rollback_v4380_compatibility.sql',
+    'supabase/rollback/rollback_v4390_compatibility.sql'
   ]) assert.ok(fs.existsSync(path.join(root,file)),`missing ${file}`);
 });
 
@@ -1657,17 +1661,18 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.38.0 cache key',()=>{
+test('all app assets use the v4.39.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
   assert.ok(!html.includes('20261109-4350'));
   assert.ok(!html.includes('20261110-4360'));
   assert.ok(!html.includes('20261113-4370'));
-  assert.ok((html.match(/20261116-4380/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261116-4380/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261116-4380/);
-  assert.equal(read('VERSION.txt').trim(),'4.38.0');
+  assert.ok(!html.includes('20261116-4380'));
+  assert.ok((html.match(/20261116-4390/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261116-4390/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261116-4390/);
+  assert.equal(read('VERSION.txt').trim(),'4.39.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

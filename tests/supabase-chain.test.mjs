@@ -3456,3 +3456,67 @@ test('v4.38.0 movement log: trainers and staff record, owners and reception cann
     await db.close();
   }
 });
+
+test('v4.39.0 gait analyses: same access as the movement log, follow their record, rollback/reapply',async()=>{
+  const db=await buildDatabase();
+  const migration=read('supabase/migrations/20261116_movement_video_analysis_v4390.sql');
+  const trainer='00000000-0000-4000-8000-000000000311';
+  const staff='00000000-0000-4000-8000-000000000312';
+  const manager='00000000-0000-4000-8000-000000000313';
+  const owner='00000000-0000-4000-8000-000000000314';
+  const as=async(user,sql)=>{
+    await db.exec(`set "request.jwt.claim.sub"='${user}'; set role authenticated`);
+    try{return await db.query(sql);}finally{await db.exec('reset role');}
+  };
+  const fails=async(user,sql)=>{let failed=false;try{await as(user,sql);}catch(_e){failed=true;}return failed;};
+  try{
+    await db.exec(`
+      insert into auth.users(id,email,raw_user_meta_data) values
+        ('${trainer}','gx-trainer@example.com','{}'),('${staff}','gx-staff@example.com','{}'),
+        ('${manager}','gx-manager@example.com','{}'),('${owner}','gx-owner@example.com','{}');
+      update public.profiles p set is_active=true,role_id=r.id,full_name='Coach Ali' from public.app_roles r where p.id='${trainer}' and r.code='trainer';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${staff}' and r.code='staff';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${manager}' and r.code='manager';
+      update public.profiles p set is_active=true,role_id=r.id from public.app_roles r where p.id='${owner}' and r.code='owner';
+      insert into public.horses(horse_name,owner,status) values('Blaze','Club','Available');
+    `);
+    const horseId=(await db.query(`select id from public.horses where horse_name='Blaze'`)).rows[0].id;
+    const log=(await as(trainer,`insert into public.horse_movement_logs(horse_id,media) values(${horseId},'[{"path":"movement/1/a.mp4","type":"video"}]') returning id`)).rows[0];
+    const insert=`insert into public.horse_gait_analyses(horse_id,movement_log_id,media_path,gait,view,clip_start,clip_end,frame_count,grade,suspected_limbs,confidence,recommendation,summary_en,annotations,created_by_name)
+      values(${horseId},${log.id},'movement/1/a.mp4','trot','side',2,12,30,2,'{RF}','medium','vet','Short on RF','[{"t":3.2,"text_en":"Head rises"}]','Spoofed') returning id,created_by,created_by_name`;
+    const a=(await as(trainer,insert)).rows[0];
+    assert.equal(a.created_by,trainer);
+    assert.equal(a.created_by_name,'Coach Ali');
+
+    // Invalid values are rejected.
+    assert.ok(await fails(trainer,`insert into public.horse_gait_analyses(horse_id,media_path,grade) values(${horseId},'movement/1/a.mp4',7)`));
+    assert.ok(await fails(trainer,`insert into public.horse_gait_analyses(horse_id,media_path,suspected_limbs) values(${horseId},'movement/1/a.mp4','{XX}')`));
+    assert.ok(await fails(trainer,`insert into public.horse_gait_analyses(horse_id,media_path) values(${horseId},'elsewhere/a.mp4')`));
+    assert.ok(await fails(trainer,`insert into public.horse_gait_analyses(horse_id,media_path,recommendation) values(${horseId},'movement/1/a.mp4','panic')`));
+
+    // Readers and recorders match the movement log; owners see and write nothing.
+    for(const user of [trainer,staff,manager])assert.equal((await as(user,`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,1);
+    assert.equal((await as(owner,`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,0);
+    assert.ok(await fails(owner,insert));
+
+    // Only the author or a manager can delete.
+    await as(staff,`delete from public.horse_gait_analyses where id=${a.id}`);
+    assert.equal((await db.query(`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,1);
+    await as(trainer,insert);
+    await as(manager,`delete from public.horse_gait_analyses where id=${a.id}`);
+    assert.equal((await db.query(`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,1);
+
+    // Deleting the observation removes its analyses.
+    await as(manager,`delete from public.horse_movement_logs where id=${log.id}`);
+    assert.equal((await db.query(`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,0);
+
+    await db.exec(read('supabase/rollback/rollback_v4390_compatibility.sql'));
+    assert.equal((await db.query(`select to_regclass('public.horse_gait_analyses') is null as gone`)).rows[0].gone,true);
+    assert.equal((await db.query(`select to_regclass('public.horse_movement_logs') is not null as kept`)).rows[0].kept,true);
+    await db.exec(migration);
+    await db.exec(migration);
+    assert.equal((await db.query(`select count(*)::int n from public.horse_gait_analyses`)).rows[0].n,0);
+  }finally{
+    await db.close();
+  }
+});

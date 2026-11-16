@@ -7,6 +7,8 @@
 
 begin;
 
+-- v4.39.0 video analyses reference these tables; they go first.
+drop table if exists public.horse_gait_analyses;
 drop table if exists public.horse_movement_logs;
 drop table if exists public.horse_ride_checks;
 drop function if exists public.cce_movement_horses();

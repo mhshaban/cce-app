@@ -150,7 +150,9 @@
       sbGet('horse_movement_logs',[...q,f.from?'observed_on=gte.'+f.from:'',f.to?'observed_on=lte.'+f.to:'','order=observed_on.desc,id.desc','limit=300'].filter(Boolean).join('&')),
       sbGet('horse_ride_checks',[...q,f.from?'check_date=gte.'+f.from:'',f.to?'check_date=lte.'+f.to:'','order=check_date.desc,id.desc','limit=300'].filter(Boolean).join('&'))
     ]);
-    return mergeTimeline(logs,checks);
+    const rows=mergeTimeline(logs,checks);
+    if(window.CCE&&CCE.gait)await CCE.gait.load(rows).catch(()=>{});
+    return rows;
   }
 
   // ---- storage ----
@@ -192,10 +194,11 @@
   }
 
   // ---- rendering ----
-  function mediaHtml(media){
+  function mediaHtml(media,r){
     if(!media||!media.length)return '';
+    const gait=r&&window.CCE&&CCE.gait;
     return `<div class="mv-media">${media.map(m=>m.type==='video'
-      ?`<video data-mv-path="${h(m.path)}" controls playsinline preload="metadata"></video>`
+      ?`<div class="mv-vidbox"><video data-mv-path="${h(m.path)}" controls playsinline preload="metadata"></video>${gait?CCE.gait.chip(r,m):''}</div>`
       :`<a target="_blank" rel="noopener"><img data-mv-path="${h(m.path)}" alt="${h(m.name||'')}" loading="lazy"></a>`).join('')}</div>`;
   }
   function entryHtml(r,showHorse){
@@ -209,13 +212,13 @@
       const sym=(r.symptoms||[]).map(s=>`<span class="mv-chip">${h(t.sym[s]||s)}</span>`).join('');
       return `<article class="mv-entry mv-sev-${h(r.severity)}"><div class="mv-date" dir="ltr">${h(r.date)}</div><div class="mv-body">
         <div class="mv-title">${head}<span class="mv-badge mv-sev-${h(r.severity)}">${h(t.sev[r.severity]||r.severity)}</span>${r.onset?`<span class="mv-chip mv-onset">${h(t.on[r.onset]||r.onset)}</span>`:''}${r.ride_check_id?`<span class="mv-chip">${t.fromCheck}</span>`:''}${task}</div>
-        ${limbs||sym?`<div class="mv-chips">${limbs}${sym}</div>`:''}${r.notes?`<p>${h(r.notes)}</p>`:''}${mediaHtml(r.media)}${by}</div>${del}</article>`;
+        ${limbs||sym?`<div class="mv-chips">${limbs}${sym}</div>`:''}${r.notes?`<p>${h(r.notes)}</p>`:''}${mediaHtml(r.media,r)}${by}</div>${del}</article>`;
     }
     const n=checkConcerns(r.items);
     const items=Object.entries(r.items||{}).map(([k,v])=>`<li class="${v==='concern'?'bad':'ok'}">${v==='concern'?'⚠':'✓'} ${h(t.items[r.phase]?.[k]||k)}</li>`).join('');
     return `<article class="mv-entry mv-check ${n?'mv-check-bad':''}"><div class="mv-date" dir="ltr">${h(r.date)}</div><div class="mv-body">
       <div class="mv-title">${head}<span class="mv-badge ${n?'mv-sev-moderate':'mv-sev-none'}">${h(t.phase[r.phase])}</span><span class="mv-chip">${n?t.concerns(n):t.cleared}</span>${r.decision?`<span class="mv-chip mv-dec-${h(r.decision)}">${h(t.dec[r.decision])}</span>`:''}${r.schedule_id?`<span class="mv-chip">${t.session} #${Number(r.schedule_id)}</span>`:''}${task}</div>
-      <ul class="mv-items">${items}</ul>${r.notes?`<p>${h(r.notes)}</p>`:''}${mediaHtml(r.media)}${by}</div>${del}</article>`;
+      <ul class="mv-items">${items}</ul>${r.notes?`<p>${h(r.notes)}</p>`:''}${mediaHtml(r.media,r)}${by}</div>${del}</article>`;
   }
   function render(el){
     const st=boards.get(el);if(!st||!st.rows)return;
