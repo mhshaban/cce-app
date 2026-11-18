@@ -190,20 +190,25 @@ test('Bran stock is wired into the dashboard and the owner portal and renders th
   const el={innerHTML:'',style:{}};
   const context={window:{},console,Intl,currentLang:'en',canUser:()=>false,
     sbRpc:async()=>({month:'2026-10',stable_monthly_bags:100,accounts:[{id:1,name:'Abdulla & Hashem',horse_count:5,
-      horses:[{horse_name:'Warda'},{horse_name:'Bentli'}],allocation:21.7,allocation_fixed:false,issued:26,allocation_left:0,from_own:4.3,
-      purchased:15,opening_balance:15,closing_balance:25.7,entries:[{id:9,date:'2026-10-01',kind:'purchase',qty:15,note:null}]}]})};
+      horses:[{horse_name:'Warda'},{horse_name:'Bentli'}],month:'2026-10',allocation:21,allocation_fixed:true,issued:26,allocation_left:0,from_own:5,
+      purchased:15,opening_balance:15,closing_balance:25,entries:[{id:9,date:'2026-10-01',kind:'purchase',qty:15,note:null}],
+      history:[{month:'2026-09',opening:0,purchased:15,adjusted:0,allocation:21,total:36,issued:21,closing:15},
+        {month:'2026-10',opening:15,purchased:15,adjusted:0,allocation:21,total:51,issued:26,closing:25}]}]})};
   context.window=context;
   vm.runInNewContext(read('src/modules/feed/bran-stock.js'),context,{filename:'bran-stock.js'});
   await context.CCE.bran.open(el,{ownerView:true});
   assert.match(el.innerHTML,/dir="ltr" lang="en"/);
-  assert.match(el.innerHTML,/Own stock now<\/span><b>25\.7<\/b>/);
-  assert.match(el.innerHTML,/From own stock<\/span><b>4\.3<\/b>/);
+  assert.match(el.innerHTML,/Left now<\/span><b>25<\/b>/);
+  assert.match(el.innerHTML,/<th>Month<\/th><th>Carried over<\/th><th>Bought<\/th><th>Share<\/th><th>Total<\/th><th>Issued<\/th><th>Left<\/th>/);
+  assert.match(el.innerHTML,/<td>September 2026<\/td><td>0<\/td><td>15<\/td><td>21<\/td><td>36<\/td><td>21<\/td><td class="bs-left ">15<\/td>/);
+  assert.match(el.innerHTML,/<tr class="bs-cur"><td>October 2026<\/td><td>15<\/td><td>15<\/td><td>21<\/td><td>51<\/td><td>26<\/td><td class="bs-left ">25<\/td>/);
   assert.match(el.innerHTML,/October 2026/);
   assert.doesNotMatch(el.innerHTML,/CCE\.bran\.record|CCE\.bran\.remove/,'owners cannot record or delete');
   context.currentLang='ar';
   context.CCE.bran.render();
   assert.match(el.innerHTML,/dir="rtl" lang="ar"/);
-  assert.match(el.innerHTML,/المخزون الخاص الحين<\/span><b>25\.7<\/b>/);
+  assert.match(el.innerHTML,/الباقي الحين<\/span><b>25<\/b>/);
+  assert.match(el.innerHTML,/<th>الشهر<\/th><th>المرحّل<\/th><th>شراء<\/th><th>الحصة<\/th><th>المجموع<\/th><th>المصروف<\/th><th>الباقي<\/th>/);
   assert.match(el.innerHTML,/أكتوبر 2026/);
 });
 
@@ -447,6 +452,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261116_movement_log_v4380.sql',
     'supabase/migrations/20261117_bran_carryover_v4390.sql',
     'supabase/migrations/20261118_bran_share_21_v4391.sql',
+    'supabase/migrations/20261118_bran_history_v4392.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
@@ -1659,17 +1665,18 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.38.0 cache key',()=>{
+test('all app assets use the v4.39.2 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
   assert.ok(!html.includes('20261109-4350'));
   assert.ok(!html.includes('20261110-4360'));
   assert.ok(!html.includes('20261113-4370'));
-  assert.ok((html.match(/20261116-4380/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261116-4380/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261116-4380/);
-  assert.equal(read('VERSION.txt').trim(),'4.38.0');
+  assert.ok(!html.includes('20261116-4380'));
+  assert.ok((html.match(/20261118-4392/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261118-4392/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261118-4392/);
+  assert.equal(read('VERSION.txt').trim(),'4.39.2');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{

@@ -3006,7 +3006,7 @@ test('v4.34.0 paddock schedule: staff see every slot, owners see only their own 
   }
 });
 
-test('v4.35.0+v4.39.0 Bran stock: share by horses (fixed 21 for Abdulla & Hashem), unused share and own stock carry over, owners see only their account, rollback/reapply',async()=>{
+test('v4.35.0+v4.39.0 Bran stock: share by horses (fixed 21 for Abdulla & Hashem), unused share and own stock carry over, monthly history table, owners see only their account, rollback/reapply',async()=>{
   const db=await buildDatabase();
   const migration=read('supabase/migrations/20261109_bran_stock_v4350.sql');
   const hashem='00000000-0000-4000-8000-000000000111';
@@ -3035,6 +3035,8 @@ test('v4.35.0+v4.39.0 Bran stock: share by horses (fixed 21 for Abdulla & Hashem
     assert.deepEqual([Number(oct.issued),Number(oct.purchased),Number(oct.from_own),Number(oct.opening_balance),Number(oct.closing_balance)],[26,15,5,15,25]);
     const nov=(await month(manager,'2026-11-01')).accounts[0];
     assert.deepEqual([Number(nov.opening_balance),Number(nov.issued),nov.entries.length],[25,7,7]);
+    assert.deepEqual(nov.history.map(r=>[r.month,Number(r.opening),Number(r.purchased),Number(r.allocation),Number(r.total),Number(r.issued),Number(r.closing)]),
+      [['2026-09',0,15,21,36,21,15],['2026-10',15,15,21,51,26,25],['2026-11',25,0,21,46,7,39]]);
 
     // A fixed allocation overrides the per-horse share.
     await as(manager,`update public.feed_accounts set monthly_allocation=20`);

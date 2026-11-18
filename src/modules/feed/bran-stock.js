@@ -1,12 +1,13 @@
 // Bran stock per owner account (dashboard page and owner portal card).
-// cce_feed_summary(month) returns, per account, the monthly share (the
-// stable's bags split by Available horses), bags issued, bags taken from the
-// owners' own stock and the running own balance. Managers record entries in
+// cce_feed_summary(month) returns, per account, the monthly share (fixed, or
+// the stable's bags split by Available horses), bags issued, and a `history`
+// row per month: carried over + bought + share = total, minus issued = left.
+// Everything unused carries over to the next month. Managers record entries in
 // feed_ledger; owners only read their own account through the RPC.
 (function(){
   window.CCE=window.CCE||{};
   const STRINGS={
-    en:{title:'Bran Stock',sub:n=>`The stable buys ${n} bags a month, shared by Available horses. Bags issued above an account's share come from the bags its owners bought.`,
+    en:{title:'Bran Stock',sub:n=>`The stable buys ${n} bags a month, shared by Available horses. Each month an account gets its share plus any bags its owners bought; whatever is not used carries over to the next month.`,
       ownerTitle:'Bran · Your Bags',ownerSub:'Your monthly share from the stable, the bags you received, and the bags you bought that are kept in the store.',
       thisMonth:'This month',prev:'Previous month',next:'Next month',prevGlyph:'‹',nextGlyph:'›',
       horses:'Horses',share:'Monthly share',shareAuto:'auto by horses',shareFixed:'fixed',issued:'Issued',shareLeft:'Share left',
@@ -17,8 +18,9 @@
       edit:'Edit account',addAccount:'+ Account',name:'Account name',owners:'Owners (exact owner names, comma-separated)',
       fixed:'Fixed monthly share (empty = auto by horses)',active:'Active',save:'Save',cancel:'Cancel',stableBags:'Stable bags per month',
       noAccounts:'No Bran accounts yet.',noOwnerAccount:'Your horses are not on a Bran account.',loading:'Loading Bran stock…',unable:'Unable to load Bran stock.',
-      bags:'bags',qtyInvalid:'Enter a number of bags.',locale:'en-GB'},
-    ar:{title:'مخزون البران',sub:n=>`الإسطبل يشتري ${n} كيس شهرياً، تتوزع على الخيول الموجودة. اللي ينصرف فوق حصة الحساب ينخصم من أكياس اشتراها ملاكه.`,
+      bags:'bags',qtyInvalid:'Enter a number of bags.',locale:'en-GB',
+      left:'Left now',balanceTable:'Monthly balance',colMonth:'Month',colCarried:'Carried over',colBought:'Bought',colShare:'Share',colTotal:'Total',colIssued:'Issued',colLeft:'Left'},
+    ar:{title:'مخزون البران',sub:n=>`الإسطبل يشتري ${n} كيس شهرياً، تتوزع على الخيول الموجودة. كل شهر الحساب ياخذ حصته مع الأكياس اللي اشتراها ملاكه، واللي ما ينصرف يترحل للشهر اللي بعده.`,
       ownerTitle:'البران · أكياسك',ownerSub:'حصتك الشهرية من الإسطبل، والأكياس اللي استلمتها، والأكياس اللي اشتريتها ومحفوظة في المخزن.',
       thisMonth:'هذا الشهر',prev:'الشهر السابق',next:'الشهر التالي',prevGlyph:'›',nextGlyph:'‹',
       horses:'الخيول',share:'الحصة الشهرية',shareAuto:'تلقائية حسب الخيول',shareFixed:'ثابتة',issued:'المنصرف',shareLeft:'الباقي من الحصة',
@@ -29,7 +31,8 @@
       edit:'تعديل الحساب',addAccount:'+ حساب',name:'اسم الحساب',owners:'الملاك (أسماء الملاك كما في بطاقات الخيول، بينها فاصلة)',
       fixed:'حصة شهرية ثابتة (فاضي = تلقائي حسب الخيول)',active:'فعّال',save:'حفظ',cancel:'إلغاء',stableBags:'أكياس الإسطبل شهرياً',
       noAccounts:'ما في حسابات بران للحين.',noOwnerAccount:'خيولك مو مسجلة في حساب بران.',loading:'جارٍ تحميل مخزون البران…',unable:'تعذّر تحميل مخزون البران.',
-      bags:'كيس',qtyInvalid:'اكتب عدد الأكياس.',locale:'ar-u-nu-latn'}
+      bags:'كيس',qtyInvalid:'اكتب عدد الأكياس.',locale:'ar-u-nu-latn',
+      left:'الباقي الحين',balanceTable:'الرصيد الشهري',colMonth:'الشهر',colCarried:'المرحّل',colBought:'شراء',colShare:'الحصة',colTotal:'المجموع',colIssued:'المصروف',colLeft:'الباقي'}
   };
   const lang=()=>(typeof currentLang!=='undefined'&&currentLang==='ar')?'ar':'en';
   const T=()=>STRINGS[lang()];
@@ -39,32 +42,36 @@
   const todayISO=()=>typeof bahrainDateISO==='function'?bahrainDateISO():new Date().toISOString().slice(0,10);
   let data=null, month=null, target=null, ownerView=false;
 
-  function monthLabel(){
-    if(!month)return '';
-    try{return new Intl.DateTimeFormat(T().locale,{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));}catch(_e){return month;}
+  function monthLabel(m=month,opts={month:'long',year:'numeric'}){
+    if(!m)return '';
+    try{return new Intl.DateTimeFormat(T().locale,opts).format(new Date(m+'-01T12:00:00'));}catch(_e){return m;}
   }
   function shiftMonth(m,delta){const d=new Date(m+'-01T12:00:00');d.setMonth(d.getMonth()+delta);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 
   function kpi(label,value,cls=''){return `<div class="bs-kpi ${cls}"><span>${label}</span><b>${value}</b></div>`;}
 
+  function historyTable(a){
+    const t=T();
+    const rows=(a.history&&a.history.length)?a.history:[{month:a.month,opening:a.opening_balance,purchased:a.purchased,adjusted:a.adjusted,
+      allocation:a.allocation,total:(Number(a.opening_balance)||0)+(Number(a.purchased)||0)+(Number(a.adjusted)||0)+(Number(a.allocation)||0),issued:a.issued,closing:a.closing_balance}];
+    const body=rows.map(r=>{
+      const left=Number(r.closing)||0, cur=r.month===a.month;
+      const bought=(Number(r.purchased)||0)+(Number(r.adjusted)||0);
+      return `<tr class="${cur?'bs-cur':''}"><td>${h(monthLabel(r.month))}</td><td>${num(r.opening)}</td><td>${num(bought)}</td><td>${num(r.allocation)}</td><td>${num(r.total)}</td><td>${num(r.issued)}</td><td class="bs-left ${left<0?'bs-neg':''}">${num(left)}</td></tr>`;
+    }).join('');
+    return `<h4>${t.balanceTable}</h4><div class="tbl-wrap"><table class="bs-table bs-hist"><thead><tr><th>${t.colMonth}</th><th>${t.colCarried}</th><th>${t.colBought}</th><th>${t.colShare}</th><th>${t.colTotal}</th><th>${t.colIssued}</th><th>${t.colLeft}</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
   function accountHtml(a,manage){
     const t=T();
     const closing=Number(a.closing_balance)||0;
     const horses=(a.horses||[]).map(x=>h(x.horse_name)).join(' · ');
-    const kpis=[
-      kpi(t.share,`${num(a.allocation)} <small>${a.allocation_fixed?t.shareFixed:t.shareAuto}</small>`),
-      kpi(t.issued,num(a.issued)),
-      kpi(t.shareLeft,num(a.allocation_left)),
-      kpi(t.fromOwn,num(a.from_own),Number(a.from_own)>0?'bs-warn':''),
-      kpi(t.purchased,num(a.purchased)),
-      kpi(t.opening,num(a.opening_balance)),
-      kpi(t.closing,num(closing),closing<0?'bs-bad':'bs-good')
-    ].join('');
+    const summary=`<div class="bs-sum"><div class="bs-kpi ${closing<0?'bs-bad':'bs-good'}"><span>${t.left}</span><b>${num(closing)}</b></div><div class="bs-kpi"><span>${t.share}</span><b>${num(a.allocation)} <small>${a.allocation_fixed?t.shareFixed:t.shareAuto}</small></b></div></div>`;
     const form=manage?`<div class="bs-form"><input type="date" id="bs-date-${a.id}" value="${h(todayISO())}" dir="ltr"><input type="number" id="bs-qty-${a.id}" value="1" step="0.5" min="0" dir="ltr" aria-label="${t.qty}"><select id="bs-kind-${a.id}">${Object.entries(t.kinds).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><input type="text" id="bs-note-${a.id}" placeholder="${t.note}"><button class="btn btn-amber" onclick="CCE.bran.record(${Number(a.id)})">${t.record}</button></div>`:'';
     const rows=(a.entries||[]).map(e=>`<tr><td dir="ltr">${h(e.date)}</td><td>${h(t.kinds[e.kind]||e.kind)}</td><td>${num(e.qty)}</td><td>${h(e.note||'')}</td>${manage?`<td><button class="bs-del" onclick="CCE.bran.remove(${Number(e.id)})">${t.del}</button></td>`:''}</tr>`).join('');
     const table=rows?`<div class="tbl-wrap"><table class="bs-table"><thead><tr><th>${t.date}</th><th>${t.kind}</th><th>${t.qty}</th><th>${t.note}</th>${manage?'<th></th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="bs-note">${t.none}</div>`;
     return `<div class="bs-account"><div class="bs-acc-h"><div><h3>${h(a.name)}</h3><small>${t.horses} (${a.horse_count}): ${horses||'—'}</small></div>${manage?`<button class="pd-add" onclick="CCE.bran.editAccount(${Number(a.id)})">${t.edit}</button>`:''}</div>
-      <div class="bs-kpis">${kpis}</div>${closing<0?`<div class="bs-alert">${t.negative}</div>`:''}${form}<h4>${t.entries}</h4>${table}</div>`;
+      ${summary}${closing<0?`<div class="bs-alert">${t.negative}</div>`:''}${historyTable(a)}${form}<h4>${t.entries}</h4>${table}</div>`;
   }
 
   function render(){
