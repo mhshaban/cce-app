@@ -446,6 +446,7 @@ test('the repository contains a reconstructable Supabase baseline and ordered ch
     'supabase/migrations/20261109_bran_stock_v4350.sql',
     'supabase/migrations/20261116_movement_log_v4380.sql',
     'supabase/migrations/20261117_bran_carryover_v4390.sql',
+    'supabase/migrations/20261118_bran_share_21_v4391.sql',
     'supabase/verification/preflight_v470.sql',
     'supabase/verification/verify_v470.sql',
     'supabase/verification/preflight_v480.sql',
