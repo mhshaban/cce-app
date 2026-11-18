@@ -24,7 +24,16 @@
 .bs-form{display:grid;grid-template-columns:150px 80px 150px 1fr auto;gap:8px;align-items:center}
 .bs-form input,.bs-form select{font:inherit;border:1px solid var(--border,#E3D9C6);border-radius:8px;padding:6px 8px;background:var(--cream,#FDFAF4);min-width:0}
 .bs-table{width:100%;font-size:13px}
+.bs-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.bs-board .tbl-wrap{overflow-x:auto}
+.bs-hist{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.bs-hist th,.bs-hist td{padding:7px 8px;border-bottom:1px solid var(--border,#E3D9C6);white-space:nowrap}
+.bs-board[dir] .bs-hist th:not(:first-child),.bs-board[dir] .bs-hist td:not(:first-child){text-align:center}
+.bs-hist th{background:var(--navy,#1A2744);color:#fff;font-weight:800;font-size:12.5px}
+.bs-hist td.bs-left{font-weight:900;color:var(--green,#1E7D4E)}
+.bs-hist td.bs-left.bs-neg{color:#C0392B}
+.bs-hist tr.bs-cur td{background:var(--sand,#F5EDD8);font-weight:800}
 .bs-del{font:inherit;font-size:12px;border:0;background:#FDECEA;color:#C0392B;border-radius:6px;padding:2px 8px;cursor:pointer}
 .bs-note{background:var(--sand,#F5EDD8);border-radius:10px;padding:10px 12px;font-size:13px}
 #ownerBranBoard{margin-top:18px}
-@media (max-width:700px){.bs-form{grid-template-columns:1fr 1fr}.bs-form input[type="text"],.bs-form button{grid-column:1/-1}}
+@media (max-width:700px){.bs-hist th,.bs-hist td{padding:6px 4px;font-size:12px;white-space:normal}.bs-hist th{font-size:11px}.bs-form{grid-template-columns:1fr 1fr}.bs-form input[type="text"],.bs-form button{grid-column:1/-1}}
