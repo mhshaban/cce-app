@@ -19,7 +19,7 @@
       fixed:'Fixed monthly share (empty = auto by horses)',active:'Active',save:'Save',cancel:'Cancel',stableBags:'Stable bags per month',
       noAccounts:'No Bran accounts yet.',noOwnerAccount:'Your horses are not on a Bran account.',loading:'Loading Bran stock…',unable:'Unable to load Bran stock.',
       bags:'bags',qtyInvalid:'Enter a number of bags.',locale:'en-GB',
-      left:'Left now',balanceTable:'Monthly balance',colMonth:'Month',colCarried:'Carried over',colBought:'Bought',colShare:'Share',colTotal:'Total',colIssued:'Issued',colLeft:'Left'},
+      left:'Left now',balanceTable:'Monthly balance',colMonth:'Month',colCarried:'Carried over',colBought:'Bought',colShare:'Share',colTotal:'Total',colIssued:'Issued',colLeft:'Left',showPast:n=>`Show previous months (${n})`,hidePast:'Hide previous months'},
     ar:{title:'مخزون البران',sub:n=>`الإسطبل يشتري ${n} كيس شهرياً، تتوزع على الخيول الموجودة. كل شهر الحساب ياخذ حصته مع الأكياس اللي اشتراها ملاكه، واللي ما ينصرف يترحل للشهر اللي بعده.`,
       ownerTitle:'البران · أكياسك',ownerSub:'حصتك الشهرية من الإسطبل، والأكياس اللي استلمتها، والأكياس اللي اشتريتها ومحفوظة في المخزن.',
       thisMonth:'هذا الشهر',prev:'الشهر السابق',next:'الشهر التالي',prevGlyph:'›',nextGlyph:'‹',
@@ -32,7 +32,7 @@
       fixed:'حصة شهرية ثابتة (فاضي = تلقائي حسب الخيول)',active:'فعّال',save:'حفظ',cancel:'إلغاء',stableBags:'أكياس الإسطبل شهرياً',
       noAccounts:'ما في حسابات بران للحين.',noOwnerAccount:'خيولك مو مسجلة في حساب بران.',loading:'جارٍ تحميل مخزون البران…',unable:'تعذّر تحميل مخزون البران.',
       bags:'كيس',qtyInvalid:'اكتب عدد الأكياس.',locale:'ar-u-nu-latn',
-      left:'الباقي الحين',balanceTable:'الرصيد الشهري',colMonth:'الشهر',colCarried:'المرحّل',colBought:'شراء',colShare:'الحصة',colTotal:'المجموع',colIssued:'المصروف',colLeft:'الباقي'}
+      left:'الباقي الحين',balanceTable:'الرصيد الشهري',colMonth:'الشهر',colCarried:'المرحّل',colBought:'شراء',colShare:'الحصة',colTotal:'المجموع',colIssued:'المصروف',colLeft:'الباقي',showPast:n=>`عرض الأشهر السابقة (${n})`,hidePast:'إخفاء الأشهر السابقة'}
   };
   const lang=()=>(typeof currentLang!=='undefined'&&currentLang==='ar')?'ar':'en';
   const T=()=>STRINGS[lang()];
@@ -40,7 +40,8 @@
   const num=v=>{const n=Number(v)||0;return Number.isInteger(n)?String(n):n.toFixed(1);};
   const canManage=()=>typeof window.canUser==='function'&&window.canUser('feed.manage');
   const todayISO=()=>typeof bahrainDateISO==='function'?bahrainDateISO():new Date().toISOString().slice(0,10);
-  let data=null, month=null, target=null, ownerView=false;
+  let data=null, month=null, target=null, ownerView=false, showPast=false;
+  const thisMonth=()=>todayISO().slice(0,7);
 
   function monthLabel(m=month,opts={month:'long',year:'numeric'}){
     if(!m)return '';
@@ -54,12 +55,14 @@
     const t=T();
     const rows=(a.history&&a.history.length)?a.history:[{month:a.month,opening:a.opening_balance,purchased:a.purchased,adjusted:a.adjusted,
       allocation:a.allocation,total:(Number(a.opening_balance)||0)+(Number(a.purchased)||0)+(Number(a.adjusted)||0)+(Number(a.allocation)||0),issued:a.issued,closing:a.closing_balance}];
-    const body=rows.map(r=>{
+    const past=rows.filter(r=>r.month!==a.month).length;
+    const shown=showPast?rows:rows.filter(r=>r.month===a.month);
+    const body=(shown.length?shown:rows.slice(-1)).map(r=>{
       const left=Number(r.closing)||0, cur=r.month===a.month;
       const bought=(Number(r.purchased)||0)+(Number(r.adjusted)||0);
       return `<tr class="${cur?'bs-cur':''}"><td>${h(monthLabel(r.month))}</td><td>${num(r.opening)}</td><td>${num(bought)}</td><td>${num(r.allocation)}</td><td>${num(r.total)}</td><td>${num(r.issued)}</td><td class="bs-left ${left<0?'bs-neg':''}">${num(left)}</td></tr>`;
     }).join('');
-    return `<h4>${t.balanceTable}</h4><div class="tbl-wrap"><table class="bs-table bs-hist"><thead><tr><th>${t.colMonth}</th><th>${t.colCarried}</th><th>${t.colBought}</th><th>${t.colShare}</th><th>${t.colTotal}</th><th>${t.colIssued}</th><th>${t.colLeft}</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    return `<h4>${t.balanceTable}</h4><div class="tbl-wrap"><table class="bs-table bs-hist"><thead><tr><th>${t.colMonth}</th><th>${t.colCarried}</th><th>${t.colBought}</th><th>${t.colShare}</th><th>${t.colTotal}</th><th>${t.colIssued}</th><th>${t.colLeft}</th></tr></thead><tbody>${body}</tbody></table></div>${past?`<button class="bs-toggle" onclick="CCE.bran.togglePast()">${showPast?t.hidePast:t.showPast(past)}</button>`:''}`;
   }
 
   function accountHtml(a,manage){
@@ -77,7 +80,7 @@
   function render(){
     if(!target||!data)return;
     const t=T(), l=lang(), manage=!ownerView&&canManage();
-    const nav=`<div class="pd-day"><button onclick="CCE.bran.go(-1)" aria-label="${t.prev}">${t.prevGlyph}</button><button onclick="CCE.bran.go(1)" aria-label="${t.next}">${t.nextGlyph}</button><button class="pd-today" onclick="CCE.bran.go(0)">${t.thisMonth}</button><span>${monthLabel()}</span></div>`;
+    const nav=`<div class="pd-day"><button onclick="CCE.bran.go(-1)" aria-label="${t.prev}">${t.prevGlyph}</button><button onclick="CCE.bran.go(1)" aria-label="${t.next}" ${month&&month>=thisMonth()?'disabled':''}>${t.nextGlyph}</button><button class="pd-today" onclick="CCE.bran.go(0)">${t.thisMonth}</button><span>${monthLabel()}</span></div>`;
     const tools=manage?`<div class="bs-tools"><button class="pd-add" onclick="CCE.bran.editStable()">${t.stableBags}: ${num(data.stable_monthly_bags)}</button><button class="pd-add" onclick="CCE.bran.editAccount(0)">${t.addAccount}</button></div>`:'';
     const accounts=data.accounts||[];
     const body=accounts.length?accounts.map(a=>accountHtml(a,manage)).join(''):`<div class="bs-note">${ownerView?t.noOwnerAccount:t.noAccounts}</div>`;
@@ -99,7 +102,11 @@
       target.innerHTML=`<div class="permission-denied"><strong>${T().unable}</strong><span>${h(typeof userSafeError==='function'?userSafeError(error):(error&&error.message)||error)}</span></div>`;
     }
   }
-  function go(delta){month=delta&&month?shiftMonth(month,delta):null;return open(target,{ownerView});}
+  function go(delta){
+    if(delta>0&&month&&month>=thisMonth())return;
+    month=delta&&month?shiftMonth(month,delta):null;return open(target,{ownerView});
+  }
+  function togglePast(){showPast=!showPast;render();}
 
   async function record(accountId){
     const t=T();
@@ -154,5 +161,5 @@
     }catch(e){showError(t.title,e);}
   }
 
-  CCE.bran={open,render,go,record,remove,editAccount,saveAccount,editStable};
+  CCE.bran={open,render,go,togglePast,record,remove,editAccount,saveAccount,editStable};
 })();

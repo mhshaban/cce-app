@@ -200,7 +200,11 @@ test('Bran stock is wired into the dashboard and the owner portal and renders th
   assert.match(el.innerHTML,/dir="ltr" lang="en"/);
   assert.match(el.innerHTML,/Left now<\/span><b>25<\/b>/);
   assert.match(el.innerHTML,/<th>Month<\/th><th>Carried over<\/th><th>Bought<\/th><th>Share<\/th><th>Total<\/th><th>Issued<\/th><th>Left<\/th>/);
+  assert.doesNotMatch(el.innerHTML,/September 2026/,'only the selected month by default');
+  assert.match(el.innerHTML,/Show previous months \(1\)/);
+  context.CCE.bran.togglePast();
   assert.match(el.innerHTML,/<td>September 2026<\/td><td>0<\/td><td>15<\/td><td>21<\/td><td>36<\/td><td>21<\/td><td class="bs-left ">15<\/td>/);
+  assert.match(el.innerHTML,/Hide previous months/);
   assert.match(el.innerHTML,/<tr class="bs-cur"><td>October 2026<\/td><td>15<\/td><td>15<\/td><td>21<\/td><td>51<\/td><td>26<\/td><td class="bs-left ">25<\/td>/);
   assert.match(el.innerHTML,/October 2026/);
   assert.doesNotMatch(el.innerHTML,/CCE\.bran\.record|CCE\.bran\.remove/,'owners cannot record or delete');
@@ -1665,7 +1669,7 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.39.2 cache key',()=>{
+test('all app assets use the v4.39.3 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
@@ -1673,10 +1677,11 @@ test('all app assets use the v4.39.2 cache key',()=>{
   assert.ok(!html.includes('20261110-4360'));
   assert.ok(!html.includes('20261113-4370'));
   assert.ok(!html.includes('20261116-4380'));
-  assert.ok((html.match(/20261118-4392/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261118-4392/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261118-4392/);
-  assert.equal(read('VERSION.txt').trim(),'4.39.2');
+  assert.ok(!html.includes('20261118-4392'));
+  assert.ok((html.match(/20261118-4393/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261118-4393/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261118-4393/);
+  assert.equal(read('VERSION.txt').trim(),'4.39.3');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
