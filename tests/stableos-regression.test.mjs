@@ -1669,7 +1669,7 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.39.3 cache key',()=>{
+test('all app assets use the v4.40.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
@@ -1678,10 +1678,11 @@ test('all app assets use the v4.39.3 cache key',()=>{
   assert.ok(!html.includes('20261113-4370'));
   assert.ok(!html.includes('20261116-4380'));
   assert.ok(!html.includes('20261118-4392'));
-  assert.ok((html.match(/20261118-4393/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261118-4393/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261118-4393/);
-  assert.equal(read('VERSION.txt').trim(),'4.39.3');
+  assert.ok(!html.includes('20261118-4393'));
+  assert.ok((html.match(/20261119-4400/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261119-4400/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261119-4400/);
+  assert.equal(read('VERSION.txt').trim(),'4.40.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -2157,4 +2158,16 @@ test('add, edit and owner-edit horse forms reject a microchip that is not exactl
   assert.match(owner,/validatedMicrochipInput\('oe_micro_'\+i,/);
   assert.doesNotMatch(owner,/getElementById\('oe_micro_'\+i\)\.value/);
   assert.match(core,/id="eh-micro" inputmode="numeric"/);
+});
+
+test('lesson income can link a booking and shows its details',()=>{
+  const core=read('app-core.js');
+  const html=read('index.html');
+  assert.match(core,/function incomeBookingSectionHtml\(prefix,currentIncomeId,currentRequestId\)/);
+  assert.match(core,/\$\{incomeBookingSectionHtml\('ei',r\.id,linkedRequest\?\.id\)\}/);
+  assert.match(core,/sbPost\('income',\{booking_request_id:selectedIncomeBookingId\('inc'\)/);
+  assert.match(core,/bookingChanged\?\{booking_request_id:selectedRequestId\}:\{\}/);
+  assert.match(core,/cce_booking_private_details',\{p_booking_request_id:b\.id\}/);
+  assert.match(core,/syncIncomeBookingField\(prefix\);/);
+  assert.match(html,/id="inc-booking" onchange="onIncomeBookingChange\('inc'\)"/);
 });
