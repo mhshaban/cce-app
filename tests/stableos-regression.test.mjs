@@ -1669,7 +1669,7 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.41.0 cache key',()=>{
+test('all app assets use the v4.42.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
@@ -1680,10 +1680,21 @@ test('all app assets use the v4.41.0 cache key',()=>{
   assert.ok(!html.includes('20261118-4392'));
   assert.ok(!html.includes('20261118-4393'));
   assert.ok(!html.includes('20261119-4400'));
-  assert.ok((html.match(/20261119-4410/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261119-4410/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261119-4410/);
-  assert.equal(read('VERSION.txt').trim(),'4.41.0');
+  assert.ok(!html.includes('20261119-4410'));
+  assert.ok((html.match(/20261119-4420/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261119-4420/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261119-4420/);
+  assert.equal(read('VERSION.txt').trim(),'4.42.0');
+});
+
+test('Dashboard lives under Finance as its first sub-tab',()=>{
+  const html=read('index.html');
+  const core=read('app-core.js');
+  assert.ok(!html.includes('dash-group-dashboard'));
+  assert.match(html,/class="nav-group-btn active" id="dash-group-finance"/);
+  assert.match(html,/data-dash-group="finance" id="nav-dashboard"/);
+  assert.match(core,/finance:\['dashboard','income','expenses','overdue','receipts','reports'\]/);
+  assert.ok(!/\bdashboard:\['dashboard'\]/.test(core));
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
