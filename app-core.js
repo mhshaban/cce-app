@@ -277,8 +277,7 @@ function logoutAdmin() {
 // DASHBOARD INTERNAL NAV
 // ══════════════════════════════════════════════════════════
 const DASH_GROUPS={
-  dashboard:['dashboard'],
-  finance:['income','expenses','overdue','receipts','reports'],
+  finance:['dashboard','income','expenses','overdue','receipts','reports'],
   operations:['bookings','schedule','instructors'],
   horses:['horses','health','movement','breeding','paddocks','bran'],
   showoffice:['show-office','competitions','show-office-classes','show-office-entries','show-office-judge','show-office-results'],
@@ -286,7 +285,7 @@ const DASH_GROUPS={
 };
 function dashGroupForPage(id){
   for(const [group,pages] of Object.entries(DASH_GROUPS)) if(pages.includes(id)) return group;
-  return 'dashboard';
+  return 'finance';
 }
 function updateDashGroupedNav(id){
   const group=dashGroupForPage(id);
@@ -5257,7 +5256,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261119-4410', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-4420', {scope:'./'})
       .then(reg => {
 
         reg.update();

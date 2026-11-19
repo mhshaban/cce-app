@@ -2,6 +2,14 @@
 
 يتبع السجل ترتيبًا تنازليًا. تُكتب التغييرات المؤثرة في المستخدم أو قاعدة البيانات، ولا تُسجل التعديلات الشكلية الداخلية غير المهمة.
 
+## 4.42.0 — دمج Dashboard تحت Finance
+
+### Changed
+
+- **ترتيب التبويبات:** شلنا تبويب Dashboard الرئيسي، وصار Dashboard أول تبويب فرعي تحت **💰 Finance**: Dashboard · Income · Expenses · Overdue · Receipts · Reports.
+- Finance هو أول تبويب رئيسي ويفتح على Dashboard تلقائياً عند الدخول. التبويبات الرئيسية صارت: Finance · Operations · Horses · Show Office · Management.
+- الصلاحيات ما تغيرت: المحاسب يشوف Dashboard بس تحت Finance مثل قبل.
+
 ## 4.41.0 — حجز الحصص من نفس فورمة الدخل
 
 ### Added
