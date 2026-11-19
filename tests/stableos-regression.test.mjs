@@ -1669,7 +1669,7 @@ test('movement log is wired into the dashboard, horse profile, trainer and staff
   assert.match(read('src/modules/horses/profile/profile-shell.js'),/\['movement','Movement'\]/);
 });
 
-test('all app assets use the v4.40.0 cache key',()=>{
+test('all app assets use the v4.41.0 cache key',()=>{
   const html=read('index.html');
   assert.ok(!html.includes('20260714-465'));
   assert.ok(!html.includes('20261017-4313'));
@@ -1679,10 +1679,11 @@ test('all app assets use the v4.40.0 cache key',()=>{
   assert.ok(!html.includes('20261116-4380'));
   assert.ok(!html.includes('20261118-4392'));
   assert.ok(!html.includes('20261118-4393'));
-  assert.ok((html.match(/20261119-4400/g)||[]).length>=20);
-  assert.match(read('app-bootstrap.js'),/stableos-20261119-4400/);
-  assert.match(read('app-core.js'),/sw\.js\?v=20261119-4400/);
-  assert.equal(read('VERSION.txt').trim(),'4.40.0');
+  assert.ok(!html.includes('20261119-4400'));
+  assert.ok((html.match(/20261119-4410/g)||[]).length>=20);
+  assert.match(read('app-bootstrap.js'),/stableos-20261119-4410/);
+  assert.match(read('app-core.js'),/sw\.js\?v=20261119-4410/);
+  assert.equal(read('VERSION.txt').trim(),'4.41.0');
 });
 
 test('Cairo is requested as a weight range so iOS Safari renders bold from the variable font',()=>{
@@ -2165,9 +2166,23 @@ test('lesson income can link a booking and shows its details',()=>{
   const html=read('index.html');
   assert.match(core,/function incomeBookingSectionHtml\(prefix,currentIncomeId,currentRequestId\)/);
   assert.match(core,/\$\{incomeBookingSectionHtml\('ei',r\.id,linkedRequest\?\.id\)\}/);
-  assert.match(core,/sbPost\('income',\{booking_request_id:selectedIncomeBookingId\('inc'\)/);
+  assert.match(core,/let bookingId=selectedIncomeBookingId\('inc'\);/);
+  assert.match(core,/sbPost\('income',\{booking_request_id:bookingId,/);
   assert.match(core,/bookingChanged\?\{booking_request_id:selectedRequestId\}:\{\}/);
   assert.match(core,/cce_booking_private_details',\{p_booking_request_id:b\.id\}/);
   assert.match(core,/syncIncomeBookingField\(prefix\);/);
-  assert.match(html,/id="inc-booking" onchange="onIncomeBookingChange\('inc'\)"/);
+  assert.match(html,/id="inc-booking-wrap"/);
+});
+
+test('choosing Lesson in income creates the training booking in the same save',()=>{
+  const core=read('app-core.js');
+  const sql=read('supabase/migrations/20261119_admin_training_booking_v4410.sql');
+  assert.match(core,/function lessonBookingNewFormHtml\(prefix\)/);
+  assert.match(core,/sbRpc\('cce_admin_create_training_booking'/);
+  assert.match(core,/lessonForm=isTrainingIncome\(\{activity\}\)\?readLessonBookingForm\('inc'\):null/);
+  assert.match(core,/lessonForm=isTrainingIncome\(\{activity\}\)\?readLessonBookingForm\('ei'\):null/);
+  assert.match(core,/cce_delete_booking_request',\{p_booking_request_id:newBookingId\}/);
+  assert.match(sql,/cce_has_permission\('bookings\.create'\)/);
+  assert.match(sql,/from public,anon;/);
+  assert.match(sql,/'Confirmed',v_amount,'staff-entry'/);
 });

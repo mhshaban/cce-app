@@ -1025,18 +1025,36 @@ async function addIncome(){
   const activity=normalizeActivityCategory(document.getElementById('inc-activity').value);
   const trainer=selectedInstructor('inc-instructor');
   if(isTrainingIncome({activity})&&paid>0&&!trainer){alert('Select an active instructor before recording a training payment.');return;}
+  let lessonForm=null;
+  try{lessonForm=isTrainingIncome({activity})?readLessonBookingForm('inc'):null;}catch(e){alert('⚠️ '+e.message);return;}
   const btn=document.getElementById('incSaveBtn');btn.disabled=true;btn.textContent='Saving...';
+  let newBookingId=null;
   try{
-    await sbPost('income',{booking_request_id:selectedIncomeBookingId('inc'),date,due_date:document.getElementById('inc-due').value||null,start_time:document.getElementById('inc-start').value||null,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:isTrainingIncome({activity}),instructor_id:isTrainingIncome({activity})?(trainer?.id||null):null,notes:document.getElementById('inc-notes').value||null,status:normalizePaidStatus(total,paid)});
+    let bookingId=selectedIncomeBookingId('inc');
+    let incomeNotes=document.getElementById('inc-notes').value||null;
+    let startTime=document.getElementById('inc-start').value||null;
+    if(lessonForm){
+      newBookingId=await createLessonBooking(lessonForm,{customer:cust,horse:document.getElementById('inc-horse').value,amount:total});
+      bookingId=newBookingId;
+      incomeNotes=lessonBookingNotes(newBookingId,lessonForm.pkg,lessonForm.slots,incomeNotes);
+      startTime=startTime||lessonForm.slots[0].time;
+    }
+    await sbPost('income',{booking_request_id:bookingId,date,due_date:document.getElementById('inc-due').value||null,start_time:startTime,end_time:document.getElementById('inc-end').value||null,customer_name:cust,horse_name:document.getElementById('inc-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:isTrainingIncome({activity}),instructor_id:isTrainingIncome({activity})?(trainer?.id||null):null,notes:incomeNotes,status:normalizePaidStatus(total,paid)});
+    const createdBookingId=newBookingId;newBookingId=null;
+    if(createdBookingId)await scheduleLessonBookingIfPossible(createdBookingId,trainer);
     // Notify if booking
     const notes=document.getElementById('inc-notes').value||'';
     if(['BOOKING REQUEST','TRAINING REQUEST','LIVERY REQUEST'].some(marker=>notes.includes(marker))){
       notifyNewBooking(cust,document.getElementById('inc-horse').value||'?',document.getElementById('inc-start').value||date);
     }
     ['inc-date','inc-due','inc-customer','inc-amount','inc-notes','inc-start','inc-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';document.getElementById('inc-instructor').value='';const incBooking=document.getElementById('inc-booking');if(incBooking)incBooking.value='';syncIncomeInstructorField('inc');
+    document.getElementById('inc-qty').value='1';document.getElementById('inc-paid').value='0';document.getElementById('inc-total').value='';document.getElementById('inc-instructor').value='';const incBooking=document.getElementById('inc-booking');if(incBooking)incBooking.value='';resetLessonBookingForm('inc');syncIncomeInstructorField('inc');
     await loadAll();
-  }catch(e){showError('Error',e);}
+  }catch(e){
+    // Income failed after the booking was created: remove the booking so nothing is left half-saved.
+    if(newBookingId){try{await sbRpc('cce_delete_booking_request',{p_booking_request_id:newBookingId});}catch(cleanup){}}
+    showError('Error',e);
+  }
   finally{btn.disabled=false;btn.textContent='Save to Database';}
 }
 const EXPENSE_META_PREFIX='CCE_EXPENSE_META_V1:';
@@ -2739,6 +2757,7 @@ function editIncome(id){
     <div class="form-group"><label>Customer</label><input type="text" id="ei-cust" value="${escAttr(custValue)}" list="ei-cl"><datalist id="ei-cl">${[...new Set(income.map(x=>x.customer_name).filter(Boolean))].sort().map(c=>'<option value="'+escAttr(c)+'">').join('')}</datalist></div>
     <div class="form-group"><label>Horse</label><select id="ei-horse"><option value="">&#8212;</option>${hOpts(r.horse_name)}</select></div>
     <div class="form-group"><label>Category</label><select id="ei-act" onchange="syncIncomeInstructorField('ei')">${CCE_CATEGORIES.map(a=>'<option '+(r.activity===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
+    ${incomeBookingSectionHtml('ei',r.id,linkedRequest?.id)}
     <div class="form-group"><label>Qty</label><input type="number" id="ei-qty" value="${qty}" min="1" oninput="cET('inc')"></div>
     <div class="form-group"><label>Amount BD (per unit)</label><input type="number" step="0.001" id="ei-amt" value="${apu.toFixed(3)}" oninput="cET('inc')"></div>
     <div class="form-group"><label>Total BD</label><input type="number" step="0.001" id="ei-total" value="${r.amount_bd}" readonly></div>
@@ -2748,7 +2767,6 @@ function editIncome(id){
     <div class="form-group"><label>Start Time</label><input type="time" id="ei-start" value="${escAttr(r.start_time||'')}"></div>
     <div class="form-group"><label>End Time</label><input type="time" id="ei-end" value="${escAttr(r.end_time||'')}"></div>
     <div class="form-group"><label>Notes</label><input type="text" id="ei-notes" value="${escAttr(r.notes||'')}"></div>
-    ${incomeBookingSectionHtml('ei',r.id,linkedRequest?.id)}
   </div><div class="btn-row"><button class="btn btn-green" onclick="saveIncome(${id})">Save</button><button class="btn" style="background:#f0f0f0;color:var(--navy)" onclick="closeModal()">Cancel</button></div>`);
   syncIncomeInstructorField('ei');
 }
@@ -2762,17 +2780,31 @@ async function saveIncome(id){
   const trainer=selectedInstructor('ei-instructor');
   if(splitEnabled&&paid>0&&!trainer){alert('Select an active instructor before recording a training payment.');return;}
   const custName=document.getElementById('ei-cust').value;
+  let lessonForm=null;
+  try{lessonForm=isTrainingIncome({activity})?readLessonBookingForm('ei'):null;}catch(e){alert('⚠️ '+e.message);return;}
   const previousRequest=bookingRequestForIncome(income.find(x=>String(x.id)===String(id)));
   const selectedRequestId=selectedIncomeBookingId('ei');
   const bookingChanged=String(selectedRequestId??'')!==String(previousRequest?.id??'');
   const linkedRequest=selectedRequestId!=null?(booking_requests||[]).find(b=>String(b.id)===String(selectedRequestId))||null:null;
+  let newBookingId=null;
   try{
-    await sbPatch('income',id,{...(bookingChanged?{booking_request_id:selectedRequestId}:{}),date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:custName,horse_name:document.getElementById('ei-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:splitEnabled,instructor_id:splitEnabled?(trainer?.id||null):null,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid)});
+    let bookingPatch=bookingChanged?{booking_request_id:selectedRequestId}:{};
+    if(lessonForm){
+      newBookingId=await createLessonBooking(lessonForm,{customer:custName.trim(),horse:document.getElementById('ei-horse').value,amount:total});
+      bookingPatch={booking_request_id:newBookingId,notes:lessonBookingNotes(newBookingId,lessonForm.pkg,lessonForm.slots,document.getElementById('ei-notes').value||'')};
+      if(!document.getElementById('ei-start').value)bookingPatch.start_time=lessonForm.slots[0].time;
+    }
+    await sbPatch('income',id,{date:document.getElementById('ei-date').value||null,due_date:document.getElementById('ei-due').value||null,customer_name:custName,horse_name:document.getElementById('ei-horse').value||null,activity,qty,amount_bd:total,paid_bd:paid,training_split_enabled:splitEnabled,instructor_id:splitEnabled?(trainer?.id||null):null,start_time:document.getElementById('ei-start').value||null,end_time:document.getElementById('ei-end').value||null,notes:document.getElementById('ei-notes').value||null,status:normalizePaidStatus(total,paid),...bookingPatch});
+    const createdBookingId=newBookingId;newBookingId=null;
+    if(createdBookingId)await scheduleLessonBookingIfPossible(createdBookingId,splitEnabled?trainer:null);
     if(linkedRequest&&!bookingChanged&&custName.trim()&&custName.trim()!==(linkedRequest.customer_name||'')){
       await sbRpc('cce_update_booking_customer',{p_booking_request_id:linkedRequest.id,p_customer_name:custName.trim()});
     }
     closeModal();await loadAll();
-  }catch(e){showError('Error',e);}
+  }catch(e){
+    if(newBookingId){try{await sbRpc('cce_delete_booking_request',{p_booking_request_id:newBookingId});}catch(cleanup){}}
+    showError('Error',e);
+  }
 }
 function editExpense(id){
   const r=expenses.find(x=>x.id===id);if(!r)return;
@@ -3088,13 +3120,131 @@ function incomeBookingOptionLabel(b){
 }
 function incomeBookingSectionHtml(prefix,currentIncomeId,currentRequestId){
   const ids=incomeBookingFieldIds(prefix);
+  return `<div class="form-group" id="${ids.wrap}" style="grid-column:1/-1;display:none">${incomeBookingSectionInner(prefix,currentIncomeId,currentRequestId)}</div>`;
+}
+function incomeBookingSectionInner(prefix,currentIncomeId,currentRequestId){
+  const ids=incomeBookingFieldIds(prefix);
   const options=incomeBookingCandidates(currentIncomeId,currentRequestId)
     .map(b=>`<option value="${escAttr(b.id)}" ${String(b.id)===String(currentRequestId??'')?'selected':''}>${esc(incomeBookingOptionLabel(b))}</option>`).join('');
-  return `<div class="form-group" id="${ids.wrap}" style="grid-column:1/-1;display:none">
-    <label>Linked Booking</label>
-    <select id="${ids.select}" onchange="onIncomeBookingChange('${prefix}')"><option value="">— Not linked to a booking —</option>${options}</select>
+  return `<div style="border:1px solid var(--gold,#C9A24C);border-radius:12px;padding:12px;background:#FFFDF8">
+    <div style="font-weight:800;color:var(--navy);margin-bottom:8px">&#127919; Lesson Booking — حجز الحصص</div>
+    <label>Booking</label>
+    <select id="${ids.select}" onchange="onIncomeBookingChange('${prefix}')"><option value="">&#10133; New booking — حجز جديد</option>${options}</select>
     <div id="${ids.details}" style="margin-top:8px"></div>
+    <div id="${prefix}-lb-new" style="margin-top:10px">${lessonBookingNewFormHtml(prefix)}</div>
   </div>`;
+}
+const LESSON_BOOKING_PACKAGES=Object.freeze([
+  {name:'Single Session',label:'Single Session',sessions:1,price:10},
+  {name:'4 Sessions Package',label:'Starter Pack',sessions:4,price:35},
+  {name:'8 Sessions Package',label:'Advanced Pack',sessions:8,price:70},
+  {name:'12 Sessions Package',label:'Pro Pack',sessions:12,price:100}
+]);
+function lessonBookingNewFormHtml(prefix){
+  const pkgs=LESSON_BOOKING_PACKAGES.map(pkg=>`<button type="button" class="lb-pkg" data-pkg="${escAttr(pkg.name)}" onclick="selectLessonBookingPackage('${prefix}','${escAttr(pkg.name)}')" style="border:1.5px solid var(--border);border-radius:10px;background:#fff;padding:8px 6px;cursor:pointer;text-align:center;font-family:inherit">
+      <div style="font-weight:800;color:var(--navy);font-size:13px">${esc(pkg.label)}</div>
+      <div style="font-size:11px;color:var(--muted)">${pkg.sessions} ${pkg.sessions===1?'session':'sessions'}</div>
+      <div style="font-weight:800;color:#C8923A">${pkg.price} BD</div>
+    </button>`).join('');
+  const input=(id,label,type,extra='')=>`<div class="form-group"><label>${label}</label><input type="${type}" id="${prefix}-lb-${id}" ${extra}></div>`;
+  return `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Choose a package to create the booking together with this income. Leave it empty to save the income only.</div>
+    <input type="hidden" id="${prefix}-lb-pkg" value="">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:10px">${pkgs}</div>
+    <div id="${prefix}-lb-fields" style="display:none">
+      <div class="form-grid">
+        ${input('phone','Phone — رقم الهاتف','tel','maxlength="16" placeholder="39001234"')}
+        ${input('birth','Date of Birth — تاريخ الميلاد','date')}
+        ${input('pid','Personal ID — الرقم الشخصي','text','maxlength="40"')}
+        ${input('emergency','Emergency Contact — رقم الطوارئ','tel','maxlength="32"')}
+        <div class="form-group" style="grid-column:1/-1"><label>Health Condition — الحالة الصحية</label><input type="text" id="${prefix}-lb-health" maxlength="500"></div>
+      </div>
+      <div style="font-weight:700;color:var(--navy);margin:6px 0">&#128197; Session Times — مواعيد الحصص</div>
+      <div id="${prefix}-lb-slots"></div>
+    </div>`;
+}
+function lessonBookingTimeOptions(selected){
+  const label=t=>{const [h,m]=t.split(':').map(Number);return String(h>12?h-12:h).padStart(2,'0')+':'+String(m).padStart(2,'0')+(h<12?' ص':' م');};
+  return TIME_SLOTS.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${label(t)}</option>`).join('');
+}
+function selectLessonBookingPackage(prefix,name){
+  const pkg=LESSON_BOOKING_PACKAGES.find(item=>item.name===name);
+  if(!pkg)return;
+  const hidden=document.getElementById(prefix+'-lb-pkg');
+  const same=hidden&&hidden.value===name;
+  if(hidden)hidden.value=same?'':name;
+  document.querySelectorAll('#'+prefix+'-lb-new .lb-pkg').forEach(btn=>{
+    const on=!same&&btn.dataset.pkg===name;
+    btn.style.borderColor=on?'#C9A24C':'var(--border)';
+    btn.style.background=on?'#FBF3E2':'#fff';
+  });
+  const fields=document.getElementById(prefix+'-lb-fields');
+  if(fields)fields.style.display=same?'none':'';
+  if(same)return;
+  const ids=incomeBookingFieldIds(prefix);
+  const qty=document.getElementById(ids.qty);if(qty)qty.value='1';
+  const amount=document.getElementById(ids.amount);if(amount)amount.value=pkg.price.toFixed(3);
+  if(prefix==='inc'&&typeof calcTotal==='function')calcTotal('inc');
+  if(prefix==='ei'&&typeof cET==='function')cET('inc');
+  const box=document.getElementById(prefix+'-lb-slots');
+  if(!box)return;
+  const previous=[...box.querySelectorAll('[data-slot]')].map(row=>({date:row.querySelector('input').value,time:row.querySelector('select').value}));
+  const firstDate=document.getElementById(ids.date)?.value||bahrainDateISO();
+  const firstTime=fmtTimeShort(document.getElementById(ids.start)?.value||'');
+  let html='';
+  for(let i=1;i<=pkg.sessions;i++){
+    const prev=previous[i-1]||{};
+    const date=prev.date||(i===1?firstDate:'');
+    const time=prev.time||(i===1&&TIME_SLOTS.includes(firstTime)?firstTime:'');
+    html+=`<div data-slot="${i}" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:6px 8px;align-items:center;background:var(--sand);border-radius:8px;padding:6px 10px;margin-bottom:6px">
+      <div style="grid-column:1/-1;font-weight:700;font-size:12px;color:var(--navy)">&#128197; حصة ${i}</div>
+      <input type="date" id="${prefix}-lb-date-${i}" value="${escAttr(date)}">
+      <select id="${prefix}-lb-time-${i}"><option value="">— Time —</option>${lessonBookingTimeOptions(time)}</select>
+    </div>`;
+  }
+  box.innerHTML=html;
+}
+function resetLessonBookingForm(prefix){
+  const holder=document.getElementById(prefix+'-lb-new');
+  if(holder)holder.innerHTML=lessonBookingNewFormHtml(prefix);
+}
+// Reads the new-booking block. Returns null when no package is picked.
+function readLessonBookingForm(prefix){
+  const name=document.getElementById(prefix+'-lb-pkg')?.value||'';
+  if(!name||selectedIncomeBooking(prefix))return null;
+  const pkg=LESSON_BOOKING_PACKAGES.find(item=>item.name===name);
+  if(!pkg)return null;
+  const val=id=>(document.getElementById(prefix+'-lb-'+id)?.value||'').trim();
+  const slots=[];
+  for(let i=1;i<=pkg.sessions;i++){
+    const date=val('date-'+i),time=val('time-'+i);
+    if(!date||!time)throw new Error('Fill the date and time of every session (حصة '+i+').');
+    slots.push({date,time});
+  }
+  const dup=slots.find((slot,i)=>slots.findIndex(x=>x.date===slot.date&&x.time===slot.time)!==i);
+  if(dup)throw new Error('Duplicate session: '+dup.date+' @ '+dup.time);
+  const phone=val('phone').replace(/\D/g,'');
+  if(phone&&phone.length!==8)throw new Error('Phone number must be 8 digits.');
+  return {pkg,code:PUBLIC_TRAINING_SERVICE_CODES[pkg.name],slots,phone,birth:val('birth'),personalId:val('pid'),emergency:val('emergency'),health:val('health')};
+}
+function lessonBookingNotes(bookingId,pkg,slots,extra){
+  const sessions=slots.map((slot,i)=>'حصة '+(i+1)+': '+slot.date+' @ '+slot.time).join(' | ');
+  return 'TRAINING BOOKING — Ref #'+bookingId+' | Package: '+pkg.name+' | Sessions: '+sessions+(extra?' | '+extra:'');
+}
+async function createLessonBooking(form,{customer,horse,amount}){
+  const result=await sbRpc('cce_admin_create_training_booking',{
+    p_service_code:form.code,p_customer_name:customer,p_phone:form.phone||null,
+    p_session_slots:form.slots,p_horse_name:horse||null,p_personal_id:form.personalId||null,
+    p_emergency_contact:form.emergency||null,p_birth_date:form.birth||null,p_health_notes:form.health||null,
+    p_amount_bd:amount
+  });
+  const id=result&&result.booking_request_id;
+  if(!id)throw new Error('The booking was not created.');
+  return id;
+}
+async function scheduleLessonBookingIfPossible(bookingId,trainer){
+  if(!trainer)return;
+  try{await sbRpc('cce_schedule_training_booking',{p_booking_request_id:bookingId,p_instructor_id:trainer.id});}
+  catch(error){alert('Booking and income saved, but the sessions were not added to the schedule: '+(error.message||error)+'\nYou can schedule them from Bookings.');}
 }
 function selectedIncomeBooking(prefix){
   const id=document.getElementById(incomeBookingFieldIds(prefix).select)?.value||'';
@@ -3154,7 +3304,9 @@ async function renderIncomeBookingDetails(prefix){
   const box=document.getElementById(ids.details);
   if(!box)return;
   const b=selectedIncomeBooking(prefix);
-  if(!b){box.innerHTML='<div style="font-size:12px;color:var(--muted)">Pick the customer\'s booking to see their details, number of sessions and session dates.</div>';return;}
+  const newForm=document.getElementById(prefix+'-lb-new');
+  if(newForm)newForm.style.display=b?'none':'';
+  if(!b){box.innerHTML='';return;}
   const key=String(b.id);
   const canViewSensitive=typeof window.canUser!=='function'||window.canUser('bookings.sensitive.view');
   box.innerHTML=incomeBookingDetailsHtml(b,canViewSensitive?incomeBookingPrivateCache.get(key):undefined);
@@ -3192,12 +3344,14 @@ function syncIncomeBookingField(prefix){
   if(show&&wasHidden)renderIncomeBookingDetails(prefix);
 }
 function refreshIncomeBookingOptions(){
+  const wrap=document.getElementById('inc-booking-wrap');
+  if(!wrap)return;
   const select=document.getElementById('inc-booking');
-  if(!select)return;
+  if(!select){wrap.innerHTML=incomeBookingSectionInner('inc',null,null);renderIncomeBookingDetails('inc');return;}
   const current=select.value;
   const options=incomeBookingCandidates(null,current)
     .map(b=>`<option value="${escAttr(b.id)}">${esc(incomeBookingOptionLabel(b))}</option>`).join('');
-  select.innerHTML='<option value="">— Not linked to a booking —</option>'+options;
+  select.innerHTML='<option value="">&#10133; New booking — حجز جديد</option>'+options;
   select.value=current&&[...select.options].some(o=>o.value===current)?current:'';
 }
 function syncIncomeInstructorField(prefix='inc'){
@@ -5103,7 +5257,7 @@ let deferredPrompt = null;
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=20261119-4400', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-4410', {scope:'./'})
       .then(reg => {
 
         reg.update();
